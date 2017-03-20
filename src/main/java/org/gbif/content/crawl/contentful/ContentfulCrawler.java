@@ -59,8 +59,8 @@ public class ContentfulCrawler {
     Preconditions.checkNotNull(configuration.elasticSearch, "ElasticSearch configruration can't be null");
     Preconditions.checkNotNull(configuration.contentful, "Contentful configruration can't be null");
     this.configuration = configuration;
-    cdaClient = cdaClient();
-    esClient = esClient();
+    cdaClient = buildCdaClient();
+    esClient = buildEsClient();
     vocabularies = new HashMap<>();
   }
 
@@ -70,14 +70,15 @@ public class ContentfulCrawler {
   public void run() {
     getContentTypes().items().parallelStream().map(cdaResource -> (CDAContentType)cdaResource)
       .forEach(contentType -> {
-        String idxName = REPLACEMENTS.matcher(contentType.name().toLowerCase()).replaceAll(""); //index name has to be in lowercase
+        //index name has to be in lowercase
+        String idxName = REPLACEMENTS.matcher(contentType.name().toLowerCase()).replaceAll("");
         //Loads vocabulary into memory
         if (idxName.startsWith(VOCABULARY_KEYWORD)) {
           VocabularyLoader.vocabularyTerms(contentType.id(), cdaClient)
             .subscribe(terms -> vocabularies.put(idxName, terms));
         } else {
           //gets or (re)create the ES idx if doesn't exists
-          createRetrieveIdx(contentType.id(), idxName);
+          createRetrieveIdx(idxName);
           LOG.info("Indexing ContentType [{}] into ES Index [{}]", contentType.name(), idxName);
           //Prepares the bulk/batch request
           BulkRequestBuilder bulkRequest = esClient.prepareBulk();
@@ -158,8 +159,7 @@ public class ContentfulCrawler {
    * Creates an ElasticSearch index that matches the name of the contentType.
    * If the flag configuration.contentful.deleteIndex is ON and the index exist, it will be removed.
    */
-  private void createRetrieveIdx(String contentTypeId, String idxName) {
-
+  private void createRetrieveIdx(String idxName) {
       //create ES idx if it doesn't exists
       if (!esClient.admin().indices().prepareExists(idxName).get().isExists()) {
         esClient.admin().indices().prepareCreate(idxName)
@@ -176,9 +176,9 @@ public class ContentfulCrawler {
   /**
    * Reads the content of ES_MAPPINGS_FILE into a String.
    */
-  private String indexMappings() {
+  private static String indexMappings() {
     try {
-      return new String (IOUtils.toByteArray(Thread.currentThread().getContextClassLoader()
+      return new String(IOUtils.toByteArray(Thread.currentThread().getContextClassLoader()
                                                .getResourceAsStream(ES_MAPPINGS_FILE)));
     } catch (IOException ex) {
       throw new IllegalStateException(ex);
@@ -188,7 +188,7 @@ public class ContentfulCrawler {
   /**
    * Creates a new instance of a Contentful CDAClient.
    */
-  private CDAClient cdaClient() {
+  private CDAClient buildCdaClient() {
     return CDAClient.builder().setSpace(configuration.contentful.spaceId)
       .setToken(configuration.contentful.cdaToken).build();
   }
@@ -196,11 +196,12 @@ public class ContentfulCrawler {
   /**
    * Creates a new instance of a ElasticSearch client.
    */
-  private Client esClient() {
+  private Client buildEsClient() {
     try {
-      Settings settings = Settings.builder().put("cluster.name", configuration.elasticSearch.cluster).build(); // important
-      return new PreBuiltTransportClient(settings).addTransportAddress(new InetSocketTransportAddress(InetAddress.getByName(
-        configuration.elasticSearch.host), configuration.elasticSearch.port));
+      Settings settings = Settings.builder().put("cluster.name", configuration.elasticSearch.cluster).build();
+      return new PreBuiltTransportClient(settings).addTransportAddress(
+        new InetSocketTransportAddress(InetAddress.getByName(configuration.elasticSearch.host),
+                                       configuration.elasticSearch.port));
     } catch (UnknownHostException ex) {
       throw new IllegalStateException(ex);
     }
