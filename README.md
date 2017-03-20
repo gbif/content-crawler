@@ -22,7 +22,7 @@ To run this and index into ES, assuming ES is running on localhost and answering
  ```
    // edit configuration to set cluster_name to your clustername listed on http://localhost:9200/
    $ mvn package
-   $ java -jar target/mendeley-crawler.jar mendeley-crawl --conf configuration.yml
+   $ java -jar target/content-crawler.jar con-crawl --conf configuration.yml
  ```
  
  a successful run will look like:
