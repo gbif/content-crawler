@@ -1,0 +1,31 @@
+{
+  "dynamic_templates": [
+    {
+      "ignored_fields": {
+        "match_pattern": "regex",
+        "match": "images|space|contentType|revision|type",
+        "mapping": {
+          "include_in_all": false,
+          "enabled": false
+        }
+      }
+    },
+    {
+      "text_fields": {
+        "match_pattern": "regex",
+        "match": "title|description",
+        "mapping": {
+          "boost": 10
+        }
+      }
+    },
+    {
+      "vocabularies": {
+        "path_match": "vocabulary*.*",
+        "mapping": {
+          "type": "keyword"
+        }
+      }
+    }
+  ]
+}

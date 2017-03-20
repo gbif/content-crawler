@@ -1,0 +1,65 @@
+
+#Date range query
+curl -XGET 'http://localhost:9200/literature/_search?' -d '{
+    "_source" : ["id", "created"],
+    "query": {
+        "range" : {
+            "created" : {
+                "gte": "2014/10",
+                "lte": "2015/02",
+                "format": "yyyy/MM||yyyy/MM"
+            }
+        }
+    }
+}'
+
+#Auto completion
+curl -XGET 'http://localhost:9200/literature/_search?' -d '{
+    "_source" : ["title"],
+    "suggest": {
+        "title" : {
+            "prefix" : "efficien",
+            "completion" : {
+                "field" : "title"
+            }
+        }
+    }
+}'
+
+#Facets/Aggregations by year
+curl -XGET 'http://localhost:9200/literature/_search?' -d '{
+    "size": 0,
+    "aggregations" : {
+        "year_count" : {
+            "terms" : {
+                "field" : "year"
+            }
+        }
+    }
+}'
+
+#Nested query example
+curl -XGET 'http://localhost:9200/literature/_search?' -d '{
+   "_source": "authors.last_name",
+   "query": {
+     "nested": {
+       "path": "authors",
+       "query": {
+         "bool": {
+           "filter": [
+             { "term": { "authors.last_name": "Guralnick" }}
+           ]
+         }
+       }
+     }
+   }
+}'
+
+#Exists example
+curl -XGET 'http://localhost:9200/literature/_search?' -d '{
+   "size": 0,
+   "query": {
+       "exists" : { "field" : "read" }
+   }
+}'
+

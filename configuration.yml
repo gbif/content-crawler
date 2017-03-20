@@ -1,0 +1,30 @@
+# This is an exmaple configuration
+
+# Target directory to store JSON
+targetDir: /tmp/tim
+
+
+# The following represents an example from Tim Robertson's account and can be used for testing
+mendeley:
+#  timeout: 10
+  tokenUrl: https://api.mendeley.com/oauth/token
+  trustedClientId: 4108
+  trustedClientSecret:
+  groupId:
+
+# Optional: If included will push documents to the referenced Elastic Search index
+elasticSearch:
+  host: localhost
+#  port: 9300
+  cluster: elasticsearch_
+  index: literature
+  type: literature
+
+#Contentful crawler configuration
+contentful:
+  cdaToken:
+  spaceId:
+  #contentTypes: [dataUse]
+  esIndexType: content
+  #Delete the Index before crawl it?
+  deleteIndex: true
