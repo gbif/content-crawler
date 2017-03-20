@@ -8,6 +8,9 @@ import javax.validation.constraints.NotNull;
 import com.beust.jcommander.IStringConverter;
 import com.beust.jcommander.Parameter;
 
+/**
+ * Command configuration class, contains configuration element to connect to Mendeley, ElastisSearch and Contenful.
+ */
 public class ContentCrawlConfiguration {
 
   @Parameter(
@@ -26,7 +29,7 @@ public class ContentCrawlConfiguration {
 
 
   /**
-   * Configuration specific to interfacing to Mendeley
+   * Configuration specific to interfacing to Mendeley.
    */
   public static class Mendeley {
     @Parameter(
@@ -63,7 +66,7 @@ public class ContentCrawlConfiguration {
   }
 
   /**
-   * Configuration specific to interfacing with elastic search
+   * Configuration specific to interfacing with elastic search.
    */
   public static class ElasticSearch {
     @Parameter(
@@ -96,7 +99,7 @@ public class ContentCrawlConfiguration {
 
 
   /**
-   * Configuration specific to interfacing with elastic search
+   * Configuration specific to interfacing with elastic search.
    */
   public static class Contentful {
     @Parameter(
@@ -126,6 +129,9 @@ public class ContentCrawlConfiguration {
 
   }
 
+  /**
+   * Converts from String to File.
+   */
   private static class FileConverter implements IStringConverter<File> {
     @Override
     public File convert(String value) {
