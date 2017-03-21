@@ -1,179 +1,175 @@
 {
-  "mappings": {
-    "literature": {
+  "properties": {
+    "id": {
+      "type": "keyword"
+    },
+    "title": {
+      "type": "completion"
+    },
+    "type": {
+      "type": "keyword"
+    },
+    "profile_id": {
+      "type": "keyword"
+    },
+    "group_id": {
+      "type": "keyword"
+    },
+    "created": {
+      "type": "date"
+    },
+    "last_modified": {
+      "type": "date"
+    },
+    "abstract": {
+      "type": "text"
+    },
+    "source": {
+      "type": "keyword"
+    },
+    "year": {
+      "type": "integer"
+    },
+    "authors": {
+      "type": "nested",
       "properties": {
-        "id": {
-          "type": "keyword"
-        },
-        "title": {
-          "type": "completion"
-        },
-        "type": {
-          "type": "keyword"
-        },
-        "profile_id": {
-          "type": "keyword"
-        },
-        "group_id": {
-          "type": "keyword"
-        },
-        "created": {
-          "type": "date"
-        },
-        "last_modified": {
-          "type": "date"
-        },
-        "abstract": {
-          "type": "text"
-        },
-        "source": {
-          "type": "keyword"
-        },
-        "year": {
-          "type": "integer"
-        },
-        "authors": {
-          "type": "nested",
-          "properties": {
-            "first_name": { "type": "keyword" },
-            "last_name": { "type": "keyword" }
-          }
-        },
-        "authors_country": {
-          "type": "keyword"
-        },
-        "biodiversity_country": {
-          "type": "keyword"
-        },
-        "identifiers": {
-          "type": "nested"
-        },
-        "keywords": {
-          "type": "keyword"
-        },
-        "month": {
-          "type": "integer"
-        },
-        "day": {
-          "type": "integer"
-        },
-        "revision": {
-          "type": "keyword"
-        },
-        "pages": {
-          "type": "keyword"
-        },
-        "volume": {
-          "type": "keyword"
-        },
-        "issue": {
-          "type": "keyword"
-        },
-        "websites": {
-          "type": "keyword"
-        },
-        "publisher": {
-          "type": "keyword"
-        },
-        "city": {
-          "type": "keyword"
-        },
-        "edition": {
-          "type": "keyword"
-        },
-        "institution": {
-          "type": "keyword"
-        },
-        "series": {
-          "type": "keyword"
-        },
-        "chapter": {
-          "type": "keyword"
-        },
-        "editors": {
-          "type": "nested",
-          "properties": {
-            "first_name": { "type": "keyword"  },
-            "last_name": { "type": "keyword"  }
-          }
-        },
-        "accessed": {
-          "type": "date"
-        },
-        "tags": {
-          "type": "keyword"
-        },
-        "read": {
-          "type": "boolean"
-        },
-        "starred": {
-          "type": "boolean"
-        },
-        "authored": {
-          "type": "boolean"
-        },
-        "confirmed": {
-          "type": "boolean"
-        },
-        "hidden": {
-          "type": "boolean"
-        },
-        "file_attached": {
-          "type": "boolean"
-        },
-        "citation_key": {
-          "type": "keyword"
-        },
-        "source_type": {
-          "type": "keyword"
-        },
-        "language": {
-          "type": "keyword"
-        },
-        "short_title": {
-          "type": "keyword"
-        },
-        "reprint_edition": {
-          "type": "keyword"
-        },
-        "genre": {
-          "type": "keyword"
-        },
-        "country": {
-          "type": "keyword"
-        },
-        "translators": {
-          "type": "nested",
-          "properties": {
-            "first_name": { "type": "keyword"  },
-            "last_name": { "type": "keyword"  }
-          }
-        },
-        "series_editor": {
-          "type": "keyword"
-        },
-        "code": {
-          "type": "keyword"
-        },
-        "medium": {
-          "type": "keyword"
-        },
-        "user_context": {
-          "type": "keyword"
-        },
-        "department": {
-          "type": "keyword"
-        },
-        "patent_owner": {
-          "type": "keyword"
-        },
-        "patent_application_number": {
-          "type": "keyword"
-        },
-        "patent_legal_status": {
-          "type": "keyword"
-        }
+        "first_name": { "type": "keyword" },
+        "last_name": { "type": "keyword" }
       }
+    },
+    "authors_country": {
+      "type": "keyword"
+    },
+    "biodiversity_country": {
+      "type": "keyword"
+    },
+    "identifiers": {
+      "type": "nested"
+    },
+    "keywords": {
+      "type": "keyword"
+    },
+    "month": {
+      "type": "integer"
+    },
+    "day": {
+      "type": "integer"
+    },
+    "revision": {
+      "type": "keyword"
+    },
+    "pages": {
+      "type": "keyword"
+    },
+    "volume": {
+      "type": "keyword"
+    },
+    "issue": {
+      "type": "keyword"
+    },
+    "websites": {
+      "type": "keyword"
+    },
+    "publisher": {
+      "type": "keyword"
+    },
+    "city": {
+      "type": "keyword"
+    },
+    "edition": {
+      "type": "keyword"
+    },
+    "institution": {
+      "type": "keyword"
+    },
+    "series": {
+      "type": "keyword"
+    },
+    "chapter": {
+      "type": "keyword"
+    },
+    "editors": {
+      "type": "nested",
+      "properties": {
+        "first_name": { "type": "keyword"  },
+        "last_name": { "type": "keyword"  }
+      }
+    },
+    "accessed": {
+      "type": "date"
+    },
+    "tags": {
+      "type": "keyword"
+    },
+    "read": {
+      "type": "boolean"
+    },
+    "starred": {
+      "type": "boolean"
+    },
+    "authored": {
+      "type": "boolean"
+    },
+    "confirmed": {
+      "type": "boolean"
+    },
+    "hidden": {
+      "type": "boolean"
+    },
+    "file_attached": {
+      "type": "boolean"
+    },
+    "citation_key": {
+      "type": "keyword"
+    },
+    "source_type": {
+      "type": "keyword"
+    },
+    "language": {
+      "type": "keyword"
+    },
+    "short_title": {
+      "type": "keyword"
+    },
+    "reprint_edition": {
+      "type": "keyword"
+    },
+    "genre": {
+      "type": "keyword"
+    },
+    "country": {
+      "type": "keyword"
+    },
+    "translators": {
+      "type": "nested",
+      "properties": {
+        "first_name": { "type": "keyword"  },
+        "last_name": { "type": "keyword"  }
+      }
+    },
+    "series_editor": {
+      "type": "keyword"
+    },
+    "code": {
+      "type": "keyword"
+    },
+    "medium": {
+      "type": "keyword"
+    },
+    "user_context": {
+      "type": "keyword"
+    },
+    "department": {
+      "type": "keyword"
+    },
+    "patent_owner": {
+      "type": "keyword"
+    },
+    "patent_application_number": {
+      "type": "keyword"
+    },
+    "patent_legal_status": {
+      "type": "keyword"
     }
   }
 }

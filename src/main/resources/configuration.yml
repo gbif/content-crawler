@@ -1,0 +1,31 @@
+# The following represents an example of a configuration file to crawl mendeley and contentful
+mendeley:
+  # Target directory to store JSON
+  targetDir: /tmp/mendeley-crawl
+
+#  timeout: 10
+  tokenUrl: https://api.mendeley.com/oauth/token
+  trustedClientId: 4108
+  trustedClientSecret:
+  groupId:
+  indexBuild:
+    esIndexName: literature
+    esIndexType: literature
+    #Delete the Index before crawl it?
+    deleteIndex: true
+
+# Optional: If included will push documents to the referenced Elastic Search index
+elasticSearch:
+  host: develastic-vh.gbif.org
+#  port: 9300
+  cluster: content-cluster
+
+#Contentful crawler configuration
+contentful:
+  cdaToken:
+  spaceId:
+  indexBuild:
+    #contentTypes: [dataUse]
+    esIndexType: content
+    #Delete the Index before crawl it?
+    deleteIndex: true

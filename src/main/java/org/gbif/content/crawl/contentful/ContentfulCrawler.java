@@ -2,9 +2,6 @@ package org.gbif.content.crawl.contentful;
 
 import org.gbif.content.crawl.conf.ContentCrawlConfiguration;
 
-import java.io.IOException;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -18,15 +15,14 @@ import com.contentful.java.cda.CDAEntry;
 import com.contentful.java.cda.FetchQuery;
 import com.google.common.base.Preconditions;
 import io.reactivex.Observable;
-import org.apache.commons.io.IOUtils;
 import org.elasticsearch.action.bulk.BulkRequestBuilder;
 import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.client.Client;
-import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.common.transport.InetSocketTransportAddress;
-import org.elasticsearch.transport.client.PreBuiltTransportClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static org.gbif.content.crawl.es.ElasticSearchUtils.buildEsClient;
+import static org.gbif.content.crawl.es.ElasticSearchUtils.createIndex;
 
 /**
  * Pulls content from Contentful and stores it in ElasticSearch indexes.
@@ -60,7 +56,7 @@ public class ContentfulCrawler {
     Preconditions.checkNotNull(configuration.contentful, "Contentful configruration can't be null");
     this.configuration = configuration;
     cdaClient = buildCdaClient();
-    esClient = buildEsClient();
+    esClient = buildEsClient(configuration.elasticSearch);
     vocabularies = new HashMap<>();
   }
 
@@ -78,7 +74,7 @@ public class ContentfulCrawler {
             .subscribe(terms -> vocabularies.put(idxName, terms));
         } else {
           //gets or (re)create the ES idx if doesn't exists
-          createRetrieveIdx(idxName);
+          createIndex(esClient, configuration.contentful.indexBuild, idxName, ES_MAPPINGS_FILE);
           LOG.info("Indexing ContentType [{}] into ES Index [{}]", contentType.name(), idxName);
           //Prepares the bulk/batch request
           BulkRequestBuilder bulkRequest = esClient.prepareBulk();
@@ -88,7 +84,7 @@ public class ContentfulCrawler {
             .subscribe(results -> results.items()
                                     .forEach(cdaResource ->
                                       bulkRequest.add(esClient.prepareIndex(idxName,
-                                                                            configuration.contentful.esIndexType,
+                                                                            configuration.contentful.indexBuild.esIndexType,
                                                                             cdaResource.id())
                                       .setSource(getIndexedFields((CDAEntry) cdaResource)))
             ));
@@ -156,36 +152,6 @@ public class ContentfulCrawler {
   }
 
   /**
-   * Creates an ElasticSearch index that matches the name of the contentType.
-   * If the flag configuration.contentful.deleteIndex is ON and the index exist, it will be removed.
-   */
-  private void createRetrieveIdx(String idxName) {
-      //create ES idx if it doesn't exists
-      if (!esClient.admin().indices().prepareExists(idxName).get().isExists()) {
-        esClient.admin().indices().prepareCreate(idxName)
-          .addMapping(configuration.contentful.esIndexType, indexMappings()).get();
-      } else if (configuration.contentful.deleteIndex) { //if the index exists and should be recreated
-        //Delete the index
-        esClient.admin().indices().prepareDelete(idxName).get();
-        //Re-create the index
-        esClient.admin().indices().prepareCreate(idxName).get();
-      }
-
-  }
-
-  /**
-   * Reads the content of ES_MAPPINGS_FILE into a String.
-   */
-  private static String indexMappings() {
-    try {
-      return new String(IOUtils.toByteArray(Thread.currentThread().getContextClassLoader()
-                                               .getResourceAsStream(ES_MAPPINGS_FILE)));
-    } catch (IOException ex) {
-      throw new IllegalStateException(ex);
-    }
-  }
-
-  /**
    * Creates a new instance of a Contentful CDAClient.
    */
   private CDAClient buildCdaClient() {
@@ -193,19 +159,6 @@ public class ContentfulCrawler {
       .setToken(configuration.contentful.cdaToken).build();
   }
 
-  /**
-   * Creates a new instance of a ElasticSearch client.
-   */
-  private Client buildEsClient() {
-    try {
-      Settings settings = Settings.builder().put("cluster.name", configuration.elasticSearch.cluster).build();
-      return new PreBuiltTransportClient(settings).addTransportAddress(
-        new InetSocketTransportAddress(InetAddress.getByName(configuration.elasticSearch.host),
-                                       configuration.elasticSearch.port));
-    } catch (UnknownHostException ex) {
-      throw new IllegalStateException(ex);
-    }
-  }
 
   /**
    * CDAArray that holds references to the list of content types defined in configuration.contentful.contentTypes.

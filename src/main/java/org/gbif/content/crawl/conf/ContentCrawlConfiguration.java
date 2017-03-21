@@ -13,12 +13,6 @@ import com.beust.jcommander.Parameter;
  */
 public class ContentCrawlConfiguration {
 
-  @Parameter(
-    names = "-targetDir", converter = FileConverter.class,
-    description = "The target directory to store the crawl responses (JSON docs)")
-  @NotNull
-  public File targetDir;
-
   @NotNull
   public Mendeley mendeley;
 
@@ -32,6 +26,13 @@ public class ContentCrawlConfiguration {
    * Configuration specific to interfacing to Mendeley.
    */
   public static class Mendeley {
+
+    @Parameter(
+      names = "-targetDir", converter = FileConverter.class,
+      description = "The target directory to store the crawl responses (JSON docs)")
+    @NotNull
+    public File targetDir;
+
     @Parameter(
       names = "-tokenUrl",
       description = "The Mendeley url for the authentication, defaulting to https://api.mendeley.com/oauth/token")
@@ -63,6 +64,8 @@ public class ContentCrawlConfiguration {
       names = "-timeout",
       description = "Timeout for the HTTP calls in seconds, defaulting to 10 secs")
     public int httpTimeoutInSecs;
+
+    public IndexBuild indexBuild;
   }
 
   /**
@@ -83,17 +86,6 @@ public class ContentCrawlConfiguration {
       names = "-cluster",
       description = "The ES cluster name, defaulting to elasticsearch if none given")
     public String cluster = "elasticsearch";
-
-    @Parameter(
-      names = "-index",
-      description = "The index name within ES to write to")
-    @NotNull
-    public String index;
-
-    @Parameter(
-      names = "-type",
-      description = "The type of content to class the documents in ES, defaulting to literature")
-    public String type = "literature";
 
   }
 
@@ -117,16 +109,26 @@ public class ContentCrawlConfiguration {
       description = "Contentful content types to be crawled")
     public List<String> contentTypes = new ArrayList<>();
 
-    @Parameter(
-      names = "-esIndexType",
-      description = "ElasticSearch index type")
-    public String esIndexType = "content";
+    public IndexBuild indexBuild;
+  }
 
+
+  public static class IndexBuild {
     @Parameter(
       names = "-deleteIndex",
       description = "Delete ElasticSearch index(es) before running crawlers")
     public Boolean deleteIndex = false;
 
+    @Parameter(
+      names = "-esIndexType",
+      description = "ElasticSearch index type")
+    public String esIndexType = "content";
+
+
+    @Parameter(
+      names = "-esIndexName",
+      description = "ElasticSearch index name")
+    public String esIndexName;
   }
 
   /**

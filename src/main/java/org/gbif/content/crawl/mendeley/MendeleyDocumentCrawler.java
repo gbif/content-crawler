@@ -40,15 +40,15 @@ public class MendeleyDocumentCrawler {
     int timeOut = config.mendeley.httpTimeoutInSecs * 1000;
     requestConfig = RequestConfig.custom().setSocketTimeout(timeOut).setConnectTimeout(timeOut)
                       .setConnectionRequestTimeout(timeOut).build();
-    handlers.add(new ResponseToFileHandler(config.targetDir));
+    handlers.add(new ResponseToFileHandler(config.mendeley.targetDir));
     if (config.elasticSearch != null) {
-      handlers.add(new ElasticSearchIndexHandler(config.elasticSearch));
+      handlers.add(new ElasticSearchIndexHandler(config));
     }
   }
 
   public void run() throws IOException {
     String targetUrl = String.format(config.mendeley.crawlURL, config.mendeley.groupId);
-    LOG.info("Initiating paging crawl of {} to {}", targetUrl, config.targetDir);
+    LOG.info("Initiating paging crawl of {} to {}", targetUrl, config.mendeley.targetDir);
     try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
       OAuthJSONAccessTokenResponse token = getToken(config.mendeley);
       Observable
