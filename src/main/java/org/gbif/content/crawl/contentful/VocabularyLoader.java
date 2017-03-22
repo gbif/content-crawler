@@ -3,7 +3,6 @@ package org.gbif.content.crawl.contentful;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import com.contentful.java.cda.CDAClient;
@@ -17,9 +16,9 @@ import io.reactivex.Observable;
 public class VocabularyLoader {
 
   //Know names of fields for vocabulary terms
-  public static final Set<String> TERMS_FIELDS = Sets.newHashSet("term", "isoCode");
+  private static final Set<String> TERMS_FIELDS = Sets.newHashSet("term", "isoCode");
 
-  private static int VOC_PAGE_SIZE = 50;
+  private static final int VOC_PAGE_SIZE = 50;
 
   /**
    * Private constructor of utility class.
@@ -34,7 +33,7 @@ public class VocabularyLoader {
    *  vocabularyName -> { contentId -> {locale -> termLocalizedValue} }
    */
   public static Observable<Map<String, Map<String,String>>> vocabularyTerms(String contentTypeId,
-                                                                                CDAClient cdaClient) {
+                                                                            CDAClient cdaClient) {
     return Observable.fromCallable( () -> {
       Map<String, Map<String,String>> terms = new HashMap<>();
       StreamSupport.stream( new ContentfulPager(cdaClient, VOC_PAGE_SIZE, contentTypeId).spliterator(), false)

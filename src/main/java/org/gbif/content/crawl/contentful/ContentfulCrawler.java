@@ -2,15 +2,12 @@ package org.gbif.content.crawl.contentful;
 
 import org.gbif.content.crawl.conf.ContentCrawlConfiguration;
 
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import javax.annotation.Nullable;
 
 import com.contentful.java.cda.CDAArray;
 import com.contentful.java.cda.CDAClient;
@@ -18,8 +15,6 @@ import com.contentful.java.cda.CDAContentType;
 import com.contentful.java.cda.CDAEntry;
 import com.contentful.java.cda.FetchQuery;
 import com.google.common.base.Preconditions;
-import com.google.common.base.Predicate;
-import com.google.common.collect.Sets;
 import io.reactivex.Observable;
 import org.elasticsearch.action.bulk.BulkRequestBuilder;
 import org.elasticsearch.action.bulk.BulkResponse;
