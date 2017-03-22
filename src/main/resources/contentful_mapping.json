@@ -20,6 +20,14 @@
       }
     },
     {
+      "locale": {
+        "match": "locale",
+        "mapping": {
+          "type": "keyword"
+        }
+      }
+    },
+    {
       "vocabularies": {
         "path_match": "vocabulary*.*",
         "mapping": {

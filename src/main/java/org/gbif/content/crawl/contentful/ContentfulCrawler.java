@@ -2,11 +2,15 @@ package org.gbif.content.crawl.contentful;
 
 import org.gbif.content.crawl.conf.ContentCrawlConfiguration;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+
+import javax.annotation.Nullable;
 
 import com.contentful.java.cda.CDAArray;
 import com.contentful.java.cda.CDAClient;
@@ -14,6 +18,8 @@ import com.contentful.java.cda.CDAContentType;
 import com.contentful.java.cda.CDAEntry;
 import com.contentful.java.cda.FetchQuery;
 import com.google.common.base.Preconditions;
+import com.google.common.base.Predicate;
+import com.google.common.collect.Sets;
 import io.reactivex.Observable;
 import org.elasticsearch.action.bulk.BulkRequestBuilder;
 import org.elasticsearch.action.bulk.BulkResponse;
@@ -64,15 +70,23 @@ public class ContentfulCrawler {
    * Executes the Crawler in a synchronous way, i.e.: process each resource per content type sequentially.
    */
   public void run() {
-    getContentTypes().items().parallelStream().map(cdaResource -> (CDAContentType)cdaResource)
+    getContentTypes().items().stream().map(cdaResource -> (CDAContentType)cdaResource)
       .forEach(contentType -> {
         //index name has to be in lowercase
         String idxName = REPLACEMENTS.matcher(contentType.name().toLowerCase()).replaceAll("");
         //Loads vocabulary into memory
         if (idxName.startsWith(VOCABULARY_KEYWORD)) {
           VocabularyLoader.vocabularyTerms(contentType.id(), cdaClient)
-            .subscribe(terms -> vocabularies.put(idxName, terms));
-        } else {
+            .subscribe(terms -> vocabularies.put(contentType.id(), terms));
+        }
+      });
+
+    getContentTypes().items().stream().map(cdaResource -> (CDAContentType)cdaResource)
+      .forEach(contentType -> {
+        //index name has to be in lowercase
+        String idxName = REPLACEMENTS.matcher(contentType.name().toLowerCase()).replaceAll("");
+        //Loads vocabulary into memory
+        if (!idxName.startsWith(VOCABULARY_KEYWORD)) {
           //gets or (re)create the ES idx if doesn't exists
           createIndex(esClient, configuration.contentful.indexBuild, idxName, ES_MAPPINGS_FILE);
           LOG.info("Indexing ContentType [{}] into ES Index [{}]", contentType.name(), idxName);
@@ -82,12 +96,12 @@ public class ContentfulCrawler {
           Observable.fromIterable(new ContentfulPager(cdaClient, PAGE_SIZE, contentType.id()))
             .doOnComplete(() -> executeBulkRequest(bulkRequest, contentType.id()))
             .subscribe(results -> results.items()
-                                    .forEach(cdaResource ->
-                                      bulkRequest.add(esClient.prepareIndex(idxName,
-                                                                            configuration.contentful.indexBuild.esIndexType,
-                                                                            cdaResource.id())
-                                      .setSource(getIndexedFields((CDAEntry) cdaResource)))
-            ));
+              .forEach(cdaResource ->
+                         bulkRequest.add(esClient.prepareIndex(idxName,
+                                                               configuration.contentful.indexBuild.esIndexType,
+                                                               cdaResource.id())
+                                           .setSource(getIndexedFields((CDAEntry) cdaResource)))
+              ));
         }
       });
   }
@@ -98,14 +112,20 @@ public class ContentfulCrawler {
   private Map<String,Object> getIndexedFields(CDAEntry cdaEntry) {
     //Add all rawFields
     Map<String, Object> indexedFields = new HashMap<>(cdaEntry.rawFields());
-    //Add meta attributes
-    indexedFields.putAll(cdaEntry.attrs());
     //Process vocabularies
-    indexedFields.entrySet().stream()
-      .filter(entry -> entry.getKey().toLowerCase().startsWith(VOCABULARY_KEYWORD))
+    cdaEntry.rawFields().entrySet().stream()
+      .filter(entry -> isVocabulary(cdaEntry, entry.getKey()))
       //replace vocabularies with localized values taken from the in-memory structure
       .forEach(entry -> indexedFields.replace(entry.getKey(), getVocabularyValues(entry.getKey(), cdaEntry)));
+    //Add meta attributes
+    indexedFields.putAll(cdaEntry.attrs());
     return indexedFields;
+  }
+
+  private boolean isVocabulary(CDAEntry cdaEntry, String field) {
+    return List.class.isAssignableFrom(cdaEntry.getField(field).getClass())
+           && CDAEntry.class.isInstance(((List)cdaEntry.getField(field)).get(0))
+           && vocabularies.containsKey(((CDAEntry)((List)cdaEntry.getField(field)).get(0)).contentType().id());
   }
 
   /**
@@ -123,12 +143,13 @@ public class ContentfulCrawler {
    *    ]
    * }
    */
-  private Map<String,List<String>> getVocabularyValues(String vocabularyName, CDAEntry cdaEntry) {
+  private Map<String,List<String>> getVocabularyValues(String vocabularyField, CDAEntry cdaEntry) {
+    String vocabularyContentTypeId = ((CDAEntry)((List)cdaEntry.getField(vocabularyField)).get(0)).contentType().id();
     Map<String,List<Map<String,Map<String, String>>>> vocabulary =
-      (Map<String,List<Map<String,Map<String, String>>>>)cdaEntry.rawFields().get(vocabularyName);
+      (Map<String,List<Map<String,Map<String, String>>>>)cdaEntry.rawFields().get(vocabularyField);
     Map<String,List<String>> vocabularyEntries = new HashMap<>();
     vocabulary.forEach((locale, values) ->
-      vocabularyEntries.put(locale, values.stream().map(i8NValues -> vocabularies.get(vocabularyName.toLowerCase())
+      vocabularyEntries.put(locale, values.stream().map(i8NValues -> vocabularies.get(vocabularyContentTypeId)
                                                                        .get(i8NValues.get("sys").get("id")).get(locale))
                                                   .collect(Collectors.toList())));
     return vocabularyEntries;

@@ -2,9 +2,13 @@ package org.gbif.content.crawl.contentful;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 import com.contentful.java.cda.CDAClient;
 import com.contentful.java.cda.CDAEntry;
+import com.google.common.collect.Sets;
 import io.reactivex.Observable;
 
 /**
@@ -13,7 +17,9 @@ import io.reactivex.Observable;
 public class VocabularyLoader {
 
   //Know names of fields for vocabulary terms
-  public static final String TERM_FIELD = "term";
+  public static final Set<String> TERMS_FIELDS = Sets.newHashSet("term", "isoCode");
+
+  private static int VOC_PAGE_SIZE = 50;
 
   /**
    * Private constructor of utility class.
@@ -31,10 +37,18 @@ public class VocabularyLoader {
                                                                                 CDAClient cdaClient) {
     return Observable.fromCallable( () -> {
       Map<String, Map<String,String>> terms = new HashMap<>();
-      cdaClient.fetch(CDAEntry.class).withContentType(contentTypeId).all().items()
-        .forEach(cdaResource -> terms.put(cdaResource.id(),
-                                          (Map<String,String>)((CDAEntry)cdaResource).rawFields().get(TERM_FIELD)));
+      StreamSupport.stream( new ContentfulPager(cdaClient, VOC_PAGE_SIZE, contentTypeId).spliterator(), false)
+        .forEach(cdaArray -> cdaArray.items().forEach(cdaResource ->  terms.put(cdaResource.id(),
+                                          getFirstTerm(((CDAEntry)cdaResource).rawFields()))));
       return terms;
     });
+  }
+
+  /**
+   * Gets the first vocabulary fields values tha match with the TERM_FIELDS.
+   */
+  private static Map<String,String> getFirstTerm(Map<String,Object> values) {
+    return (Map<String,String>)TERMS_FIELDS.stream()
+              .filter(field -> values.containsKey(field)).findFirst().map(term -> values.get(term)).get();
   }
 }
