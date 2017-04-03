@@ -7,7 +7,7 @@
       "type": "keyword"
     },
     "title": {
-      "type": "completion"
+      "type": "text"
     },
     "type": {
       "type": "keyword"
