@@ -1,0 +1,25 @@
+#Facets by locale
+curl -XGET 'http://localhost:9200/datause/_search?' -d '
+{
+    "size": 0,
+    "aggregations" : {
+        "locales_count" : {
+            "terms" : {
+                "field" : "locale"
+            }
+        }
+    }
+}'
+
+#Facets by topic
+curl -XGET 'http://localhost:9200/datause/_search?' -d '
+{
+    "size": 0,
+    "aggregations" : {
+        "topics_count" : {
+            "terms" : {
+                "field" : "vocabularyTopic.en-GB"
+            }
+        }
+    }
+}'
