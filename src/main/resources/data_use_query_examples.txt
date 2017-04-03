@@ -23,3 +23,16 @@ curl -XGET 'http://localhost:9200/datause/_search?' -d '
         }
     }
 }'
+
+curl -XGET 'http://develastic-vh.gbif.org:9200/datause/_search' -d '
+ {
+  "query" : {
+         "match": { "_all": "home" }
+  },
+  "highlight" : {
+         "tags_schema" : "styled",
+         "fields" : {
+             "*" : {}
+         }
+     }
+ }'

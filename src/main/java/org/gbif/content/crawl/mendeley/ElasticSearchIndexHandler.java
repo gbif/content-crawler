@@ -5,12 +5,17 @@ import org.gbif.api.vocabulary.Country;
 import org.gbif.content.crawl.conf.ContentCrawlConfiguration;
 
 import java.io.IOException;
+import java.util.HashSet;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.StreamSupport;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.databind.node.TextNode;
 import org.elasticsearch.action.bulk.BulkRequestBuilder;
 import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.client.Client;
@@ -77,19 +82,20 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
    * Process tags. Adds publishers countries and biodiversity countries from tag values.
    */
   private static void handleTags(JsonNode document) {
-    ArrayNode publishersCountries = MAPPER.createArrayNode();
-    ArrayNode biodiversityCountries = MAPPER.createArrayNode();
-    ArrayNode regions = MAPPER.createArrayNode();
+    Set<TextNode> publishersCountries = new HashSet<>();
+    Set<TextNode> biodiversityCountries = new HashSet<>();
+    Set<TextNode> regions = new HashSet<>();
     document.get(ML_TAGS_FL).elements().forEachRemaining(node -> {
       String value = node.textValue();
       Optional.ofNullable(Country.fromIsoCode(value))
-        .ifPresent(country -> publishersCountries.add(country.getIso2LetterCode()));
+        .ifPresent(country -> publishersCountries.add(TextNode.valueOf(country.getIso2LetterCode())));
 
       //VocabularyUtils uses Guava optionals
       com.google.common.base.Optional<Country> bioCountry = VocabularyUtils.lookup(value, Country.class);
       if (bioCountry.isPresent()) {
-        biodiversityCountries.add(value);
-        Optional.ofNullable(bioCountry.get().getGbifRegion()).ifPresent(region -> regions.add(region.name()));
+        biodiversityCountries.add(TextNode.valueOf(value));
+        Optional.ofNullable(bioCountry.get().getGbifRegion())
+          .ifPresent(region -> regions.add(TextNode.valueOf(region.name())));
       }
     });
     ((ObjectNode)document).putArray(ES_AUTHORS_COUNTRY_FL).addAll(publishersCountries);

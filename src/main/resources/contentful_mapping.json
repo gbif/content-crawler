@@ -1,4 +1,7 @@
 {
+  "_all": {
+    "store": true
+  },
   "dynamic_templates": [
     {
       "ignored_fields": {

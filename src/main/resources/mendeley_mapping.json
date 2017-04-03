@@ -1,4 +1,7 @@
 {
+  "_all": {
+    "store": true
+  },
   "properties": {
     "id": {
       "type": "keyword"
