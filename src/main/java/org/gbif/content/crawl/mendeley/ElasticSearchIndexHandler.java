@@ -8,7 +8,6 @@ import org.gbif.content.crawl.conf.ContentCrawlConfiguration;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashSet;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
