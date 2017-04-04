@@ -12,6 +12,9 @@
     "type": {
       "type": "keyword"
     },
+    "content_type": {
+      "type": "keyword"
+    },
     "profile_id": {
       "type": "keyword"
     },
