@@ -45,6 +45,14 @@
           "type": "keyword"
         }
       }
+    },
+    {
+      "vocabularies": {
+        "match": "countryOf*",
+        "mapping": {
+          "type": "keyword"
+        }
+      }
     }
   ]
 }
