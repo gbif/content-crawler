@@ -142,7 +142,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
         docNode.set(LANGUAGE_FIELD, TextNode.valueOf(language.get().getIso3LetterCode()));
       } else {
         LOG.warn("Removing unknown language {} from document {}", languageValue, docNode.get(ML_ID_FL));
-        docNode.remove(LANGUAGE_FIELD);
+        docNode.set(LANGUAGE_FIELD, TextNode.valueOf(Language.UNKNOWN.getIso3LetterCode()));
       }
 
     });
