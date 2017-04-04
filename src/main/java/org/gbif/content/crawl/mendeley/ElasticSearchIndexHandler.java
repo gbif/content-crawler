@@ -2,10 +2,13 @@ package org.gbif.content.crawl.mendeley;
 
 import org.gbif.api.util.VocabularyUtils;
 import org.gbif.api.vocabulary.Country;
+import org.gbif.api.vocabulary.Language;
 import org.gbif.content.crawl.conf.ContentCrawlConfiguration;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -49,6 +52,8 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
 
   private static final String CONTENT_TYPE_FIELD_VALUE = "literature";
 
+  private static final String LANGUAGE_FIELD = "language";
+
   private static final Logger LOG = LoggerFactory.getLogger(ElasticSearchIndexHandler.class);
   private static final ObjectMapper MAPPER = new ObjectMapper();
 
@@ -72,7 +77,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
     //process each Json node
     MAPPER.readTree(responseAsJson).elements().forEachRemaining(document -> {
       toCamelCasedFields(document);
-      replaceTypeField((ObjectNode)document);
+      manageReplacements((ObjectNode)document);
       if (document.has(ML_TAGS_FL)) {
         handleTags(document);
       }
@@ -117,12 +122,30 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
   }
 
   /**
-   * Replace the type field name for literature_type.
+   * Replaces the specials field names and values.
+   *  - Replaces field name type for literature_type.
+   *  - Replaces the language name for ISOLanguage code.
    */
-  private static void replaceTypeField(ObjectNode docNode) {
+  private static void manageReplacements(ObjectNode docNode) {
     Optional.ofNullable(docNode.get(TYPE_FIELD)).ifPresent(typeNode -> {
       docNode.set(LITERATURE_TYPE_FIELD, typeNode);
       docNode.remove(TYPE_FIELD);
+    });
+    Optional.ofNullable(docNode.get(LANGUAGE_FIELD)).ifPresent(typeNode -> {
+      String languageValue = typeNode.asText();
+      Optional<Language> language = Arrays.stream(Language.values())
+        .filter(gbifLanguage -> gbifLanguage.getTitleEnglish().equalsIgnoreCase(languageValue)
+                                   || gbifLanguage.getTitleNative().equalsIgnoreCase(languageValue)
+                                   || gbifLanguage.getIso2LetterCode().equalsIgnoreCase(languageValue)
+                                   || gbifLanguage.getIso3LetterCode().equalsIgnoreCase(languageValue))
+        .findFirst();
+      if(language.isPresent()){
+        docNode.set(LANGUAGE_FIELD, TextNode.valueOf(language.get().getIso3LetterCode()));
+      } else {
+        LOG.warn("Removing unknown language {} from document {}", languageValue, docNode.get(ML_ID_FL));
+        docNode.remove(LANGUAGE_FIELD);
+      }
+
     });
   }
 
