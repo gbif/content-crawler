@@ -32,7 +32,7 @@
     },
     {
       "locale": {
-        "match": "content_type",
+        "match": "contentType",
         "mapping": {
           "type": "keyword"
         }
@@ -40,7 +40,7 @@
     },
     {
       "vocabularies": {
-        "path_match": "vocabulary*.*",
+        "match": "vocabulary*",
         "mapping": {
           "type": "keyword"
         }
