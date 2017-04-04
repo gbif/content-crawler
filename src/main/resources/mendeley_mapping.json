@@ -53,10 +53,10 @@
         "lastName": { "type": "keyword" }
       }
     },
-    "authorsCountry": {
+    "countryOfResearcher": {
       "type": "keyword"
     },
-    "biodiversityCountry": {
+    "countryOfCoverage": {
       "type": "keyword"
     },
     "identifiers": {

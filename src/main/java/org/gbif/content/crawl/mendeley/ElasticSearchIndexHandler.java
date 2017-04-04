@@ -9,12 +9,9 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.stream.StreamSupport;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
 import com.google.common.base.CaseFormat;
@@ -38,8 +35,8 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
   private static final String ML_TAGS_FL = "tags";
 
   //Elasticsearch fields created by this handler
-  private static final String ES_AUTHORS_COUNTRY_FL = "authorsCountry";
-  private static final String ES_BIODIVERSITY_COUNTRY_FL = "biodiversityCountry";
+  private static final String ES_COUNTRY_RESEARCHER_FL = "countryOfResearcher";
+  private static final String ES_COUNTRY_COVERAGE_FL = "countryOfCoverage";
   private static final String ES_GBIF_REGION_FL = "gbifRegion";
 
   private static final String ES_MAPPING_FILE = "mendeley_mapping.json";
@@ -95,26 +92,26 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
    * Process tags. Adds publishers countries and biodiversity countries from tag values.
    */
   private static void handleTags(JsonNode document) {
-    Set<TextNode> publishersCountries = new HashSet<>();
-    Set<TextNode> biodiversityCountries = new HashSet<>();
+    Set<TextNode> countriesOfResearches = new HashSet<>();
+    Set<TextNode> countriesOfCoverage = new HashSet<>();
     Set<TextNode> regions = new HashSet<>();
     document.get(ML_TAGS_FL).elements().forEachRemaining(node -> {
       String value = node.textValue();
       Optional.ofNullable(Country.fromIsoCode(value))
-        .ifPresent(country -> publishersCountries.add(TextNode.valueOf(country.getIso2LetterCode())));
+        .ifPresent(country -> countriesOfResearches.add(TextNode.valueOf(country.getIso2LetterCode())));
 
       //VocabularyUtils uses Guava optionals
       com.google.common.base.Optional<Country> bioCountry = VocabularyUtils.lookup(value, Country.class);
       if (bioCountry.isPresent()) {
         Country bioCountryValue = bioCountry.get();
-        biodiversityCountries.add(TextNode.valueOf(bioCountryValue.getIso2LetterCode()));
+        countriesOfCoverage.add(TextNode.valueOf(bioCountryValue.getIso2LetterCode()));
         Optional.ofNullable(bioCountryValue.getGbifRegion())
           .ifPresent(region -> regions.add(TextNode.valueOf(region.name())));
       }
     });
     ObjectNode docNode  = (ObjectNode)document;
-    docNode.putArray(ES_AUTHORS_COUNTRY_FL).addAll(publishersCountries);
-    docNode.putArray(ES_BIODIVERSITY_COUNTRY_FL).addAll(biodiversityCountries);
+    docNode.putArray(ES_COUNTRY_RESEARCHER_FL).addAll(countriesOfResearches);
+    docNode.putArray(ES_COUNTRY_COVERAGE_FL).addAll(countriesOfCoverage);
     docNode.putArray(ES_GBIF_REGION_FL).addAll(regions);
     docNode.put(CONTENT_TYPE_FIELD, CONTENT_TYPE_FIELD_VALUE);
   }
