@@ -41,6 +41,10 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
 
   private static final String ES_MAPPING_FILE = "mendeley_mapping.json";
 
+  private static final String LITERATURE_TYPE_FIELD = "literature_type";
+
+  private static final String TYPE_FIELD = "type";
+
   private static final String CONTENT_TYPE_FIELD = "content_type";
 
   private static final String CONTENT_TYPE_FIELD_VALUE = "literature";
@@ -103,10 +107,15 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
           .ifPresent(region -> regions.add(TextNode.valueOf(region.name())));
       }
     });
-    ((ObjectNode)document).putArray(ES_AUTHORS_COUNTRY_FL).addAll(publishersCountries);
-    ((ObjectNode)document).putArray(ES_BIODIVERSITY_COUNTRY_FL).addAll(biodiversityCountries);
-    ((ObjectNode)document).putArray(ES_GBIF_REGION_FL).addAll(regions);
-    ((ObjectNode)document).put(CONTENT_TYPE_FIELD, CONTENT_TYPE_FIELD_VALUE);
+    ObjectNode docNode  = (ObjectNode)document;
+    docNode.putArray(ES_AUTHORS_COUNTRY_FL).addAll(publishersCountries);
+    docNode.putArray(ES_BIODIVERSITY_COUNTRY_FL).addAll(biodiversityCountries);
+    docNode.putArray(ES_GBIF_REGION_FL).addAll(regions);
+    docNode.put(CONTENT_TYPE_FIELD, CONTENT_TYPE_FIELD_VALUE);
+    Optional.ofNullable(docNode.get(TYPE_FIELD)).ifPresent(typeNode -> {
+      docNode.set(LITERATURE_TYPE_FIELD, typeNode);
+      docNode.remove(TYPE_FIELD);
+    });
   }
 
   @Override

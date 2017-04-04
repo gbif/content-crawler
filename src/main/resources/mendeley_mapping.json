@@ -9,7 +9,7 @@
     "title": {
       "type": "text"
     },
-    "type": {
+    "literature_type": {
       "type": "keyword"
     },
     "content_type": {
