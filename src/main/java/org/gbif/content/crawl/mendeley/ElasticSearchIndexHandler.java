@@ -6,6 +6,7 @@ import org.gbif.content.crawl.conf.ContentCrawlConfiguration;
 
 import java.io.IOException;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.StreamSupport;
@@ -16,6 +17,8 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
+import com.google.common.base.CaseFormat;
+import com.google.common.collect.Maps;
 import org.elasticsearch.action.bulk.BulkRequestBuilder;
 import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.client.Client;
@@ -35,17 +38,17 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
   private static final String ML_TAGS_FL = "tags";
 
   //Elasticsearch fields created by this handler
-  private static final String ES_AUTHORS_COUNTRY_FL = "authors_country";
-  private static final String ES_BIODIVERSITY_COUNTRY_FL = "biodiversity_country";
-  private static final String ES_GBIF_REGION_FL = "gbif_region";
+  private static final String ES_AUTHORS_COUNTRY_FL = "authorsCountry";
+  private static final String ES_BIODIVERSITY_COUNTRY_FL = "biodiversityCountry";
+  private static final String ES_GBIF_REGION_FL = "gbifRegion";
 
   private static final String ES_MAPPING_FILE = "mendeley_mapping.json";
 
-  private static final String LITERATURE_TYPE_FIELD = "literature_type";
+  private static final String LITERATURE_TYPE_FIELD = "literatureType";
 
   private static final String TYPE_FIELD = "type";
 
-  private static final String CONTENT_TYPE_FIELD = "content_type";
+  private static final String CONTENT_TYPE_FIELD = "contentType";
 
   private static final String CONTENT_TYPE_FIELD_VALUE = "literature";
 
@@ -71,6 +74,8 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
     BulkRequestBuilder bulkRequest = client.prepareBulk();
     //process each Json node
     MAPPER.readTree(responseAsJson).elements().forEachRemaining(document -> {
+      toCamelCasedFields(document);
+      replaceTypeField((ObjectNode)document);
       if (document.has(ML_TAGS_FL)) {
         handleTags(document);
       }
@@ -112,11 +117,42 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
     docNode.putArray(ES_BIODIVERSITY_COUNTRY_FL).addAll(biodiversityCountries);
     docNode.putArray(ES_GBIF_REGION_FL).addAll(regions);
     docNode.put(CONTENT_TYPE_FIELD, CONTENT_TYPE_FIELD_VALUE);
+  }
+
+  /**
+   * Replace the type field name for literature_type.
+   */
+  private static void replaceTypeField(ObjectNode docNode) {
     Optional.ofNullable(docNode.get(TYPE_FIELD)).ifPresent(typeNode -> {
       docNode.set(LITERATURE_TYPE_FIELD, typeNode);
       docNode.remove(TYPE_FIELD);
     });
   }
+
+  /**
+   * Transforms all the fields' names from lower_underscore to lowerCame.
+   */
+  private static void toCamelCasedFields(JsonNode root) {
+    Map<String,JsonNode> nodes = Maps.toMap(root.fieldNames(), root::get);
+    nodes.forEach((fieldName, nodeValue) -> {
+      replaceIfLowerUnderScore(root, nodeValue, fieldName);
+      if (nodeValue.isObject()) {
+        toCamelCasedFields(nodeValue);
+      } else if (nodeValue.isArray()) {
+        nodeValue.elements().forEachRemaining(ElasticSearchIndexHandler::toCamelCasedFields);
+      }
+    });
+  }
+
+  private static  void replaceIfLowerUnderScore(JsonNode root, JsonNode nodeValue, String fieldName){
+    String camelCaseName = CaseFormat.LOWER_UNDERSCORE.to(CaseFormat.LOWER_CAMEL, fieldName);
+    if (!camelCaseName.equals(fieldName)) {
+      ((ObjectNode) root).set(camelCaseName, nodeValue);
+      ((ObjectNode) root).remove(fieldName);
+    }
+  }
+
+
 
   @Override
   public void finish() {

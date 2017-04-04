@@ -39,7 +39,7 @@ public class ContentfulCrawler {
 
   private static final String VOCABULARY_KEYWORD = "vocabulary";
 
-  private static final String CONTENT_TYPE_FIELD = "content_type";
+  private static final String CONTENT_TYPE_FIELD = "contentType";
 
   private final ContentCrawlConfiguration configuration;
   private final CDAClient cdaClient;

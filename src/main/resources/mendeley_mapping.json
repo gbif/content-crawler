@@ -2,6 +2,16 @@
   "_all": {
     "store": true
   },
+  "dynamic_templates": [
+    {
+      "vocabularies": {
+        "path_match": "identifiers.*",
+        "mapping": {
+          "type": "keyword"
+        }
+      }
+    }
+  ],
   "properties": {
     "id": {
       "type": "keyword"
@@ -9,22 +19,22 @@
     "title": {
       "type": "text"
     },
-    "literature_type": {
+    "literatureType": {
       "type": "keyword"
     },
-    "content_type": {
+    "contentType": {
       "type": "keyword"
     },
-    "profile_id": {
+    "profileId": {
       "type": "keyword"
     },
-    "group_id": {
+    "groupId": {
       "type": "keyword"
     },
     "created": {
       "type": "date"
     },
-    "last_modified": {
+    "lastModified": {
       "type": "date"
     },
     "abstract": {
@@ -39,14 +49,14 @@
     "authors": {
       "type": "nested",
       "properties": {
-        "first_name": { "type": "keyword" },
-        "last_name": { "type": "keyword" }
+        "firstName": { "type": "keyword" },
+        "lastName": { "type": "keyword" }
       }
     },
-    "authors_country": {
+    "authorsCountry": {
       "type": "keyword"
     },
-    "biodiversity_country": {
+    "biodiversityCountry": {
       "type": "keyword"
     },
     "identifiers": {
@@ -97,8 +107,8 @@
     "editors": {
       "type": "nested",
       "properties": {
-        "first_name": { "type": "keyword"  },
-        "last_name": { "type": "keyword"  }
+        "firstName": { "type": "keyword"  },
+        "lastName": { "type": "keyword"  }
       }
     },
     "accessed": {
@@ -122,22 +132,22 @@
     "hidden": {
       "type": "boolean"
     },
-    "file_attached": {
+    "fileAttached": {
       "type": "boolean"
     },
-    "citation_key": {
+    "citationKey": {
       "type": "keyword"
     },
-    "source_type": {
+    "sourceType": {
       "type": "keyword"
     },
     "language": {
       "type": "keyword"
     },
-    "short_title": {
+    "shortTitle": {
       "type": "keyword"
     },
-    "reprint_edition": {
+    "reprintEdition": {
       "type": "keyword"
     },
     "genre": {
@@ -146,14 +156,17 @@
     "country": {
       "type": "keyword"
     },
+    "gbifRegion": {
+      "type": "keyword"
+    },
     "translators": {
       "type": "nested",
       "properties": {
-        "first_name": { "type": "keyword"  },
-        "last_name": { "type": "keyword"  }
+        "firstName": { "type": "keyword"  },
+        "lastName": { "type": "keyword"  }
       }
     },
-    "series_editor": {
+    "seriesEditor": {
       "type": "keyword"
     },
     "code": {
@@ -162,19 +175,19 @@
     "medium": {
       "type": "keyword"
     },
-    "user_context": {
+    "userContext": {
       "type": "keyword"
     },
     "department": {
       "type": "keyword"
     },
-    "patent_owner": {
+    "patentOwner": {
       "type": "keyword"
     },
-    "patent_application_number": {
+    "patentApplicationNumber": {
       "type": "keyword"
     },
-    "patent_legal_status": {
+    "patentLegalStatus": {
       "type": "keyword"
     }
   }
