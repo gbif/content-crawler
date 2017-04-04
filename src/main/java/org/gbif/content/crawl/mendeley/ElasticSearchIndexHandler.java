@@ -138,7 +138,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
                                    || gbifLanguage.getIso2LetterCode().equalsIgnoreCase(languageValue)
                                    || gbifLanguage.getIso3LetterCode().equalsIgnoreCase(languageValue))
         .findFirst();
-      if(language.isPresent()){
+      if (language.isPresent()) {
         docNode.set(LANGUAGE_FIELD, TextNode.valueOf(language.get().getIso3LetterCode()));
       } else {
         LOG.warn("Removing unknown language {} from document {}", languageValue, docNode.get(ML_ID_FL));
