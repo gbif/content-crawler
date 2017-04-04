@@ -2,6 +2,7 @@ package org.gbif.content.crawl.contentful;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.StreamSupport;
 
@@ -30,15 +31,14 @@ public class VocabularyLoader {
   /**
    * Loads the terms of a content type.
    * The output structure is:
-   *  vocabularyName -> { contentId -> {locale -> termLocalizedValue} }
+   *  vocabularyName -> { contentId -> defaultValue} }
    */
-  public static Observable<Map<String, Map<String,String>>> vocabularyTerms(String contentTypeId,
-                                                                            CDAClient cdaClient) {
+  public static Observable<Map<String, String>> vocabularyTerms(String contentTypeId, CDAClient cdaClient) {
     return Observable.fromCallable( () -> {
-      Map<String, Map<String,String>> terms = new HashMap<>();
+      Map<String, String> terms = new HashMap<>();
       StreamSupport.stream( new ContentfulPager(cdaClient, VOC_PAGE_SIZE, contentTypeId).spliterator(), false)
-        .forEach(cdaArray -> cdaArray.items().forEach(cdaResource ->  terms.put(cdaResource.id(),
-                                          getFirstTerm(((CDAEntry)cdaResource).rawFields()))));
+        .forEach(cdaArray -> cdaArray.items()
+                              .forEach(cdaResource -> terms.put(cdaResource.id(), getTerm((CDAEntry)cdaResource))));
       return terms;
     });
   }
@@ -46,8 +46,10 @@ public class VocabularyLoader {
   /**
    * Gets the first vocabulary fields values tha match with the TERM_FIELDS.
    */
-  private static Map<String,String> getFirstTerm(Map<String,Object> values) {
-    return (Map<String,String>)TERMS_FIELDS.stream()
-              .filter(field -> values.containsKey(field)).findFirst().map(term -> values.get(term)).get();
+  private static String getTerm(CDAEntry cdaEntry) {
+    return (String)TERMS_FIELDS.stream()
+              .filter(field -> Optional.ofNullable(cdaEntry.getField(field)).isPresent())
+              .findFirst()
+              .map(cdaEntry::getField).get();
   }
 }

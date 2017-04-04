@@ -41,6 +41,10 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
 
   private static final String ES_MAPPING_FILE = "mendeley_mapping.json";
 
+  private static final String CONTENT_TYPE_FIELD = "content_type";
+
+  private static final String CONTENT_TYPE_FIELD_VALUE = "literature";
+
   private static final Logger LOG = LoggerFactory.getLogger(ElasticSearchIndexHandler.class);
   private static final ObjectMapper MAPPER = new ObjectMapper();
 
@@ -93,14 +97,16 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
       //VocabularyUtils uses Guava optionals
       com.google.common.base.Optional<Country> bioCountry = VocabularyUtils.lookup(value, Country.class);
       if (bioCountry.isPresent()) {
-        biodiversityCountries.add(TextNode.valueOf(value));
-        Optional.ofNullable(bioCountry.get().getGbifRegion())
+        Country bioCountryValue = bioCountry.get();
+        biodiversityCountries.add(TextNode.valueOf(bioCountryValue.getIso2LetterCode()));
+        Optional.ofNullable(bioCountryValue.getGbifRegion())
           .ifPresent(region -> regions.add(TextNode.valueOf(region.name())));
       }
     });
     ((ObjectNode)document).putArray(ES_AUTHORS_COUNTRY_FL).addAll(publishersCountries);
     ((ObjectNode)document).putArray(ES_BIODIVERSITY_COUNTRY_FL).addAll(biodiversityCountries);
     ((ObjectNode)document).putArray(ES_GBIF_REGION_FL).addAll(regions);
+    ((ObjectNode)document).put(CONTENT_TYPE_FIELD, CONTENT_TYPE_FIELD_VALUE);
   }
 
   @Override

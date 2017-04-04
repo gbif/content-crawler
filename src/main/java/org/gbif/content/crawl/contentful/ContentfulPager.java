@@ -16,6 +16,15 @@ public class ContentfulPager implements Iterable<CDAArray> {
 
   private static final Logger LOG = LoggerFactory.getLogger(ContentfulPager.class);
 
+  //Contentful client
+  private final CDAClient cdaClient;
+
+  //Number of results to retrieve
+  private final int pageSize;
+
+  //Content Type identifier
+  private final String contentTypeId;
+
   /**
    * Iterator through the resources of a Content Type.
    */
@@ -44,15 +53,6 @@ public class ContentfulPager implements Iterable<CDAArray> {
       return current;
     }
   }
-
-  //Contentful client
-  private final CDAClient cdaClient;
-
-  //Number of results to retrieve
-  private final int pageSize;
-
-  //Content Type identifier
-  private final String contentTypeId;
 
   /**
    * Full constructor.

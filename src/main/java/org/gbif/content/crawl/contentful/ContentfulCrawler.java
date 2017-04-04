@@ -3,8 +3,10 @@ package org.gbif.content.crawl.contentful;
 import org.gbif.content.crawl.conf.ContentCrawlConfiguration;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -37,14 +39,16 @@ public class ContentfulCrawler {
 
   private static final String VOCABULARY_KEYWORD = "vocabulary";
 
+  private static final String CONTENT_TYPE_FIELD = "content_type";
+
   private final ContentCrawlConfiguration configuration;
   private final CDAClient cdaClient;
   private final Client esClient;
 
   /**
-   * vocabularyName -> { contentId -> {locale -> termLocalizedValue} }
+   * vocabularyName -> { contentId -> defaultValue} }
    */
-  private final Map<String,Map<String,Map<String,String>>> vocabularies;
+  private final Map<String,Map<String, String>> vocabularies;
 
   private static final int PAGE_SIZE = 20;
 
@@ -95,7 +99,7 @@ public class ContentfulCrawler {
                          bulkRequest.add(esClient.prepareIndex(idxName,
                                                                configuration.contentful.indexBuild.esIndexType,
                                                                cdaResource.id())
-                                           .setSource(getIndexedFields((CDAEntry) cdaResource)))
+                                           .setSource(getIndexedFields((CDAEntry)cdaResource, idxName)))
               ));
         }
       });
@@ -104,7 +108,7 @@ public class ContentfulCrawler {
   /**
    * Extracts the fields that will be indexed in ElasticSearch.
    */
-  private Map<String,Object> getIndexedFields(CDAEntry cdaEntry) {
+  private Map<String,Object> getIndexedFields(CDAEntry cdaEntry, String contentTypeName) {
     //Add all rawFields
     Map<String, Object> indexedFields = new HashMap<>(cdaEntry.rawFields());
     //Process vocabularies
@@ -114,6 +118,7 @@ public class ContentfulCrawler {
       .forEach(entry -> indexedFields.replace(entry.getKey(), getVocabularyValues(entry.getKey(), cdaEntry)));
     //Add meta attributes
     indexedFields.putAll(cdaEntry.attrs());
+    indexedFields.put(CONTENT_TYPE_FIELD, contentTypeName);
     return indexedFields;
   }
 
@@ -125,29 +130,12 @@ public class ContentfulCrawler {
 
   /**
    * Extracts the vocabulary term values.
-   * This methods navigates thru a JSON structure like:
-   * "vocabularyTopic": {
-   *    "en-US": [
-   *    {
-   *      "sys": {
-   *        "type": "Link",
-   *        "linkType": "Entry",
-   *        "id": "2dANcb05ZymogmGSQI0GAG"
-   *      }
-   *    }....
-   *    ]
-   * }
    */
-  private Map<String,List<String>> getVocabularyValues(String vocabularyField, CDAEntry cdaEntry) {
-    String vocabularyContentTypeId = ((CDAEntry)((List)cdaEntry.getField(vocabularyField)).get(0)).contentType().id();
-    Map<String,List<Map<String,Map<String, String>>>> vocabulary =
-      (Map<String,List<Map<String,Map<String, String>>>>)cdaEntry.rawFields().get(vocabularyField);
-    Map<String,List<String>> vocabularyEntries = new HashMap<>();
-    vocabulary.forEach((locale, values) ->
-      vocabularyEntries.put(locale, values.stream().map(i8NValues -> vocabularies.get(vocabularyContentTypeId)
-                                                                       .get(i8NValues.get("sys").get("id")).get(locale))
-                                                  .collect(Collectors.toList())));
-    return vocabularyEntries;
+  private List<String> getVocabularyValues(String vocabularyField, CDAEntry cdaEntry) {
+    List<CDAEntry> vocabulary = cdaEntry.getField(vocabularyField);
+    return vocabulary.stream()
+            .map(entry -> vocabularies.get(entry.contentType().id()).get(entry.id()))
+            .collect(Collectors.toList());
   }
 
 
