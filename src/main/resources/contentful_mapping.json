@@ -31,14 +31,6 @@
       }
     },
     {
-      "locale": {
-        "match": "contentType",
-        "mapping": {
-          "type": "keyword"
-        }
-      }
-    },
-    {
       "vocabularies": {
         "match": "vocabulary*",
         "mapping": {
@@ -47,7 +39,7 @@
       }
     },
     {
-      "vocabularies": {
+      "countries": {
         "match": "countryOf*",
         "mapping": {
           "type": "keyword"
