@@ -53,14 +53,11 @@
           "type": "keyword"
         }
       }
-    },
-    {
-      "contentType": {
-        "match": "contentType",
-        "mapping": {
-          "type": "keyword"
-        }
-      }
     }
-  ]
+  ],
+  "properties": {
+    "contentType": {
+      "type": "keyword"
+    }
+  }
 }
