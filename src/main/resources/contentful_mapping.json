@@ -53,6 +53,14 @@
           "type": "keyword"
         }
       }
+    },
+    {
+      "vocabularies": {
+        "match": "contentType",
+        "mapping": {
+          "type": "keyword"
+        }
+      }
     }
   ]
 }
