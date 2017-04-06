@@ -26,6 +26,7 @@ import org.slf4j.LoggerFactory;
 
 import static org.gbif.content.crawl.es.ElasticSearchUtils.buildEsClient;
 import static org.gbif.content.crawl.es.ElasticSearchUtils.createIndex;
+import static org.gbif.content.crawl.es.ElasticSearchUtils.indexMappings;
 
 /**
  * Parses the documents from the response and adds them to the index.
@@ -63,7 +64,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
     this.conf = conf;
     LOG.info("Connecting to ES cluster {}:{}", conf.elasticSearch.host, conf.elasticSearch.port);
     client = buildEsClient(conf.elasticSearch);
-    createIndex(client, conf.mendeley.indexBuild, ES_MAPPING_FILE);
+    createIndex(client, conf.mendeley.indexBuild, indexMappings(ES_MAPPING_FILE));
   }
 
   /**

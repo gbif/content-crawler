@@ -15,7 +15,7 @@ import com.contentful.java.cda.CDAArray;
 import com.contentful.java.cda.CDAClient;
 import com.contentful.java.cda.CDAContentType;
 import com.contentful.java.cda.CDAEntry;
-import com.contentful.java.cda.FetchQuery;
+import com.contentful.java.cda.CDAField;
 import com.google.common.base.Preconditions;
 import io.reactivex.Observable;
 import org.elasticsearch.action.bulk.BulkRequestBuilder;
@@ -45,6 +45,7 @@ public class ContentfulCrawler {
   private final CDAClient cdaClient;
   private final Client esClient;
 
+
   /**
    * vocabularyName -> { contentId -> defaultValue} }
    */
@@ -56,9 +57,9 @@ public class ContentfulCrawler {
    * ElasticSearch and Contentful configuration are required to create an instance of this class.
    */
   public ContentfulCrawler(ContentCrawlConfiguration configuration) {
-    Preconditions.checkNotNull(configuration, "Crawler configruration can't be null");
-    Preconditions.checkNotNull(configuration.elasticSearch, "ElasticSearch configruration can't be null");
-    Preconditions.checkNotNull(configuration.contentful, "Contentful configruration can't be null");
+    Preconditions.checkNotNull(configuration, "Crawler configuration can't be null");
+    Preconditions.checkNotNull(configuration.elasticSearch, "ElasticSearch configuration can't be null");
+    Preconditions.checkNotNull(configuration.contentful, "Contentful configuration can't be null");
     this.configuration = configuration;
     cdaClient = buildCdaClient();
     esClient = buildEsClient(configuration.elasticSearch);
@@ -69,39 +70,44 @@ public class ContentfulCrawler {
    * Executes the Crawler in a synchronous way, i.e.: process each resource per content type sequentially.
    */
   public void run() {
-    getContentTypes().items().stream().map(cdaResource -> (CDAContentType)cdaResource)
-      .forEach(contentType -> {
-        //index name has to be in lowercase
-        String idxName = REPLACEMENTS.matcher(contentType.name().toLowerCase()).replaceAll("");
-        //Loads vocabulary into memory
-        if (idxName.startsWith(VOCABULARY_KEYWORD)) {
-          VocabularyLoader.vocabularyTerms(contentType.id(), cdaClient)
-            .subscribe(terms -> vocabularies.put(contentType.id(), terms));
-        }
-      });
+    List<CDAContentType> contentTypes = getContentTypes().items().stream()
+                                          .map(cdaResource -> (CDAContentType)cdaResource).collect(Collectors.toList());
+    Set<CDAContentType> vocContentTypes = contentTypes.stream().filter(contentType -> configuration.contentful.vocabularies.contains(contentType.name())).collect(
+      Collectors.toSet());
+    vocContentTypes.forEach(contentType -> {
+      //index name has to be in lowercase
+      String idxName = REPLACEMENTS.matcher(contentType.name().toLowerCase()).replaceAll("");
+      //Loads vocabulary into memory
+      if (idxName.startsWith(VOCABULARY_KEYWORD)) {
+        VocabularyLoader.vocabularyTerms(contentType.id(), cdaClient)
+          .subscribe(terms -> vocabularies.put(contentType.id(), terms));
+      }
+    });
 
-    getContentTypes().items().stream().map(cdaResource -> (CDAContentType)cdaResource)
+    MappingGenerator mappingGenerator = new MappingGenerator(vocContentTypes);
+
+    contentTypes.stream().filter(contentType -> configuration.contentful.contentTypes.contains(contentType.name()))
       .forEach(contentType -> {
         //index name has to be in lowercase
         String idxName = REPLACEMENTS.matcher(contentType.name().toLowerCase()).replaceAll("");
-        //Loads vocabulary into memory
-        if (!idxName.startsWith(VOCABULARY_KEYWORD)) {
-          //gets or (re)create the ES idx if doesn't exists
-          createIndex(esClient, configuration.contentful.indexBuild, idxName, ES_MAPPINGS_FILE);
-          LOG.info("Indexing ContentType [{}] into ES Index [{}]", contentType.name(), idxName);
-          //Prepares the bulk/batch request
-          BulkRequestBuilder bulkRequest = esClient.prepareBulk();
-          //Retrieves resources in a CDAArray
-          Observable.fromIterable(new ContentfulPager(cdaClient, PAGE_SIZE, contentType.id()))
-            .doOnComplete(() -> executeBulkRequest(bulkRequest, contentType.id()))
-            .subscribe(results -> results.items()
-              .forEach(cdaResource ->
-                         bulkRequest.add(esClient.prepareIndex(idxName,
-                                                               configuration.contentful.indexBuild.esIndexType,
-                                                               cdaResource.id())
-                                           .setSource(getIndexedFields((CDAEntry)cdaResource, idxName)))
-              ));
-        }
+
+
+        //gets or (re)create the ES idx if doesn't exists
+        createIndex(esClient, configuration.contentful.indexBuild, idxName, mappingGenerator.getEsMapping(contentType));
+        LOG.info("Indexing ContentType [{}] into ES Index [{}]", contentType.name(), idxName);
+        //Prepares the bulk/batch request
+        BulkRequestBuilder bulkRequest = esClient.prepareBulk();
+        //Retrieves resources in a CDAArray
+        Observable.fromIterable(new ContentfulPager(cdaClient, PAGE_SIZE, contentType.id()))
+          .doOnComplete(() -> executeBulkRequest(bulkRequest, contentType.id()))
+          .subscribe(results -> results.items()
+            .forEach(cdaResource ->
+                       bulkRequest.add(esClient.prepareIndex(idxName,
+                                                             configuration.contentful.indexBuild.esIndexType,
+                                                             cdaResource.id())
+                                         .setSource(getIndexedFields((CDAEntry)cdaResource, idxName)))
+            ));
+
       });
   }
 
@@ -169,11 +175,7 @@ public class ContentfulCrawler {
    * If configuration.contentful.contentTypes is empty, all content types are returned.
    */
   private CDAArray getContentTypes() {
-    FetchQuery<CDAContentType> fetchQuery = cdaClient.fetch(CDAContentType.class);
-    for(String contentType : configuration.contentful.contentTypes) {
-      fetchQuery = fetchQuery.withContentType(contentType);
-    }
-    return fetchQuery.all();
+    return cdaClient.fetch(CDAContentType.class).all();
   }
 
 }

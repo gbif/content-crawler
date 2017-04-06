@@ -45,17 +45,17 @@ public class ElasticSearchUtils {
    * If the flag configuration.contentful.deleteIndex is ON and the index exist, it will be removed.
    */
   public static void createIndex(Client esClient, ContentCrawlConfiguration.IndexBuild configuration,
-                                 String idxName, String mappingsFileName) {
+                                 String idxName, String source) {
     //create ES idx if it doesn't exists
     if (!esClient.admin().indices().prepareExists(idxName).get().isExists()) {
       esClient.admin().indices().prepareCreate(idxName)
-        .addMapping(configuration.esIndexType, indexMappings(mappingsFileName)).get();
+        .addMapping(configuration.esIndexType, source).get();
     } else if (configuration.deleteIndex) { //if the index exists and should be recreated
       //Delete the index
       esClient.admin().indices().prepareDelete(idxName).get();
       //Re-create the index
       esClient.admin().indices().prepareCreate(idxName)
-        .addMapping(configuration.esIndexType, indexMappings(mappingsFileName)).get();
+        .addMapping(configuration.esIndexType, source).get();
     }
   }
 
@@ -65,15 +65,18 @@ public class ElasticSearchUtils {
    * If the flag configuration.contentful.deleteIndex is ON and the index exist, it will be removed.
    */
   public static void createIndex(Client esClient, ContentCrawlConfiguration.IndexBuild configuration,
-                                 String mappingsFileName) {
-    createIndex(esClient, configuration, configuration.esIndexName, mappingsFileName);
+                                 String source) {
+    createIndex(esClient, configuration, configuration.esIndexName, source);
   }
+
+
+
 
 
   /**
    * Reads the content of ES_MAPPINGS_FILE into a String.
    */
-  private static String indexMappings(String mappingsFileName) {
+  public static String indexMappings(String mappingsFileName) {
     try {
       return new String(IOUtils.toByteArray(Thread.currentThread().getContextClassLoader()
                                               .getResourceAsStream(mappingsFileName)));

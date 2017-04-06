@@ -45,6 +45,14 @@
           "type": "keyword"
         }
       }
+    },
+    {
+      "title": {
+        "path_match": "title.*",
+        "mapping": {
+          "type": "keyword"
+        }
+      }
     }
   ],
   "properties": {

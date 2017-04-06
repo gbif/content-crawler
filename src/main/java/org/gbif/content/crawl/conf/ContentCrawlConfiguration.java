@@ -2,7 +2,9 @@ package org.gbif.content.crawl.conf;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import javax.validation.constraints.NotNull;
 
 import com.beust.jcommander.IStringConverter;
@@ -107,7 +109,12 @@ public class ContentCrawlConfiguration {
     @Parameter(
       names = "-contentTypes",
       description = "Contentful content types to be crawled")
-    public List<String> contentTypes = new ArrayList<>();
+    public Set<String> contentTypes = new HashSet<>();
+
+    @Parameter(
+      names = "-vocabularies",
+      description = "Contentful vocabularies to be crawled")
+    public Set<String> vocabularies = new HashSet<>();
 
     public IndexBuild indexBuild;
   }

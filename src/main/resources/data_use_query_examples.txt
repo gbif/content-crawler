@@ -36,3 +36,31 @@ curl -XGET 'http://develastic-vh.gbif.org:9200/datause/_search' -d '
          }
      }
  }'
+
+curl -XGET 'http://develastic-vh.gbif.org:9200/datause/_search' -d '
+{
+        "query": {
+            "bool": {
+                "must": [
+                    {
+                        "query_string": {
+                            "query": "data"
+                        }
+                    },
+                    {
+                        "term": {
+                            "vocabularyDataUse": "Science use"
+                        }
+                    }
+                ]
+            }
+        },
+        "aggregations": {
+            "countryOfCoverage": {
+                "terms": {
+                    "field": "countryOfCoverage"
+                }
+            }
+        }
+    }
+'
