@@ -3,19 +3,20 @@ package org.gbif.content.crawl.contentful;
 import org.gbif.content.crawl.conf.ContentCrawlConfiguration;
 
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 
 import com.contentful.java.cda.CDAArray;
+import com.contentful.java.cda.CDAAsset;
 import com.contentful.java.cda.CDAClient;
 import com.contentful.java.cda.CDAContentType;
 import com.contentful.java.cda.CDAEntry;
-import com.contentful.java.cda.CDAField;
+import com.google.common.base.CaseFormat;
 import com.google.common.base.Preconditions;
 import io.reactivex.Observable;
 import org.elasticsearch.action.bulk.BulkRequestBuilder;
@@ -32,14 +33,13 @@ import static org.gbif.content.crawl.es.ElasticSearchUtils.createIndex;
  */
 public class ContentfulCrawler {
 
-  private static final String ES_MAPPINGS_FILE  = "contentful_mapping.json";
   private static final Logger LOG = LoggerFactory.getLogger(ContentfulCrawler.class);
 
   private static final Pattern REPLACEMENTS = Pattern.compile(":\\s+|\\s+");
 
-  private static final String VOCABULARY_KEYWORD = "vocabulary";
-
   private static final String CONTENT_TYPE_FIELD = "contentType";
+
+  private static final int PAGE_SIZE = 20;
 
   private final ContentCrawlConfiguration configuration;
   private final CDAClient cdaClient;
@@ -50,8 +50,6 @@ public class ContentfulCrawler {
    * vocabularyName -> { contentId -> defaultValue} }
    */
   private final Map<String,Map<String, String>> vocabularies;
-
-  private static final int PAGE_SIZE = 20;
 
   /**
    * ElasticSearch and Contentful configuration are required to create an instance of this class.
@@ -67,30 +65,36 @@ public class ContentfulCrawler {
   }
 
   /**
+   * Translates a sentence type text into upper camel case format.
+   * For example: "Hola Morten" will be transformed into "holaMorten".
+   */
+  private static String toLowerCamel(String sentence) {
+    return CaseFormat.UPPER_UNDERSCORE
+            .to(CaseFormat.LOWER_CAMEL, REPLACEMENTS.matcher(sentence).replaceAll("_").toUpperCase());
+  }
+
+  /**
    * Executes the Crawler in a synchronous way, i.e.: process each resource per content type sequentially.
    */
   public void run() {
     List<CDAContentType> contentTypes = getContentTypes().items().stream()
                                           .map(cdaResource -> (CDAContentType)cdaResource).collect(Collectors.toList());
-    Set<CDAContentType> vocContentTypes = contentTypes.stream().filter(contentType -> configuration.contentful.vocabularies.contains(contentType.name())).collect(
-      Collectors.toSet());
+    Set<CDAContentType> vocContentTypes = contentTypes.stream()
+      .filter(contentType -> configuration.contentful.vocabularies.contains(contentType.name()))
+      .collect(Collectors.toSet());
     vocContentTypes.forEach(contentType -> {
-      //index name has to be in lowercase
-      String idxName = REPLACEMENTS.matcher(contentType.name().toLowerCase()).replaceAll("");
       //Loads vocabulary into memory
-      if (idxName.startsWith(VOCABULARY_KEYWORD)) {
-        VocabularyLoader.vocabularyTerms(contentType.id(), cdaClient)
-          .subscribe(terms -> vocabularies.put(contentType.id(), terms));
-      }
+      VocabularyLoader.vocabularyTerms(contentType.id(), cdaClient)
+        .subscribe(terms -> vocabularies.put(contentType.id(), terms));
     });
 
+    //Mapping generator can be re-used for all content types
     MappingGenerator mappingGenerator = new MappingGenerator(vocContentTypes);
 
     contentTypes.stream().filter(contentType -> configuration.contentful.contentTypes.contains(contentType.name()))
       .forEach(contentType -> {
         //index name has to be in lowercase
-        String idxName = REPLACEMENTS.matcher(contentType.name().toLowerCase()).replaceAll("");
-
+        String idxName = REPLACEMENTS.matcher(contentType.name()).replaceAll("").toLowerCase();
 
         //gets or (re)create the ES idx if doesn't exists
         createIndex(esClient, configuration.contentful.indexBuild, idxName, mappingGenerator.getEsMapping(contentType));
@@ -102,12 +106,12 @@ public class ContentfulCrawler {
           .doOnComplete(() -> executeBulkRequest(bulkRequest, contentType.id()))
           .subscribe(results -> results.items()
             .forEach(cdaResource ->
-                       bulkRequest.add(esClient.prepareIndex(idxName,
+                       bulkRequest.add(esClient.prepareIndex(idxName.toLowerCase(),
                                                              configuration.contentful.indexBuild.esIndexType,
                                                              cdaResource.id())
-                                         .setSource(getIndexedFields((CDAEntry)cdaResource, idxName)))
+                                         .setSource(getIndexedFields((CDAEntry)cdaResource,
+                                                                     toLowerCamel(contentType.name()))))
             ));
-
       });
   }
 
@@ -117,6 +121,7 @@ public class ContentfulCrawler {
   private Map<String,Object> getIndexedFields(CDAEntry cdaEntry, String contentTypeName) {
     //Add all rawFields
     Map<String, Object> indexedFields = new HashMap<>(cdaEntry.rawFields());
+    indexedFields.putAll(processAssets(cdaEntry));
     //Process vocabularies
     cdaEntry.rawFields().entrySet().stream()
       .filter(entry -> isVocabulary(cdaEntry, entry.getKey()))
@@ -128,10 +133,33 @@ public class ContentfulCrawler {
     return indexedFields;
   }
 
+  /**
+   * Iterates trough each Asset entry in cdaEntry and retrieves its value.
+   */
+  private  Map<String,Map<String,Object>> processAssets(CDAEntry cdaEntry) {
+    Map<String,Map<String,Object>> assets = new HashMap<>();
+    cdaEntry.rawFields().forEach((field,value) -> {
+      Object fieldValue = cdaEntry.getField(field);
+      if (CDAAsset.class.isInstance(fieldValue)) {
+        assets.put(field, cdaClient.fetch(CDAAsset.class).one(((CDAAsset)fieldValue).id()).rawFields());
+      } else if (List.class.isInstance(fieldValue) && (!((List)fieldValue).isEmpty()
+                 && CDAAsset.class.isInstance(((List)fieldValue).get(0)))) {
+        ((List<?>)fieldValue).forEach(cdaAsset -> assets.put(field, cdaClient.fetch(CDAAsset.class).one(((CDAAsset)cdaAsset).id()).rawFields()));
+      }
+    });
+    return  assets;
+  }
+
+  /**
+   * Checks if fields in a cdaEntry is GBIF vocabulary.
+   */
   private boolean isVocabulary(CDAEntry cdaEntry, String field) {
-    return List.class.isAssignableFrom(cdaEntry.getField(field).getClass())
-           && CDAEntry.class.isInstance(((List)cdaEntry.getField(field)).get(0))
-           && vocabularies.containsKey(((CDAEntry)((List)cdaEntry.getField(field)).get(0)).contentType().id());
+    return Optional.ofNullable(cdaEntry.getField(field)).map(fieldValue ->
+      (List.class.isAssignableFrom(fieldValue.getClass())
+       && !((List)fieldValue).isEmpty()
+       && CDAEntry.class.isInstance(((List)fieldValue).get(0))
+       && vocabularies.containsKey(((CDAEntry)((List)fieldValue).get(0)).contentType().id()))
+    ).orElse(Boolean.FALSE);
   }
 
   /**

@@ -29,3 +29,9 @@ contentful:
     esIndexType: content
     #Delete the Index before crawl it?
     deleteIndex: true
+    vocabularies:
+      - "Vocabulary1"
+      - "Vocabulary2"
+    contentTypes:
+      - "Content 1"
+      - "Content 2"
