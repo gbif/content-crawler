@@ -53,10 +53,10 @@
         "lastName": { "type": "keyword" }
       }
     },
-    "countryOfResearcher": {
+    "countriesOfResearcher": {
       "type": "keyword"
     },
-    "countryOfCoverage": {
+    "countriesOfCoverage": {
       "type": "keyword"
     },
     "identifiers": {

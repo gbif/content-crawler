@@ -38,8 +38,8 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
   private static final String ML_TAGS_FL = "tags";
 
   //Elasticsearch fields created by this handler
-  private static final String ES_COUNTRY_RESEARCHER_FL = "countryOfResearcher";
-  private static final String ES_COUNTRY_COVERAGE_FL = "countryOfCoverage";
+  private static final String ES_COUNTRY_RESEARCHER_FL = "countriesOfResearcher";
+  private static final String ES_COUNTRY_COVERAGE_FL = "countriesOfCoverage";
   private static final String ES_GBIF_REGION_FL = "gbifRegion";
 
   private static final String ES_MAPPING_FILE = "mendeley_mapping.json";
