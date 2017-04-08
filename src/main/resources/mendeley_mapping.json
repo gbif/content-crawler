@@ -31,10 +31,10 @@
     "groupId": {
       "type": "keyword"
     },
-    "created": {
+    "createdAt": {
       "type": "date"
     },
-    "lastModified": {
+    "updatedAt": {
       "type": "date"
     },
     "abstract": {

@@ -40,6 +40,10 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
   //Elasticsearch fields created by this handler
   private static final String ES_COUNTRY_RESEARCHER_FL = "countriesOfResearcher";
   private static final String ES_COUNTRY_COVERAGE_FL = "countriesOfCoverage";
+
+  private static final String ES_CREATED_AT_FL = "createdAt";
+  private static final String ES_UPDATED_AT_FL = "updatedAt";
+
   private static final String ES_GBIF_REGION_FL = "gbifRegion";
 
   private static final String ES_MAPPING_FILE = "mendeley_mapping.json";
@@ -56,6 +60,8 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
 
   private static final Logger LOG = LoggerFactory.getLogger(ElasticSearchIndexHandler.class);
   private static final ObjectMapper MAPPER = new ObjectMapper();
+  public static final String LAST_MODIFIED = "last_modified";
+  public static final String CREATED = "created";
 
   private final Client client;
   private final ContentCrawlConfiguration conf;
@@ -155,7 +161,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
   private static void toCamelCasedFields(JsonNode root) {
     Map<String,JsonNode> nodes = Maps.toMap(root.fieldNames(), root::get);
     nodes.forEach((fieldName, nodeValue) -> {
-      replaceIfLowerUnderScore(root, nodeValue, fieldName);
+      normalizeName(root, nodeValue, fieldName);
       if (nodeValue.isObject()) {
         toCamelCasedFields(nodeValue);
       } else if (nodeValue.isArray()) {
@@ -164,15 +170,29 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
     });
   }
 
-  private static  void replaceIfLowerUnderScore(JsonNode root, JsonNode nodeValue, String fieldName){
-    String camelCaseName = CaseFormat.LOWER_UNDERSCORE.to(CaseFormat.LOWER_CAMEL, fieldName);
-    if (!camelCaseName.equals(fieldName)) {
-      ((ObjectNode) root).set(camelCaseName, nodeValue);
-      ((ObjectNode) root).remove(fieldName);
+  /**
+   * Changes the name to the lowerCamelCase and replace some field names.
+   */
+  private static void normalizeName(JsonNode root, JsonNode nodeValue, String fieldName) {
+    if (fieldName.equals(CREATED)) {
+      replaceNodeName((ObjectNode) root, nodeValue, fieldName, ES_CREATED_AT_FL);
+    } else if (fieldName.equals(LAST_MODIFIED)) {
+      replaceNodeName((ObjectNode) root, nodeValue, fieldName, ES_UPDATED_AT_FL);
+    } else {
+      String camelCaseName = CaseFormat.LOWER_UNDERSCORE.to(CaseFormat.LOWER_CAMEL, fieldName);
+      if (!camelCaseName.equals(fieldName)) {
+        replaceNodeName((ObjectNode) root, nodeValue, fieldName, camelCaseName);
+      }
     }
   }
 
-
+  /**
+   * Replaces an node name.
+   */
+  private static void replaceNodeName(ObjectNode root, JsonNode nodeValue, String fieldName, String newName) {
+    root.set(newName, nodeValue);
+    root.remove(fieldName);
+  }
 
   @Override
   public void finish() {
