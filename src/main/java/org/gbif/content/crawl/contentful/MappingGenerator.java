@@ -2,6 +2,7 @@ package org.gbif.content.crawl.contentful;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -28,6 +29,11 @@ public class MappingGenerator {
   private static final Pattern IGNORED_FIELDS = Pattern.compile("space|revision|type");
 
   /**
+   * List of types that can be obtained using a non-localized version.
+   */
+  public static final Pattern COLLAPSIBLE_TYPES = Pattern.compile("Boolean|Object");
+
+  /**
    * Fields that are boosted by default.
    */
   private static final Pattern BOOSTED_FIELDS = Pattern.compile("title|description");
@@ -46,6 +52,7 @@ public class MappingGenerator {
     .put("createdAt", "date")
     .put("updatedAt", "date")
     .put("revision", "float")
+    .put("gbifRegion", KEYWORD)
     .put("type", KEYWORD).build();
 
   /**
@@ -84,11 +91,11 @@ public class MappingGenerator {
    * }
    * All KNOWN_FIELDS are mapped to data type 'keyword'.
    */
-  private static void addProperties(XContentBuilder mapping, List<String> detectedVocabularies) throws IOException {
-    Map<String,String> voc = detectedVocabularies.stream().collect(Collectors.toMap(Function.identity(), vocField -> KEYWORD));
-    voc.putAll(KNOWN_FIELDS);
+  private static void addProperties(XContentBuilder mapping, Map<String, String> collapsedFields) throws IOException {
+    Map<String,String> flatFields = new HashMap<>(collapsedFields);
+    flatFields.putAll(KNOWN_FIELDS);
     mapping.startObject("properties");
-    voc.forEach((key,type) -> {
+    flatFields.forEach((key,type) -> {
         try {
           mapping.startObject(key);
             mapping.field("type", type);
@@ -257,7 +264,7 @@ public class MappingGenerator {
    * }
    */
   public String getEsMapping(CDAContentType contentType) {
-    List<String> detectedVocabularies = new ArrayList<>();
+    Map<String, String> collapsedFields = new HashMap<>();
     try (XContentBuilder mapping = XContentFactory.jsonBuilder()) {
       mapping.startObject();
         mapping.startObject("_all");
@@ -271,7 +278,9 @@ public class MappingGenerator {
         contentType.fields().stream().filter(cdaField -> !cdaField.isDisabled()).forEach(cdaField ->
           esType(cdaField).ifPresent(esType -> {
             if (VOCABULARY.equals(esType)) {
-              detectedVocabularies.add(cdaField.id());
+              collapsedFields.put(cdaField.id(), KEYWORD);
+            } else if (COLLAPSIBLE_TYPES.matcher(cdaField.type()).matches()) {
+              collapsedFields.put(cdaField.id(), esType);
             } else if (!NESTED.equals(esType)) {
               addTemplateField("path_match", cdaField.id(), cdaField.id() + ".*", esType, mapping);
             } else {
@@ -280,7 +289,7 @@ public class MappingGenerator {
           })
         );
         mapping.endArray();
-        addProperties(mapping, detectedVocabularies);
+        addProperties(mapping, collapsedFields);
       mapping.endObject();
       return mapping.string();
     } catch (IOException ex) {

@@ -34,9 +34,9 @@ public class VocabularyLoader {
    *  vocabularyName -> { contentId -> defaultValue} }
    */
   public static Observable<Map<String, String>> vocabularyTerms(String contentTypeId, CDAClient cdaClient) {
-    return Observable.fromCallable( () -> {
+    return Observable.fromCallable(() -> {
       Map<String, String> terms = new HashMap<>();
-      StreamSupport.stream( new ContentfulPager(cdaClient, VOC_PAGE_SIZE, contentTypeId).spliterator(), false)
+      StreamSupport.stream(new ContentfulPager(cdaClient, VOC_PAGE_SIZE, contentTypeId).spliterator(), false)
         .forEach(cdaArray -> cdaArray.items()
                               .forEach(cdaResource -> terms.put(cdaResource.id(), getTerm((CDAEntry)cdaResource))));
       return terms;

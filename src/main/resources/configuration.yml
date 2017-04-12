@@ -9,7 +9,7 @@ mendeley:
   trustedClientSecret:
   groupId:
   indexBuild:
-    esIndexName: literature
+    esIndexName: content
     esIndexType: literature
     #Delete the Index before crawl it?
     deleteIndex: true
@@ -26,9 +26,10 @@ contentful:
   spaceId:
   indexBuild:
     #contentTypes: [dataUse]
-    esIndexType: content
+    esIndexName: content
     #Delete the Index before crawl it?
     deleteIndex: true
+    countryVocabulary: "CountryVocabulary"
     vocabularies:
       - "Vocabulary1"
       - "Vocabulary2"

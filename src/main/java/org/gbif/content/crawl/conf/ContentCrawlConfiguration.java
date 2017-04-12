@@ -116,6 +116,11 @@ public class ContentCrawlConfiguration {
       description = "Contentful vocabularies to be crawled")
     public Set<String> vocabularies = new HashSet<>();
 
+    @Parameter(
+      names = "-countryVocabulary",
+      description = "Named of the country vocabulary content, it's handled specially during indexing")
+    public String countryVocabulary;
+
     public IndexBuild indexBuild;
   }
 

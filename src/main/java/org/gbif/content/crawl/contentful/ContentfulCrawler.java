@@ -1,8 +1,12 @@
 package org.gbif.content.crawl.contentful;
 
+import org.gbif.api.vocabulary.Country;
+import org.gbif.api.vocabulary.GbifRegion;
 import org.gbif.content.crawl.conf.ContentCrawlConfiguration;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -16,6 +20,7 @@ import com.contentful.java.cda.CDAAsset;
 import com.contentful.java.cda.CDAClient;
 import com.contentful.java.cda.CDAContentType;
 import com.contentful.java.cda.CDAEntry;
+import com.contentful.java.cda.CDAField;
 import com.google.common.base.CaseFormat;
 import com.google.common.base.Preconditions;
 import io.reactivex.Observable;
@@ -27,6 +32,7 @@ import org.slf4j.LoggerFactory;
 
 import static org.gbif.content.crawl.es.ElasticSearchUtils.buildEsClient;
 import static org.gbif.content.crawl.es.ElasticSearchUtils.createIndex;
+import static org.gbif.content.crawl.contentful.MappingGenerator.COLLAPSIBLE_TYPES;
 
 /**
  * Pulls content from Contentful and stores it in ElasticSearch indexes.
@@ -38,6 +44,7 @@ public class ContentfulCrawler {
   private static final Pattern REPLACEMENTS = Pattern.compile(":\\s+|\\s+");
 
   private static final String CONTENT_TYPE_FIELD = "contentType";
+  private static final String REGION_FIELD = "gbifRegion";
 
   private static final int PAGE_SIZE = 20;
 
@@ -45,6 +52,8 @@ public class ContentfulCrawler {
   private final CDAClient cdaClient;
   private final Client esClient;
 
+  //Content Type Id
+  private String countryVocabularyId;
 
   /**
    * vocabularyName -> { contentId -> defaultValue} }
@@ -83,6 +92,10 @@ public class ContentfulCrawler {
       .filter(contentType -> configuration.contentful.vocabularies.contains(contentType.name()))
       .collect(Collectors.toSet());
     vocContentTypes.forEach(contentType -> {
+      //Keeps the country vocabulary ID for future use
+      if (contentType.name().equals(configuration.contentful.countryVocabulary)) {
+        countryVocabularyId = contentType.id();
+      }
       //Loads vocabulary into memory
       VocabularyLoader.vocabularyTerms(contentType.id(), cdaClient)
         .subscribe(terms -> vocabularies.put(contentType.id(), terms));
@@ -95,7 +108,7 @@ public class ContentfulCrawler {
       .forEach(contentType -> {
         //index name has to be in lowercase
         String idxName = REPLACEMENTS.matcher(contentType.name()).replaceAll("").toLowerCase();
-
+        Set<String> collapsibleFields  = getCollapsibleFields(contentType);
         //gets or (re)create the ES idx if doesn't exists
         createIndex(esClient, configuration.contentful.indexBuild, idxName, mappingGenerator.getEsMapping(contentType));
         LOG.info("Indexing ContentType [{}] into ES Index [{}]", contentType.name(), idxName);
@@ -110,27 +123,66 @@ public class ContentfulCrawler {
                                                              configuration.contentful.indexBuild.esIndexType,
                                                              cdaResource.id())
                                          .setSource(getIndexedFields((CDAEntry)cdaResource,
-                                                                     toLowerCamel(contentType.name()))))
+                                                                     toLowerCamel(contentType.name()),
+                                                                     collapsibleFields)))
             ));
       });
   }
 
   /**
+   *
+   * Returns a Set of the fields that can be get straight from an entry instead of getting its localized version.
+   */
+  private static Set<String> getCollapsibleFields(CDAContentType contentType) {
+    return contentType.fields().stream()
+            .filter(cdaField -> COLLAPSIBLE_TYPES.matcher(cdaField.type()).matches())
+            .map(CDAField::id).collect(Collectors.toSet());
+  }
+
+  /**
    * Extracts the fields that will be indexed in ElasticSearch.
    */
-  private Map<String,Object> getIndexedFields(CDAEntry cdaEntry, String contentTypeName) {
+  private Map<String,Object> getIndexedFields(CDAEntry cdaEntry, String contentTypeName,
+                                              Set<String> collapsibleFields) {
     //Add all rawFields
     Map<String, Object> indexedFields = new HashMap<>(cdaEntry.rawFields());
     indexedFields.putAll(processAssets(cdaEntry));
+    Set<String> gbifRegions = new HashSet<>();
     //Process vocabularies
     cdaEntry.rawFields().entrySet().stream()
-      .filter(entry -> isVocabulary(cdaEntry, entry.getKey()))
       //replace vocabularies with localized values taken from the in-memory structure
-      .forEach(entry -> indexedFields.replace(entry.getKey(), getVocabularyValues(entry.getKey(), cdaEntry)));
+      .forEach(entry -> {
+                           getVocabularyContentType(cdaEntry, entry.getKey()).ifPresent(vocContentType -> {
+                             List<String> vocabularyValues = getVocabularyValues(entry.getKey(), cdaEntry);
+                             indexedFields.replace(entry.getKey(), vocabularyValues);
+                             //Accumulate gbifRegions
+                             if (vocContentType.id().equals(countryVocabularyId)) {
+                               vocabularyValues
+                                 .forEach(isoCountryCode -> getRegion(isoCountryCode)
+                                                              .ifPresent(region -> gbifRegions.add(region.name())));
+                             }
+                           });
+                           if (collapsibleFields.contains(entry.getKey())) {
+                             indexedFields.replace(entry.getKey(), cdaEntry.getField(entry.getKey()));
+                           }
+      });
+    //Add the REGION_FIELD
+    if (!gbifRegions.isEmpty()) {
+      indexedFields.put(REGION_FIELD, gbifRegions);
+    }
     //Add meta attributes
     indexedFields.putAll(cdaEntry.attrs());
     indexedFields.put(CONTENT_TYPE_FIELD, contentTypeName);
     return indexedFields;
+  }
+
+
+
+  /**
+   * Extracts the GbifRegion from the isoCountryCode.
+   */
+  private static  Optional<GbifRegion> getRegion(String isoCountryCode) {
+    return Optional.ofNullable(Country.fromIsoCode(isoCountryCode)).map(Country::getGbifRegion);
   }
 
   /**
@@ -151,16 +203,20 @@ public class ContentfulCrawler {
   }
 
   /**
-   * Checks if fields in a cdaEntry is GBIF vocabulary.
+   * Checks if the field of the cdaEntry is a GBIF vocabulary.
    */
-  private boolean isVocabulary(CDAEntry cdaEntry, String field) {
-    return Optional.ofNullable(cdaEntry.getField(field)).map(fieldValue ->
-      (List.class.isAssignableFrom(fieldValue.getClass())
-       && !((List)fieldValue).isEmpty()
-       && CDAEntry.class.isInstance(((List)fieldValue).get(0))
-       && vocabularies.containsKey(((CDAEntry)((List)fieldValue).get(0)).contentType().id()))
-    ).orElse(Boolean.FALSE);
+  private Optional<CDAContentType> getVocabularyContentType(CDAEntry cdaEntry, String field) {
+    return Optional.ofNullable(cdaEntry.getField(field)).map(fieldValue -> {
+                                                               if (List.class.isAssignableFrom(fieldValue.getClass())
+                                                                   && !((List) fieldValue).isEmpty()
+                                                                   && CDAEntry.class.isInstance(((List) fieldValue).get(0))
+                                                                   && vocabularies.containsKey(((CDAEntry) ((List) fieldValue).get(0)).contentType().id())) {
+                                                                 return ((CDAEntry) ((List) fieldValue).get(0)).contentType();
+                                                               }
+                                                                return null;
+                                                             });
   }
+
 
   /**
    * Extracts the vocabulary term values.
@@ -177,7 +233,7 @@ public class ContentfulCrawler {
    * Performs the execution of a ElasticSearch BulkRequest and logs the correspondent results.
    */
   private static void executeBulkRequest(BulkRequestBuilder bulkRequest, String contentTypeId) {
-    if(bulkRequest.numberOfActions() > 0) {
+    if (bulkRequest.numberOfActions() > 0) {
       BulkResponse bulkResponse = bulkRequest.get();
       if (bulkResponse.hasFailures()) {
         LOG.error("Error indexing.  First error message: {}", bulkResponse.getItems()[0].getFailureMessage());
