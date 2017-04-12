@@ -31,7 +31,12 @@ public class MappingGenerator {
   /**
    * List of types that can be obtained using a non-localized version.
    */
-  public static final Pattern COLLAPSIBLE_TYPES = Pattern.compile("Boolean|Object");
+  public static final Pattern COLLAPSIBLE_TYPES = Pattern.compile("Boolean");
+
+  /**
+   * List of FIELDS that can be obtained using a non-localized version.
+   */
+  public static final Pattern COLLAPSIBLE_FIELDS = Pattern.compile("meta");
 
   /**
    * Fields that are boosted by default.
@@ -279,7 +284,8 @@ public class MappingGenerator {
           esType(cdaField).ifPresent(esType -> {
             if (VOCABULARY.equals(esType)) {
               collapsedFields.put(cdaField.id(), KEYWORD);
-            } else if (COLLAPSIBLE_TYPES.matcher(cdaField.type()).matches()) {
+            } else if (COLLAPSIBLE_TYPES.matcher(cdaField.type()).matches()
+                       || COLLAPSIBLE_FIELDS.matcher(cdaField.id()).matches()) {
               collapsedFields.put(cdaField.id(), esType);
             } else if (!NESTED.equals(esType)) {
               addTemplateField("path_match", cdaField.id(), cdaField.id() + ".*", esType, mapping);
