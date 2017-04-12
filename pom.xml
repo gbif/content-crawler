@@ -50,7 +50,10 @@
     <rxjava.version>2.0.3</rxjava.version>
     <reactive-streams.version>1.0.0</reactive-streams.version>
     <retrofit.version>2.2.0</retrofit.version>
+    <!-- Contentful SDK is used for crawling and building the index -->
     <contentful-sdk.version>7.4.0</contentful-sdk.version>
+    <!-- Contentful Management SDK is used for backup procedures only -->
+    <cma-sdk.version>1.3.0</cma-sdk.version>
     <okhttp.version>3.4.1</okhttp.version>
     <metainf-services.version>1.4</metainf-services.version>
   </properties>
@@ -183,6 +186,11 @@
       <groupId>com.contentful.java</groupId>
       <artifactId>java-sdk</artifactId>
       <version>${contentful-sdk.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.contentful.java</groupId>
+      <artifactId>cma-sdk</artifactId>
+      <version>${cma-sdk.version}</version>
     </dependency>
     <dependency>
       <groupId>com.squareup.okhttp3</groupId>

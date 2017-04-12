@@ -1,28 +1,40 @@
 package org.gbif.content.crawl.conf;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import javax.annotation.Nullable;
 import javax.validation.constraints.NotNull;
 
 import com.beust.jcommander.IStringConverter;
 import com.beust.jcommander.Parameter;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationContext;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.deser.std.StdScalarDeserializer;
 
 /**
- * Command configuration class, contains configuration element to connect to Mendeley, ElastisSearch and Contenful.
+ * Command configuration class, contains configuration element to connect to Mendeley, ElastisSearch and Contentful.
  */
 public class ContentCrawlConfiguration {
 
-  @NotNull
+  @Nullable
   public Mendeley mendeley;
 
-  // Deliberately Nullable
+  @Nullable
   public ElasticSearch elasticSearch;
 
+  @Nullable
   public Contentful contentful;
 
+  @Nullable
+  public ContentfulBackup contentfulBackup;
 
   /**
    * Configuration specific to interfacing to Mendeley.
@@ -93,7 +105,7 @@ public class ContentCrawlConfiguration {
 
 
   /**
-   * Configuration specific to interfacing with elastic search.
+   * Configuration specific to interfacing with Contentful content API.
    */
   public static class Contentful {
     @Parameter(
@@ -139,6 +151,24 @@ public class ContentCrawlConfiguration {
   }
 
   /**
+   * Configuration specific to backing up Contentful through the Contentful Management API.
+   */
+  public static class ContentfulBackup {
+    @Parameter(
+      names = "-cmaToken",
+      description = "Contentful management access token")
+    @NotNull
+    public String cmaToken;
+
+    @Parameter(
+      names = "-targetDir",
+      description = "The target directory to save the Contentful backup")
+    @NotNull
+    @JsonDeserialize(using = PathDeserializer.class)
+    public Path targetDir;
+  }
+
+  /**
    * Converts from String to File.
    */
   private static class FileConverter implements IStringConverter<File> {
@@ -147,4 +177,19 @@ public class ContentCrawlConfiguration {
       return new File(value);
     }
   }
+
+  /**
+   * Converts from String to Path (Note that Jackson needs this before JCommander gets control)
+   */
+  private static class PathDeserializer extends StdScalarDeserializer<Path> {
+    public PathDeserializer() { super(Path.class); }
+
+    @Override
+    public Path deserialize(
+      JsonParser jsonParser, DeserializationContext deserializationContext
+    ) throws IOException, JsonProcessingException {
+      return Paths.get(jsonParser.getValueAsString());
+    }
+  }
+
 }

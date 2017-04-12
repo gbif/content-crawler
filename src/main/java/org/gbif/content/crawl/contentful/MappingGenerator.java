@@ -310,6 +310,10 @@ public class MappingGenerator {
                                                                         .filter(validation -> validation.containsKey(LINK_CONTENT_TYPE))
                                                                         .map(validation -> (String)validation.get(LINK_CONTENT_TYPE))
                                                                         .findFirst();
+
+    // This code will only inspect the first entry to determine the type.
+    // The GBIF content model does make use of multi typed content and so this will potentially return the type in error
+    // but the use of this is deemed "ok" since we only care if it is a vocabulary or not.
     if (ARRAY_TYPE.equals(cdaField.type())) {
       linkContentType = ((List<Map<String,Object>>)cdaField.items().get(VALIDATIONS)).stream()
                           .map(validation -> ((List<String>)validation.get(LINK_CONTENT_TYPE)).get(0)).findFirst();
