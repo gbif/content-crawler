@@ -181,8 +181,7 @@ public class ContentfulBackup {
 
   // Extracts the id from e.g.
   //   sys: { contentType: {sys={type=Link, linkType=ContentType, id=Event}}}
-  private String ex
-  tTypeId(CMAEntry entry) {
+  private String extractContentTypeId(CMAEntry entry) {
     return (String)
       ((Map)(
           (Map)(entry.getSys().get("contentType"))
