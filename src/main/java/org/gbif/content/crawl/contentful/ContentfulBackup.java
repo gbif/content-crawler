@@ -15,6 +15,7 @@ import java.util.concurrent.TimeUnit;
 import com.contentful.java.cma.CMAClient;
 import com.contentful.java.cma.model.CMAArray;
 import com.contentful.java.cma.model.CMAAsset;
+import com.contentful.java.cma.model.CMAContentType;
 import com.contentful.java.cma.model.CMAEntry;
 import com.contentful.java.cma.model.CMAResource;
 import com.contentful.java.cma.model.CMASpace;
@@ -71,7 +72,7 @@ public class ContentfulBackup {
 
         Path spaceDir = configuration.contentfulBackup.targetDir.resolve(extractSysId(space));
 
-        //backupContentTypes(space, spaceDir);
+        backupContentTypes(space, spaceDir);
         backupEntries(space, spaceDir);
         backupAssets(space, spaceDir);
       }
@@ -79,6 +80,28 @@ public class ContentfulBackup {
     } catch (Exception e) {
       Throwables.propagate(e);
     }
+  }
+
+  private void backupContentTypes(CMASpace space, Path spaceDir) {
+    ContentfulManagementPager<CMAContentType>
+      contentTypePager = ContentfulManagementPager.newContentTypePager(cmaClient, PAGE_SIZE, extractSysId(space));
+    Observable.fromIterable(contentTypePager)
+              .doOnComplete(() -> LOG.info("Finished backing up content types"))
+              .doOnError(error -> Throwables.propagate(error))
+              .subscribe(results -> {
+                results.getItems().forEach(contentType -> {
+
+                  LOG.info("Content type id[{}]", contentType.getResourceId());
+                  // Save as e.g. ./spaceId/<timestamp>/ContentTypes/contentId.json
+                  Path contentDir = spaceDir.resolve(Paths.get(startTime, "ContentTypes"));
+                  try {
+                    Files.createDirectories(contentDir);
+                    Files.write(contentDir.resolve(contentType.getResourceId() + ".json"), GSON.toJson(contentType).getBytes("UTF8"));
+                  } catch (IOException e) {
+                    Throwables.propagate(e);
+                  }
+                });
+              });
   }
 
   private void backupEntries(CMASpace space, Path spaceDir) {
