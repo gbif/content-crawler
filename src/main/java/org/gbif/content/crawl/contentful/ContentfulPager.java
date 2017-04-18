@@ -16,6 +16,9 @@ public class ContentfulPager implements Iterable<CDAArray> {
 
   private static final Logger LOG = LoggerFactory.getLogger(ContentfulPager.class);
 
+  //how many nested elements should retrieved on each call
+  private static final int LEVEL = 1;
+
   //Contentful client
   private final CDAClient cdaClient;
 
@@ -39,7 +42,8 @@ public class ContentfulPager implements Iterable<CDAArray> {
     @Override
     public boolean hasNext() {
       //fetch the next set of results
-      current = cdaClient.fetch(CDAEntry.class).withContentType(contentTypeId).limit(pageSize).skip(skip).all();
+      current = cdaClient.fetch(CDAEntry.class).withContentType(contentTypeId).include(LEVEL).limit(pageSize)
+                          .skip(skip).all();
       skip += pageSize;
       return current.total() > 0;
     }
