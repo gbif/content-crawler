@@ -6,9 +6,11 @@ import java.util.NoSuchElementException;
 
 import com.contentful.java.cma.CMAClient;
 import com.contentful.java.cma.ModuleAssets;
+import com.contentful.java.cma.ModuleContentTypes;
 import com.contentful.java.cma.ModuleEntries;
 import com.contentful.java.cma.model.CMAArray;
 import com.contentful.java.cma.model.CMAAsset;
+import com.contentful.java.cma.model.CMAContentType;
 import com.contentful.java.cma.model.CMAEntry;
 import com.contentful.java.cma.model.CMAResource;
 import com.google.common.collect.ImmutableMap;
@@ -26,10 +28,9 @@ class ContentfulManagementPager<T extends CMAResource> implements Iterable<CMAAr
 
   private static final Logger LOG = LoggerFactory.getLogger(ContentfulManagementPager.class);
 
-  private enum Mode {ASSETS, ENTRIES}; // hack because of the Contentful API structure
+  private enum Mode {ASSETS, ENTRIES, CONTENT_TYPES}; // nuisance because of the Contentful API structure
 
-  private final ModuleEntries entriesModule;
-  private final ModuleAssets assetsModule;
+  private final CMAClient cmaClient;
   private final Mode mode;
   private final int pageSize;
   private final String spaceId;
@@ -38,8 +39,7 @@ class ContentfulManagementPager<T extends CMAResource> implements Iterable<CMAAr
   private ContentfulManagementPager(CMAClient cmaClient, int pageSize, String spaceId, Mode mode) {
     this.pageSize = pageSize;
     this.spaceId = spaceId;
-    this.entriesModule = cmaClient.entries();
-    this.assetsModule = cmaClient.assets();
+    this.cmaClient = cmaClient;
     this.mode = mode;
   }
 
@@ -51,6 +51,9 @@ class ContentfulManagementPager<T extends CMAResource> implements Iterable<CMAAr
     return new ContentfulManagementPager<CMAAsset>(client, pageSize, spaceId, Mode.ASSETS);
   }
 
+  static ContentfulManagementPager<CMAContentType> newContentTypePager(CMAClient client, int pageSize, String spaceId) {
+    return new ContentfulManagementPager<CMAContentType>(client, pageSize, spaceId, Mode.CONTENT_TYPES);
+  }
 
   private class ContentfulIterator<T extends CMAResource> implements Iterator<CMAArray<T>> {
     private int skip; // current page skip
@@ -60,10 +63,13 @@ class ContentfulManagementPager<T extends CMAResource> implements Iterable<CMAAr
     public boolean hasNext() {
       Map<String, String> query = Maps.newHashMap(ImmutableMap.of("skip", String.valueOf(skip)));
 
+      // This is a nuisance, but the Contentful API doesn't share a common interface
       if (Mode.ENTRIES == mode)
-        current = (CMAArray<T>) entriesModule.fetchAll(spaceId, query);
+        current = (CMAArray<T>) cmaClient.entries().fetchAll(spaceId, query);
       else if (Mode.ASSETS == mode)
-        current = (CMAArray<T>) assetsModule.fetchAll(spaceId, query);
+        current = (CMAArray<T>) cmaClient.assets().fetchAll(spaceId, query);
+      else if (Mode.CONTENT_TYPES == mode)
+        current = (CMAArray<T>) cmaClient.contentTypes().fetchAll(spaceId, query);
       else
         throw new IllegalStateException("Unsupported mode of operation"); // should never happen
 
