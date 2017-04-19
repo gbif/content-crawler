@@ -4,6 +4,8 @@ import org.gbif.api.vocabulary.Country;
 import org.gbif.api.vocabulary.GbifRegion;
 import org.gbif.content.crawl.conf.ContentCrawlConfiguration;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -19,7 +21,6 @@ import com.contentful.java.cda.CDAClient;
 import com.contentful.java.cda.CDAContentType;
 import com.contentful.java.cda.CDAEntry;
 import com.contentful.java.cda.CDAField;
-import com.contentful.java.cda.CDAResource;
 import com.google.common.base.CaseFormat;
 import com.google.common.base.Preconditions;
 import io.reactivex.Observable;
@@ -49,6 +50,7 @@ public class ContentfulCrawler {
   private static final String REGION_FIELD = "gbifRegion";
 
   private static final int PAGE_SIZE = 20;
+  private static final String ID_FIELD = "id";
 
   private final ContentCrawlConfiguration configuration;
   private final CDAClient cdaClient;
@@ -79,7 +81,7 @@ public class ContentfulCrawler {
    * Translates a sentence type text into upper camel case format.
    * For example: "Hola Morten" will be transformed into "holaMorten".
    */
-  private static String toLowerCamel(String sentence) {
+  private static String toLowerCamel(CharSequence sentence) {
     return CaseFormat.UPPER_UNDERSCORE
             .to(CaseFormat.LOWER_CAMEL, REPLACEMENTS.matcher(sentence).replaceAll("_").toUpperCase());
   }
@@ -110,6 +112,8 @@ public class ContentfulCrawler {
       .forEach(contentType -> {
         //index name has to be in lowercase
         String idxName = REPLACEMENTS.matcher(contentType.name()).replaceAll("").toLowerCase();
+        //ES type name for this content typ
+        String esTypeName = toLowerCamel(contentType.name());
         //gets or (re)create the ES idx if doesn't exists
         createIndex(esClient, configuration.contentful.indexBuild, idxName, mappingGenerator.getEsMapping(contentType));
         LOG.info("Indexing ContentType [{}] into ES Index [{}]", contentType.name(), idxName);
@@ -124,8 +128,7 @@ public class ContentfulCrawler {
                        bulkRequest.add(esClient.prepareIndex(idxName.toLowerCase(),
                                                              configuration.contentful.indexBuild.esIndexType,
                                                              cdaResource.id())
-                                         .setSource(getIndexedFields((CDAEntry)cdaResource,
-                                                                     toLowerCamel(contentType.name()),
+                                         .setSource(getIndexedFields((CDAEntry)cdaResource, esTypeName,
                                                                      collapsibleFields)))
             ));
       });
@@ -155,7 +158,7 @@ public class ContentfulCrawler {
         entries.put(field, ((CDAAsset)fieldValue).rawFields());
       } else if (List.class.isInstance(fieldValue) && (!((List)fieldValue).isEmpty()
                  && CDAAsset.class.isInstance(((List)fieldValue).get(0)))) {
-        ((List<?>)fieldValue).forEach(cdaAsset -> entries.put(field, ((CDAAsset)cdaAsset).rawFields()));
+        ((List<?>)fieldValue).forEach(cdaAsset -> addToListValue(entries, field, ((CDAAsset)cdaAsset).rawFields()));
       } else if (CDAEntry.class.isInstance(fieldValue)) {
         entries.put(field, getAssociatedEntryFields((CDAEntry)fieldValue));
       } else if (List.class.isInstance(fieldValue) && (!((List)fieldValue).isEmpty()
@@ -164,12 +167,12 @@ public class ContentfulCrawler {
           List<String> vocabularyValues  = getVocabularyValues(field, cdaEntry);
           if (countryVocabularyId.equals(((CDAEntry) ((List) fieldValue).get(0)).contentType().id())) {
             Set<GbifRegion> regions = vocabularyValues.stream().map(isoCountryCode -> Country.fromIsoCode(isoCountryCode).getGbifRegion()).collect(Collectors.toSet());
-            entries.compute(REGION_FIELD, (k,v) -> v == null? regions: ((Set<GbifRegion>)v).addAll(regions));
+            addToListValues(entries, REGION_FIELD, regions);
           }
           entries.put(field, vocabularyValues);
 
         } else {
-          ((List<?>) fieldValue).forEach(nestedEntry -> entries.put(field, getAssociatedEntryFields((CDAEntry)nestedEntry)));
+          ((List<?>) fieldValue).forEach(nestedEntry ->  addToListValue(entries, field, getAssociatedEntryFields((CDAEntry)nestedEntry)));
         }
       } else {
         entries.put(field, value);
@@ -179,6 +182,36 @@ public class ContentfulCrawler {
       }
     });
     return entries;
+  }
+
+  /**
+   * Adds a value to the list of values associated to the key 'field'/
+   */
+  private static <T> void addToListValue(Map<String,Object> fieldValues, String field, T value) {
+    fieldValues.compute(field, (k,v) -> {
+      if (v == null) {
+        return new ArrayList<T>(){{add(value);}};
+      } else {
+        List<T> listValue = ((List<T>)v);
+        listValue.add(value);
+        return listValue;
+      }
+    });
+  }
+
+  /**
+   * Adds a value to the list of values associated to the key 'field'/
+   */
+  private static <T> void addToListValues(Map<String,Object> fieldValues, String field, Collection<T> values) {
+    fieldValues.compute(field, (k,v) -> {
+      if (v == null) {
+        return values;
+      } else {
+        Collection<T> listValues = ((Collection<T>)v);
+        listValues.addAll(values);
+        return listValues;
+      }
+    });
   }
 
   /**
@@ -195,12 +228,13 @@ public class ContentfulCrawler {
   /**
    * Associated entities are indexed using title, summary and id.
    */
-  public static Map<String, Object> getAssociatedEntryFields(CDAEntry cdaEntry) {
+  public Map<String, Object> getAssociatedEntryFields(CDAEntry cdaEntry) {
     Map<String, Object> fields = new LinkedHashMap<>();
-    fields.put("id", cdaEntry.id());
+    fields.put(ID_FIELD, cdaEntry.id());
     fields.putAll(cdaEntry.rawFields().entrySet().stream()
                                   .filter(entry -> LINKED_ENTRY_FIELDS.matcher(entry.getKey()).matches())
-                                  .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)));
+                                  .collect(Collectors.toMap(Map.Entry::getKey,
+                                                            Map.Entry::getValue)));
     return fields;
   }
 
@@ -212,10 +246,7 @@ public class ContentfulCrawler {
     return vocabulary.stream()
             .map(entry -> vocabularies.get(entry.contentType().id()).get(entry.id()))
             .collect(Collectors.toList());
-
-
   }
-
 
   /**
    * Performs the execution of a ElasticSearch BulkRequest and logs the correspondent results.
