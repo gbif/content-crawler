@@ -1,5 +1,3 @@
-# Created by .ignore support plugin (hsz.mobi)
-### Maven template
 target/
 pom.xml.tag
 pom.xml.releaseBackup
@@ -11,4 +9,5 @@ buildNumber.properties
 .mvn/timing.properties
 
 content-crawler.iml
-configuration-backup.yml
+/configuration-backup.yml
+/configuration-restore.yml

@@ -11,18 +11,18 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Command to trigger the backup of Contentful.
+ * Command to populate a contentful space from a backup.
  */
 @MetaInfServices(Command.class)
-public class ContentfulBackupCommand extends BaseCommand {
-  private static final Logger LOG = LoggerFactory.getLogger(ContentfulBackupCommand.class);
+public class ContentfulRestoreCommand extends BaseCommand {
+  private static final Logger LOG = LoggerFactory.getLogger(ContentfulRestoreCommand.class);
   private final ContentCrawlConfiguration configuration = new ContentCrawlConfiguration();
 
   /**
    * Default constructor, sets the command name.
    */
-  public ContentfulBackupCommand() {
-    super("contentful-backup");
+  public ContentfulRestoreCommand() {
+    super("contentful-restore");
   }
 
   /**
@@ -39,9 +39,9 @@ public class ContentfulBackupCommand extends BaseCommand {
   @Override
   protected void doRun() {
     try {
-      new ContentfulBackup(configuration).run();
+      new ContentfulRestore(configuration).run();
     } catch (IOException e) {
-      LOG.error("Backup failed!", e);
+      LOG.error("Restore failed!", e);
       System.exit(1); // to enable triggering of e.g. an email from a Cron
     }
   }

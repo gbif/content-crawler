@@ -36,6 +36,9 @@ public class ContentCrawlConfiguration {
   @Nullable
   public ContentfulBackup contentfulBackup;
 
+  @Nullable
+  public ContentfulRestore contentfulRestore;
+
   /**
    * Configuration specific to interfacing to Mendeley.
    */
@@ -171,6 +174,30 @@ public class ContentCrawlConfiguration {
     @NotNull
     @JsonDeserialize(using = PathDeserializer.class)
     public Path targetDir;
+  }
+
+  /**
+   * Configuration specific to backing up Contentful through the Contentful Management API.
+   */
+  public static class ContentfulRestore {
+    @Parameter(
+      names = "-cmaToken",
+      description = "Contentful management access token")
+    @NotNull
+    public String cmaToken;
+
+    @Parameter(
+      names = "-spaceId",
+      description = "Contentful spaceId to populate")
+    @NotNull
+    public String spaceId;
+
+    @Parameter(
+      names = "-sourceDir",
+      description = "The directory containing the backup")
+    @NotNull
+    @JsonDeserialize(using = PathDeserializer.class)
+    public Path sourceDir;
   }
 
   /**

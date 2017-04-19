@@ -51,7 +51,7 @@ public class ContentfulBackup {
   private final String startTime;
 
   /**
-   * ElasticSearch and Contentful configuration are required to create an instance of this class.
+   * Contentful Backupe configuration is required to create an instance of this class.
    */
   public ContentfulBackup(ContentCrawlConfiguration configuration) throws IOException {
     Preconditions.checkNotNull(configuration, "Crawler configuration can't be null");
@@ -93,7 +93,7 @@ public class ContentfulBackup {
 
                   LOG.info("Content type id[{}]", contentType.getResourceId());
                   // Save as e.g. ./spaceId/<timestamp>/ContentTypes/contentId.json
-                  Path contentDir = spaceDir.resolve(Paths.get(startTime, "ContentTypes"));
+                  Path contentDir = spaceDir.resolve(Paths.get(startTime, "ContentType"));
                   try {
                     Files.createDirectories(contentDir);
                     Files.write(contentDir.resolve(contentType.getResourceId() + ".json"), GSON.toJson(contentType).getBytes("UTF8"));
@@ -136,7 +136,7 @@ public class ContentfulBackup {
       .readTimeout(HTTP_TIMEOUT_SECS, TimeUnit.SECONDS)
       .build();
 
-    Path assetsDir = spaceDir.resolve("Assets"); // for the actual files
+    Path assetsDir = spaceDir.resolve("Asset"); // for the actual files
 
     ContentfulManagementPager<CMAAsset>
       assetsPager = ContentfulManagementPager.newAssetsPager(cmaClient, PAGE_SIZE, extractSysId(space));
@@ -160,8 +160,8 @@ public class ContentfulBackup {
 
                         // we map the local path to the URL path (wu1jj10r9bwp is the spaceID)
                         // //assets.contentful.com/wu1jj10r9bwp/59Vy2G95H2EIE8yOIcgSSu/ae59118ae9989c26119972f1662aff3f/test.pdf
-                        String path = assetUrl.substring(assetUrl.indexOf(spaceId) + spaceId.length() + 1);
-                        Path targetFile = assetsDir.resolve(path);
+                        //String path = assetUrl.substring(assetUrl.indexOf(spaceId) + spaceId.length() + 1);
+                        Path targetFile = assetsDir.resolve(extractAssetPath(assetUrl));
 
                         if (Files.exists(targetFile)) {
                           LOG.info("Skipping asset file which already exists: {}", targetFile.toAbsolutePath());
@@ -181,7 +181,7 @@ public class ContentfulBackup {
                       }
                     }
 
-                    // Save as e.g. ./spaceId/<timestamp>/Assets/contentId.json
+                    // Save as e.g. ./spaceId/<timestamp>/Asset/contentId.json
                     Path contentDir = spaceDir.resolve(Paths.get(startTime, "Asset"));
                     Files.createDirectories(contentDir);
                     Files.write(contentDir.resolve(asset.getResourceId() + ".json"), GSON.toJson(asset).getBytes("UTF8"));
@@ -191,6 +191,22 @@ public class ContentfulBackup {
                   }
                 });
               });
+  }
+
+  /**
+   * Extracts the relative path to the file after the asset directory from a contentful asset URL.
+   * e.g. given "//images.contentful.com/wu1jj10r9bwp/5JLBumd6qkmGEM4eOG0mOa/f9be6347556d16b3e22d2f42e13f6ef4/event-image-115-180.jpeg"
+   * returns "/5JLBumd6qkmGEM4eOG0mOa/f9be6347556d16b3e22d2f42e13f6ef4/event-image-115-180.jpeg"
+   */
+  private static String extractAssetPath(String url) {
+    if (url != null) {
+      String cleaned = url.replaceAll("http://|https://|//", ""); // defensive coding
+      String[] atoms = cleaned.split("/");
+      Preconditions.checkArgument(atoms.length == 5, "Asset URL not in expected format");
+      return cleaned.substring(cleaned.indexOf(atoms[2]));
+
+    }
+    return null;
   }
 
   /**
