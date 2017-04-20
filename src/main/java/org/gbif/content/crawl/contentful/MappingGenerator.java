@@ -137,7 +137,21 @@ public class MappingGenerator {
       mapping.endObject();
     mapping.endObject();
   }
-
+  /**
+   * Produces the following JSON structure:
+   * {
+   *  "ignored_fields": {
+   *    "match": "*Tag",
+   *    "match_pattern": "regex",
+   *    "mapping": {
+   *      "type": "keyword",
+   *      "include_in_all": false
+   *    }
+   *  }
+   * }
+   *
+   * This is used to create links between content types, in particular in the News content type.
+   */
   private static void addGenericTagsMapping(XContentBuilder mapping) throws IOException {
     mapping.startObject();
       mapping.startObject("generic_tags");
@@ -145,7 +159,7 @@ public class MappingGenerator {
         mapping.field("match_pattern", "regex");
         mapping.startObject("mapping");
           mapping.field("type", KEYWORD);
-          mapping.field("include_in_all", Boolean.TRUE);
+          mapping.field("include_in_all", Boolean.FALSE);
         mapping.endObject();
       mapping.endObject();
     mapping.endObject();
