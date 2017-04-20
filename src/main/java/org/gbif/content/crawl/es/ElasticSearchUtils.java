@@ -24,7 +24,6 @@ public class ElasticSearchUtils {
     //NOP
   }
 
-
   /**
    * Creates a new instance of a ElasticSearch client.
    */
@@ -38,7 +37,6 @@ public class ElasticSearchUtils {
       throw new IllegalStateException(ex);
     }
   }
-
 
   /**
    * Creates, if doesn't exists, an ElasticSearch index that matches the name of the contentType.
@@ -59,7 +57,6 @@ public class ElasticSearchUtils {
     }
   }
 
-
   /**
    * Creates, if doesn't exists, an ElasticSearch index that matches the name of the contentType.
    * If the flag configuration.contentful.deleteIndex is ON and the index exist, it will be removed.
@@ -68,10 +65,6 @@ public class ElasticSearchUtils {
                                  String source) {
     createIndex(esClient, configuration, configuration.esIndexName, source);
   }
-
-
-
-
 
   /**
    * Reads the content of ES_MAPPINGS_FILE into a String.

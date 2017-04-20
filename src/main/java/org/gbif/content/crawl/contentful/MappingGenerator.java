@@ -138,6 +138,19 @@ public class MappingGenerator {
     mapping.endObject();
   }
 
+  private static void addGenericTagsMapping(XContentBuilder mapping) throws IOException {
+    mapping.startObject();
+      mapping.startObject("generic_tags");
+        mapping.field("match", ".*Tag");
+        mapping.field("match_pattern", "regex");
+        mapping.startObject("mapping");
+          mapping.field("type", KEYWORD);
+          mapping.field("include_in_all", Boolean.TRUE);
+        mapping.endObject();
+      mapping.endObject();
+    mapping.endObject();
+  }
+
 
   /**
    * Produces the following JSON structure:
@@ -278,6 +291,7 @@ public class MappingGenerator {
         mapping.startArray("dynamic_templates");
         addDefaultIgnoredFields(mapping);
         addFileAssetMapping(mapping);
+        addGenericTagsMapping(mapping);
         addNestedMapping(mapping, "title", KEYWORD);
         addNestedMapping(mapping, "description", "text");
         contentType.fields().stream().filter(cdaField -> !cdaField.isDisabled()).forEach(cdaField ->

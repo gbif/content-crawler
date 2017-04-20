@@ -136,6 +136,11 @@ public class ContentCrawlConfiguration {
       description = "Named of the country vocabulary content, it's handled specially during indexing")
     public String countryVocabulary;
 
+    @Parameter(
+      names = "-newsContentType",
+      description = "Named of the news content type, it's handled specially during indexing to tag related entities")
+    public String newsContentType;
+
     public IndexBuild indexBuild;
   }
 

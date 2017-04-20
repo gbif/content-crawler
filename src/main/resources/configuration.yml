@@ -30,6 +30,7 @@ contentful:
     #Delete the Index before crawl it?
     deleteIndex: true
     countryVocabulary: "CountryVocabulary"
+    newsContentType: "News"
     vocabularies:
       - "Vocabulary1"
       - "Vocabulary2"
