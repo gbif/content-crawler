@@ -19,6 +19,10 @@ public class ContentfulPager implements Iterable<CDAArray> {
   //how many nested elements should retrieved on each call
   private static final int LEVEL = 1;
 
+  private static final String LOCALE_PARAM = "locale";
+
+  private static final String ALL = "*";
+
   //Contentful client
   private final CDAClient cdaClient;
 
@@ -43,7 +47,7 @@ public class ContentfulPager implements Iterable<CDAArray> {
     public boolean hasNext() {
       //fetch the next set of results
       current = cdaClient.fetch(CDAEntry.class).withContentType(contentTypeId).include(LEVEL).limit(pageSize)
-                          .skip(skip).all();
+                  .where(LOCALE_PARAM, ALL).skip(skip).all();
       skip += pageSize;
       return current.total() > 0;
     }
