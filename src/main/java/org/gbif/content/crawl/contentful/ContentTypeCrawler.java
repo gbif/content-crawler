@@ -11,6 +11,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -20,7 +21,9 @@ import com.contentful.java.cda.CDAClient;
 import com.contentful.java.cda.CDAContentType;
 import com.contentful.java.cda.CDAEntry;
 import com.contentful.java.cda.CDAField;
+import com.contentful.java.cda.LocalizedResource;
 import com.google.common.base.CaseFormat;
+import com.google.common.collect.Sets;
 import io.reactivex.Observable;
 import org.elasticsearch.action.bulk.BulkRequestBuilder;
 import org.elasticsearch.action.bulk.BulkResponse;
@@ -76,12 +79,12 @@ public class ContentTypeCrawler {
   /**
    * vocabularyName -> { contentId -> defaultValue} }
    */
-  private final Map<String,Map<String, String>> vocabularies;
+  private final Set<String> vocabulariesContentTypeIds;
 
   public ContentTypeCrawler(CDAContentType cdaContentType, MappingGenerator mappingGenerator,
                             Client esClient, ContentCrawlConfiguration configuration,
                             CDAClient cdaClient,
-                            Map<String,Map<String, String>> vocabularies,
+                            Set<String> vocabulariesContentTypeIds,
                             String countryContentTypeId,
                             String newsContentTypeId) {
     this.cdaContentType = cdaContentType;
@@ -99,7 +102,7 @@ public class ContentTypeCrawler {
 
     this.cdaClient = cdaClient;
 
-    this.vocabularies = vocabularies;
+    this.vocabulariesContentTypeIds = vocabulariesContentTypeIds;
 
     this.countryContentTypeId = countryContentTypeId;
 
@@ -142,71 +145,66 @@ public class ContentTypeCrawler {
     return indexedFields;
   }
 
+  /**
+   * Gets the content of an asset.
+   */
+  private static Map<String, Object> getNestedContent(LocalizedResource resource, boolean localized) {
+    if(resource != null) {
+      return localized
+        ? resource.rawFields()
+        : resource.rawFields()
+          .entrySet()
+          .stream()
+          .filter(entry -> resource.getField(entry.getKey()) != null)
+          .collect(Collectors.toMap(Map.Entry::getKey, entry -> resource.getField(entry.getKey())));
+    }
+   return new HashMap<>();
+  }
+
+  /**
+   * Extract the values as maps of the list of resources.
+   */
+  private static List<Map<String,Object>> toListValues(List<LocalizedResource> resources, boolean localized) {
+    return resources.stream()
+      .map(resource -> CDAEntry.class.isInstance(resource)? getAssociatedEntryFields((CDAEntry)resource) :
+                                                            getNestedContent(resource, localized)
+    ).collect(Collectors.toList());
+  }
 
   /**
    * Iterates trough each Asset entry in cdaEntry and retrieves its value.
    */
   private  Map<String,Object> fieldsFromEntry(CDAEntry cdaEntry) {
     Map<String,Object> entries = new HashMap<>();
+    ContentTypeFields contentTypeFields = ContentTypeFields.of(cdaEntry.contentType());
     cdaEntry.rawFields().forEach((field,value) -> {
-      Object fieldValue = cdaEntry.getField(field);
-      if (CDAAsset.class.isInstance(fieldValue)) {
-        entries.put(field, ((CDAAsset)fieldValue).rawFields());
-      } else if (List.class.isInstance(fieldValue) && (!((List)fieldValue).isEmpty()
-                                                       && CDAAsset.class.isInstance(((List)fieldValue).get(0)))) {
-        ((List<?>)fieldValue).forEach(cdaAsset -> addToListValue(entries, field, ((CDAAsset)cdaAsset).rawFields()));
-      } else if (CDAEntry.class.isInstance(fieldValue)) {
-        entries.put(field, getAssociatedEntryFields((CDAEntry)fieldValue));
-      } else if (List.class.isInstance(fieldValue) && (!((List)fieldValue).isEmpty()
-                                                       && CDAEntry.class.isInstance(((List)fieldValue).get(0)))) {
-        if (vocabularies.containsKey(((CDAEntry) ((List) fieldValue).get(0)).contentType().id())) {
-          List<String> vocabularyValues  = getVocabularyValues(field, cdaEntry);
-          if (countryContentTypeId.equals(((CDAEntry) ((List) fieldValue).get(0)).contentType().id())) {
-            Set<GbifRegion> regions = vocabularyValues.stream().map(isoCountryCode -> Country.fromIsoCode(isoCountryCode).getGbifRegion()).collect(Collectors.toSet());
-            addToListValues(entries, REGION_FIELD, regions);
-          }
-          entries.put(field, vocabularyValues);
+      CDAField cdaField = contentTypeFields.getField(field);
+      ContentfulType fieldType = contentTypeFields.getFieldType(field);
+      if(ContentfulType.LINK == fieldType) {
+        if(ContentfulLinkType.ASSET == contentTypeFields.getFieldLinkType(field)) {
+          entries.put(field, getNestedContent(cdaEntry.getField(field), cdaField.isLocalized()));
         } else {
-          ((List<?>) fieldValue).forEach(nestedValue -> {
-            CDAEntry nestedEntry = (CDAEntry)nestedValue;
-            addToListValue(entries, field, getAssociatedEntryFields(nestedEntry));
-            processNewsTag(nestedEntry, cdaEntry.id());
-          });
+          VocabularyCollector vocabularyCollector = new VocabularyCollector(vocabulariesContentTypeIds, countryContentTypeId);
+          vocabularyCollector.of(cdaEntry.getField(field))
+            .one(vocValue -> entries.put(field, vocValue))
+            .gbifRegion(gbifRegion -> entries.put(REGION_FIELD, gbifRegion));
+          if(vocabularyCollector.isEmpty()) {
+            entries.put(field, getAssociatedEntryFields(cdaEntry.getField(field)));
+          }
+        }
+      } else if(ContentfulType.ARRAY == fieldType) {
+        VocabularyCollector vocabularyCollector = new VocabularyCollector(vocabulariesContentTypeIds, countryContentTypeId);
+        vocabularyCollector.ofList(cdaEntry.getField(field))
+          .all(vocValues -> entries.put(field, vocValues))
+          .allGbifRegions(gbifRegions -> entries.put(REGION_FIELD, gbifRegions));
+        if(vocabularyCollector.isEmpty()) {
+          entries.put(field, toListValues(cdaEntry.getField(field), cdaField.isLocalized()));
         }
       } else {
-        entries.put(field, value);
-      }
-      if (collapsedFields.contains(field)) {
-        entries.replace(field, fieldValue);
+        entries.put(field, cdaField.isLocalized() && !collapsedFields.contains(field)? value : cdaEntry.getField(field));
       }
     });
     return entries;
-  }
-
-  /**
-   * Adds a value to the list of values associated to the key 'field'/
-   */
-  private static <T> void addToListValue(Map<String,Object> fieldValues, String field, T value) {
-    fieldValues.compute(field, (k,v) -> {
-      Collection<T> listValue = v == null ? new ArrayList<>() : (Collection<T>)v;
-      listValue.add(value);
-      return listValue;
-    });
-  }
-
-  /**
-   * Adds a value to the list of values associated to the key 'field'/
-   */
-  private static <T> void addToListValues(Map<String,Object> fieldValues, String field, Collection<T> values) {
-    fieldValues.compute(field, (k,v) -> {
-      if (v == null) {
-        return values;
-      } else {
-        Collection<T> listValues = (Collection<T>)v;
-        listValues.addAll(values);
-        return listValues;
-      }
-    });
   }
 
   /**
@@ -214,19 +212,24 @@ public class ContentTypeCrawler {
    */
   private static Map<String, Object> getAssociatedEntryFields(CDAEntry cdaEntry) {
     Map<String, Object> fields = new LinkedHashMap<>();
-    fields.put(ID_FIELD, cdaEntry.id());
-    fields.putAll(cdaEntry.rawFields()
-                    .entrySet()
-                    .stream()
-                    .filter(entry -> LINKED_ENTRY_FIELDS.matcher(entry.getKey()).matches()
-                                     && cdaEntry.getField(entry.getKey()) != null)  //a project had a null url value
-                    .collect(Collectors.toMap(Map.Entry::getKey,
-                                              entry -> isLocalized(entry.getKey(), cdaEntry.contentType())
-                                                ? entry.getValue()
-                                                : cdaEntry.getField(entry.getKey()))));
+    if(cdaEntry != null) {
+      fields.put(ID_FIELD, cdaEntry.id());
+      fields.putAll(cdaEntry.rawFields()
+                      .entrySet()
+                      .stream()
+                      .filter(entry -> LINKED_ENTRY_FIELDS.matcher(entry.getKey()).matches()
+                                       && cdaEntry.getField(entry.getKey()) != null)  //a project had a null url value
+                      .collect(Collectors.toMap(Map.Entry::getKey,
+                                                entry -> isLocalized(entry.getKey(), cdaEntry.contentType())
+                                                  ? entry.getValue()
+                                                  : cdaEntry.getField(entry.getKey()))));
+    }
     return fields;
   }
 
+  /**
+   * Is the fieldName localized in the CDAContentType.
+   */
   private static boolean isLocalized(String fieldName, CDAContentType cdaContentType) {
     return ContentTypeFields.of(cdaContentType).getField(fieldName).isLocalized();
   }
@@ -284,16 +287,6 @@ public class ContentTypeCrawler {
     } else  {
       LOG.info("Nothing to index for content type [{}]", esIdxName);
     }
-  }
-
-  /**
-   * Extracts the vocabulary term values.
-   */
-  private List<String> getVocabularyValues(String vocabularyField, CDAEntry cdaEntry) {
-    List<CDAEntry> vocabulary = cdaEntry.getField(vocabularyField);
-    return vocabulary.stream()
-      .map(entry -> vocabularies.get(entry.contentType().id()).get(entry.id()))
-      .collect(Collectors.toList());
   }
 
   /**

@@ -137,6 +137,7 @@ public class MappingGenerator {
       mapping.endObject();
     mapping.endObject();
   }
+
   /**
    * Produces the following JSON structure:
    * {

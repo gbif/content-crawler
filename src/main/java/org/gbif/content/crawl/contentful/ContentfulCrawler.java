@@ -9,6 +9,7 @@ import org.gbif.content.crawl.es.ElasticSearchUtils;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -51,7 +52,7 @@ public class ContentfulCrawler {
   /**
    * vocabularyName -> { contentId -> defaultValue} }
    */
-  private final Map<String,Map<String, String>> vocabularies;
+  private final Set<String> vocabulariesContentTypeIds;
 
   /**
    * ElasticSearch and Contentful configuration are required to create an instance of this class.
@@ -63,7 +64,7 @@ public class ContentfulCrawler {
     this.configuration = configuration;
     cdaClient = buildCdaClient();
     esClient = buildEsClient(configuration.elasticSearch);
-    vocabularies = new HashMap<>();
+    vocabulariesContentTypeIds = new HashSet<>();
   }
 
   /**
@@ -90,8 +91,7 @@ public class ContentfulCrawler {
         countryContentTypeId = contentType.id();
       }
       //Loads vocabulary into memory
-      VocabularyLoader.vocabularyTerms(contentType.id(), cdaClient)
-        .subscribe(terms -> vocabularies.put(contentType.id(), terms));
+      vocabulariesContentTypeIds.add(contentType.id());
     });
 
     //Mapping generator can be re-used for all content types
@@ -103,7 +103,7 @@ public class ContentfulCrawler {
           newsContentTypeId = contentType.id();
         }
         ContentTypeCrawler contentTypeCrawler = new ContentTypeCrawler(contentType, mappingGenerator, esClient,
-                                                                       configuration, cdaClient, vocabularies,
+                                                                       configuration, cdaClient, vocabulariesContentTypeIds,
                                                                        countryContentTypeId, newsContentTypeId);
         contentTypeCrawler.crawl();
       });
