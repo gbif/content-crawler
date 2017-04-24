@@ -23,6 +23,7 @@ elasticSearch:
 #Contentful crawler configuration
 contentful:
   cdaToken:
+  cmaToke:
   spaceId:
   indexBuild:
     #contentTypes: [dataUse]

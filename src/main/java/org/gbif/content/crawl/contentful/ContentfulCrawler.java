@@ -1,27 +1,17 @@
 package org.gbif.content.crawl.contentful;
 
-import org.gbif.api.vocabulary.Country;
-import org.gbif.api.vocabulary.GbifRegion;
+import org.gbif.content.crawl.VocabularyTerms;
 import org.gbif.content.crawl.conf.ContentCrawlConfiguration;
-import org.gbif.content.crawl.contentful.meta.Meta;
-import org.gbif.content.crawl.es.ElasticSearchUtils;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 
-import com.contentful.java.cda.CDAArray;
 import com.contentful.java.cda.CDAClient;
-import com.contentful.java.cda.CDAContentType;
-import com.google.common.base.CaseFormat;
+import com.contentful.java.cma.CMAClient;
+import com.contentful.java.cma.model.CMAArray;
+import com.contentful.java.cma.model.CMAContentType;
 import com.google.common.base.Preconditions;
 import org.elasticsearch.client.Client;
 import org.slf4j.Logger;
@@ -37,22 +27,13 @@ public class ContentfulCrawler {
 
   private static final Logger LOG = LoggerFactory.getLogger(ContentfulCrawler.class);
 
-  private static final Pattern REPLACEMENTS = Pattern.compile(":\\s+|\\s+");
-
   private final ContentCrawlConfiguration configuration;
   private final CDAClient cdaClient;
+  private final CMAClient cmaClient;
   private final Client esClient;
-
-  //Country Content Type Id
-  private String countryContentTypeId;
 
   //News Content Type Id
   private String newsContentTypeId;
-
-  /**
-   * vocabularyName -> { contentId -> defaultValue} }
-   */
-  private final Set<String> vocabulariesContentTypeIds;
 
   /**
    * ElasticSearch and Contentful configuration are required to create an instance of this class.
@@ -63,50 +44,48 @@ public class ContentfulCrawler {
     Preconditions.checkNotNull(configuration.contentful, "Contentful configuration can't be null");
     this.configuration = configuration;
     cdaClient = buildCdaClient();
+    cmaClient = buildCmaClient();
     esClient = buildEsClient(configuration.elasticSearch);
-    vocabulariesContentTypeIds = new HashSet<>();
   }
 
-  /**
-   * Translates a sentence type text into upper camel case format.
-   * For example: "Hola Morten" will be transformed into "holaMorten".
-   */
-  private static String toLowerCamel(CharSequence sentence) {
-    return CaseFormat.UPPER_UNDERSCORE
-            .to(CaseFormat.LOWER_CAMEL, REPLACEMENTS.matcher(sentence).replaceAll("_").toUpperCase());
-  }
 
   /**
    * Executes the Crawler in a synchronous way, i.e.: process each resource per content type sequentially.
    */
   public void run() {
-    List<CDAContentType> contentTypes = getContentTypes().items().stream()
-                                          .map(cdaResource -> (CDAContentType)cdaResource).collect(Collectors.toList());
-    Set<CDAContentType> vocContentTypes = contentTypes.stream()
-      .filter(contentType -> configuration.contentful.vocabularies.contains(contentType.name()))
+    LOG.info("Starting Contentful crawling");
+    VocabularyTerms vocabularyTerms =  new VocabularyTerms();
+    List<CMAContentType> contentTypes = getContentTypes().getItems();
+    Set<CMAContentType> vocContentTypes = contentTypes.stream()
+      .filter(contentType -> configuration.contentful.vocabularies.contains(contentType.getName()))
       .collect(Collectors.toSet());
     vocContentTypes.forEach(contentType -> {
       //Keeps the country vocabulary ID for future use
-      if (contentType.name().equals(configuration.contentful.countryVocabulary)) {
-        countryContentTypeId = contentType.id();
+      if (contentType.getName().equals(configuration.contentful.countryVocabulary)) {
+        vocabularyTerms.loadCountryVocabulary(contentType);
+      } else {
+        //Loads vocabulary into memory
+        vocabularyTerms.loadVocabulary(contentType);
       }
-      //Loads vocabulary into memory
-      vocabulariesContentTypeIds.add(contentType.id());
     });
 
     //Mapping generator can be re-used for all content types
     MappingGenerator mappingGenerator = new MappingGenerator(vocContentTypes);
-
-    contentTypes.stream().filter(contentType -> configuration.contentful.contentTypes.contains(contentType.name()))
+    newsContentTypeId = contentTypes.stream()
+                          .filter(contentType -> contentType.getName().equals(configuration.contentful.newsContentType))
+                          .findFirst()
+                          .orElseThrow(() -> new IllegalStateException("News ContentType not found")).getResourceId();
+    contentTypes.stream()
+      .filter(contentType -> configuration.contentful.contentTypes.contains(contentType.getName()))
+      .sorted((contentType1, contentType2) -> Integer.compare(configuration.contentful.contentTypes.indexOf(contentType1.getName()),
+                                                              configuration.contentful.contentTypes.indexOf(contentType2.getName())))
       .forEach(contentType -> {
-        if (contentType.name().equals(configuration.contentful.newsContentType)) {
-          newsContentTypeId = contentType.id();
-        }
         ContentTypeCrawler contentTypeCrawler = new ContentTypeCrawler(contentType, mappingGenerator, esClient,
-                                                                       configuration, cdaClient, vocabulariesContentTypeIds,
-                                                                       countryContentTypeId, newsContentTypeId);
+                                                                       configuration, cdaClient, vocabularyTerms,
+                                                                       newsContentTypeId);
         contentTypeCrawler.crawl();
-      });
+    });
+    LOG.info("Contentful crawling has finished");
   }
 
 
@@ -118,13 +97,20 @@ public class ContentfulCrawler {
       .setToken(configuration.contentful.cdaToken).build();
   }
 
+  /**
+   * Creates a new instance of a Contentful CDAClient.
+   */
+  private CMAClient buildCmaClient() {
+    return new CMAClient.Builder().setAccessToken(configuration.contentful.cmaToken).build();
+  }
+
 
   /**
    * CDAArray that holds references to the list of content types defined in configuration.contentful.contentTypes.
    * If configuration.contentful.contentTypes is empty, all content types are returned.
    */
-  private CDAArray getContentTypes() {
-    return cdaClient.fetch(CDAContentType.class).all();
+  private CMAArray<CMAContentType> getContentTypes() {
+      return cmaClient.contentTypes().fetchAll(configuration.contentful.spaceId);
   }
 
 }

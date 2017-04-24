@@ -6,6 +6,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 import javax.annotation.Nullable;
@@ -117,6 +119,12 @@ public class ContentCrawlConfiguration {
     public String cdaToken;
 
     @Parameter(
+      names = "-cmaToken",
+      description = "Contentful management access token")
+    @NotNull
+    public String cmaToken;
+
+    @Parameter(
       names = "-spaceId",
       description = "Contentful space Id")
     public String spaceId;
@@ -124,7 +132,7 @@ public class ContentCrawlConfiguration {
     @Parameter(
       names = "-contentTypes",
       description = "Contentful content types to be crawled")
-    public Set<String> contentTypes = new HashSet<>();
+    public List<String> contentTypes = new LinkedList<>();
 
     @Parameter(
       names = "-vocabularies",

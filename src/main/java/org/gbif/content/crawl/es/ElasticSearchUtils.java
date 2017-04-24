@@ -5,7 +5,9 @@ import org.gbif.content.crawl.conf.ContentCrawlConfiguration;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.regex.Pattern;
 
+import com.google.common.base.CaseFormat;
 import org.apache.commons.io.IOUtils;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.settings.Settings;
@@ -16,6 +18,8 @@ import org.elasticsearch.transport.client.PreBuiltTransportClient;
  * Common ElasticSearch utility methods.
  */
 public class ElasticSearchUtils {
+
+  private static final Pattern REPLACEMENTS = Pattern.compile(":\\s+|\\s+");
 
   /**
    * Utility class must have private methods.
@@ -76,6 +80,22 @@ public class ElasticSearchUtils {
     } catch (IOException ex) {
       throw new IllegalStateException(ex);
     }
+  }
+
+  /**
+   * Gets the ElasticSearch index name.
+   */
+  public static String getEsIdxName(String contentTypeName) {
+    return REPLACEMENTS.matcher(contentTypeName).replaceAll("").toLowerCase();
+  }
+
+  /**
+   * Translates a sentence type text into upper camel case format.
+   * For example: "Hola Morten" will be transformed into "holaMorten".
+   */
+  public static String toFieldNameFormat(CharSequence sentence) {
+    return CaseFormat.UPPER_UNDERSCORE
+      .to(CaseFormat.LOWER_CAMEL, REPLACEMENTS.matcher(sentence).replaceAll("_").toUpperCase());
   }
 
 }

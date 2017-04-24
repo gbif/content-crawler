@@ -2,6 +2,7 @@ package org.gbif.content.crawl.contentful;
 
 import org.gbif.api.vocabulary.Country;
 import org.gbif.api.vocabulary.GbifRegion;
+import org.gbif.content.crawl.VocabularyTerms;
 
 import java.util.HashSet;
 import java.util.List;
@@ -10,15 +11,11 @@ import java.util.Set;
 import java.util.function.Consumer;
 
 import com.contentful.java.cda.CDAEntry;
-import com.google.common.collect.Sets;
 
 /**
  * Utility class to accumulate values from vocabularies.
  */
-public class VocabularyCollector {
-
-  //Know names of fields for vocabulary terms
-  public static final Set<String> TERMS_FIELDS = Sets.newHashSet("term", "isoCode");
+public class VocabularyBuilder {
 
   //Variable to store vocabulary values
   private Set<String> values;
@@ -26,21 +23,16 @@ public class VocabularyCollector {
   //Collects derived GbifRegions from country vocabularies
   private Set<GbifRegion> gbifRegions;
 
-  //List of vocabularies content type ids
-  private final Set<String> vocabulariesContentTypeIds;
-
-  //Id of country content type id
-  private final String countryContentTypeId;
+  private final VocabularyTerms vocabularyTerms;
 
   /**
    * Constructor. Requires the list of vocabularies content type ids and the content type if of country voc.
    */
-  public VocabularyCollector(Set<String> vocabulariesContentTypeIds, String countryContentTypeId) {
-    this.vocabulariesContentTypeIds = vocabulariesContentTypeIds;
-    this.countryContentTypeId = countryContentTypeId;
+  public VocabularyBuilder(VocabularyTerms vocabularyTerms) {
     //Initialize values
     values = new HashSet<>();
     gbifRegions = new HashSet<>();
+    this.vocabularyTerms = vocabularyTerms;
   }
 
   /**
@@ -53,7 +45,7 @@ public class VocabularyCollector {
   /**
    * Consumes the only value collected.
    */
-  public VocabularyCollector one(Consumer<String> consumer) {
+  public VocabularyBuilder one(Consumer<String> consumer) {
     one().ifPresent(consumer);
     return this;
   }
@@ -75,7 +67,7 @@ public class VocabularyCollector {
   /**
    * Consumes the GbifRegion value.
    */
-  public VocabularyCollector gbifRegion(Consumer<GbifRegion> consumer) {
+  public VocabularyBuilder gbifRegion(Consumer<GbifRegion> consumer) {
     gbifRegion().ifPresent(consumer);
     return this;
   }
@@ -91,7 +83,7 @@ public class VocabularyCollector {
   /**
    * Consumer all the seen GbifRegions.
    */
-  public VocabularyCollector allGbifRegions(Consumer<Set<GbifRegion>> consumer) {
+  public VocabularyBuilder allGbifRegions(Consumer<Set<GbifRegion>> consumer) {
     allGbifRegions().ifPresent(consumer);
     return this;
   }
@@ -106,7 +98,7 @@ public class VocabularyCollector {
   /**
    * Consumes all collected values.
    */
-  public VocabularyCollector all(Consumer<Set<String>> consumer) {
+  public VocabularyBuilder all(Consumer<Set<String>> consumer) {
     all().ifPresent(consumer);
     return this;
   }
@@ -114,13 +106,16 @@ public class VocabularyCollector {
   /**
    * Accumulates vocabularies from a CDAEntry.
    */
-  public VocabularyCollector of(CDAEntry cdaEntry) {
+  public VocabularyBuilder of(CDAEntry cdaEntry) {
     if(cdaEntry != null) {
-      extractVocabulary(cdaEntry).ifPresent(vocValue -> {
-        values.add(vocValue);
-        if (countryContentTypeId.equals(cdaEntry.contentType().id())) {
-          Optional.ofNullable(Country.fromIsoCode(vocValue).getGbifRegion()).ifPresent(gbifRegions::add);
-        }
+      //tries to load a country vocabulary
+      vocabularyTerms.countryCodeFieldOf(cdaEntry).map(cdaEntry::getField).ifPresent(countryCode -> {
+        values.add((String)countryCode);
+        Optional.ofNullable(Country.fromIsoCode((String)countryCode).getGbifRegion()).ifPresent(gbifRegions::add);
+      });
+      //tries to load a vocabulary
+      vocabularyTerms.termOf(cdaEntry).map(cdaEntry::getField).ifPresent(vocValue -> {
+        values.add((String)vocValue);
       });
     }
     return this;
@@ -129,20 +124,8 @@ public class VocabularyCollector {
   /**
    * Accumulates vocabularies from a list of CDAEntry.
    */
-  public VocabularyCollector ofList(List<?> resources) {
+  public VocabularyBuilder ofList(List<?> resources) {
     resources.stream().filter(CDAEntry.class::isInstance).forEach(resource -> of((CDAEntry)resource));
     return this;
-  }
-
-  /**
-   * Extract the vocabulary content.
-   */
-  private Optional<String> extractVocabulary(CDAEntry cdaEntry) {
-    return vocabulariesContentTypeIds.contains(cdaEntry.contentType().id()) ? cdaEntry.rawFields()
-      .keySet()
-      .stream()
-      .filter(TERMS_FIELDS::contains)
-      .findFirst()
-      .map(cdaEntry::getField) : Optional.empty();
   }
 }

@@ -1,18 +1,18 @@
 package org.gbif.content.crawl.contentful;
 
 import java.io.IOException;
-import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import com.contentful.java.cda.CDAContentType;
-import com.contentful.java.cda.CDAField;
+import com.contentful.java.cma.Constants;
+import com.contentful.java.cma.model.CMAContentType;
+import com.contentful.java.cma.model.CMAField;
 import com.google.common.collect.ImmutableMap;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
@@ -31,7 +31,7 @@ public class MappingGenerator {
   /**
    * List of types that can be obtained using a non-localized version.
    */
-  public static final Pattern COLLAPSIBLE_TYPES = Pattern.compile("Boolean");
+  public static final Set<Constants.CMAFieldType> COLLAPSIBLE_TYPES = EnumSet.of(Constants.CMAFieldType.Boolean);
 
   /**
    * List of FIELDS that can be obtained using a non-localized version.
@@ -63,29 +63,26 @@ public class MappingGenerator {
   /**
    * Mapping of Contentful to ElasticSearch data types.
    */
-  private static final Map<String,String> CONTENTFUL_ES_TYPE_MAP = new ImmutableMap.Builder()
-    .put("Symbol", KEYWORD)
-    .put("Text", "text")
-    .put("Boolean", "boolean")
-    .put("Date", "date")
-    .put("Object", NESTED)
-    .put("Location", "geo_point")
-    .put("Integer", "integer")
-    .put("Decimal", "double")
+  private static final Map<Constants.CMAFieldType,String> CONTENTFUL_ES_TYPE_MAP = new ImmutableMap.Builder()
+    .put(Constants.CMAFieldType.Symbol, KEYWORD)
+    .put(Constants.CMAFieldType.Text, "text")
+    .put(Constants.CMAFieldType.Boolean, "boolean")
+    .put(Constants.CMAFieldType.Date, "date")
+    .put(Constants.CMAFieldType.Object, NESTED)
+    .put(Constants.CMAFieldType.Location, "geo_point")
+    .put(Constants.CMAFieldType.Integer, "integer")
+    .put(Constants.CMAFieldType.Number, "double")
     .build();
 
   //Commonly used constants
   private static final String TYPE = "type";
-  private static final String ARRAY_TYPE = "Array";
-  private static final String ASSET_TYPE = "Asset";
-  private static final String LINK = "Link";
   private static final String LINK_CONTENT_TYPE = "linkContentType";
   private static final String VALIDATIONS = "validations";
 
   /**
    * List of content types that store vocabularies.
    */
-  private final Set<CDAContentType> vocabularies;
+  private final Set<String> vocabularies;
 
   /**
    * Creates a Json structure like:
@@ -247,16 +244,17 @@ public class MappingGenerator {
   /**
    * Checks if the CDAField represents a Link to another resource.
    */
-  private static boolean isLink(CDAField cdaField) {
-    return cdaField.type().equals(LINK) || (cdaField.type().equals(ARRAY_TYPE)
-                                             && cdaField.items().get(TYPE).equals(LINK));
+  private static boolean isLink(CMAField cdaField) {
+    return cdaField.getType() == Constants.CMAFieldType.Link
+           || (cdaField.getType() == Constants.CMAFieldType.Array
+               && cdaField.getArrayItems().get(TYPE).equals(Constants.CMAFieldType.Link.name()));
   }
 
   /**
    * Default constructor.
    */
-  public MappingGenerator(Set<CDAContentType> vocabularies) {
-    this.vocabularies = vocabularies;
+  public MappingGenerator(Set<CMAContentType> vocabularies) {
+    this.vocabularies = vocabularies.stream().map(CMAContentType::getResourceId).collect(Collectors.toSet());
   }
 
   /**
@@ -296,7 +294,7 @@ public class MappingGenerator {
    *   }
    * }
    */
-  public String getEsMapping(CDAContentType contentType) {
+  public String getEsMapping(CMAContentType contentType) {
     Map<String, String> collapsedFields = new HashMap<>();
     try (XContentBuilder mapping = XContentFactory.jsonBuilder()) {
       mapping.startObject();
@@ -309,17 +307,17 @@ public class MappingGenerator {
         addGenericTagsMapping(mapping);
         addNestedMapping(mapping, "title", KEYWORD);
         addNestedMapping(mapping, "description", "text");
-        contentType.fields().stream().filter(cdaField -> !cdaField.isDisabled()).forEach(cdaField ->
-          esType(cdaField).ifPresent(esType -> {
+        contentType.getFields().stream().filter(cmaField -> !cmaField.isDisabled()).forEach(cmaField ->
+          esType(cmaField).ifPresent(esType -> {
             if (VOCABULARY.equals(esType)) {
-              collapsedFields.put(cdaField.id(), KEYWORD);
-            } else if (COLLAPSIBLE_TYPES.matcher(cdaField.type()).matches()
-                       || COLLAPSIBLE_FIELDS.matcher(cdaField.id()).matches()) {
-              collapsedFields.put(cdaField.id(), esType);
+              collapsedFields.put(cmaField.getId(), KEYWORD);
+            } else if (COLLAPSIBLE_TYPES.contains(cmaField.getType())
+                       || COLLAPSIBLE_FIELDS.matcher(cmaField.getId()).matches()) {
+              collapsedFields.put(cmaField.getId(), esType);
             } else if (!NESTED.equals(esType)) {
-              addTemplateField("path_match", cdaField.id(), cdaField.id() + ".*", esType, mapping);
+              addTemplateField("path_match", cmaField.getId(), cmaField.getId() + ".*", esType, mapping);
             } else {
-              addTemplateField("match", cdaField.id(), cdaField.id(), esType, mapping);
+              addTemplateField("match", cmaField.getId(), cmaField.getId(), esType, mapping);
             }
           })
         );
@@ -335,36 +333,28 @@ public class MappingGenerator {
   /**
    * Gets the ElasticSearch deduced type of the CDAField.
    */
-  private Optional<String> esType(CDAField cdaField) {
-    if (isLink(cdaField)) {
-      return Optional.ofNullable(getEsLinkType(cdaField));
+  private Optional<String> esType(CMAField cmaField) {
+    if (isLink(cmaField)) {
+      return Optional.ofNullable(getEsLinkType(cmaField));
     }
-    if (cdaField.type().equals(ARRAY_TYPE)) {
-      return Optional.ofNullable(CONTENTFUL_ES_TYPE_MAP.get(cdaField.items().get(TYPE)));
+    if (cmaField.getType() == Constants.CMAFieldType.Array) {
+      return Optional.ofNullable(CONTENTFUL_ES_TYPE_MAP.get(cmaField.getArrayItems().get(TYPE)));
     }
-    return Optional.ofNullable(CONTENTFUL_ES_TYPE_MAP.get(cdaField.type()));
+    return Optional.ofNullable(CONTENTFUL_ES_TYPE_MAP.get(cmaField.getType()));
   }
 
   /**
    * Gets the ElasticSearch deduced type of a Link.
    */
-  private String getEsLinkType(CDAField cdaField) {
-    Optional<String> linkContentType = cdaField.validations() == null? Optional.empty() :
-                                                                      cdaField.validations().stream()
-                                                                        .filter(validation -> validation.containsKey(LINK_CONTENT_TYPE))
-                                                                        .map(validation -> (String)validation.get(LINK_CONTENT_TYPE))
-                                                                        .findFirst();
+  private String getEsLinkType(CMAField cmaField) {
+    Optional<String> linkType = Optional.ofNullable(cmaField.getLinkType());
+    Optional<String> linkContentType = linkType.isPresent() ?
+       cmaField.getValidations().stream().filter(validation -> validation.containsKey(LINK_CONTENT_TYPE))
+         .map(validation -> ((List<String>)validation.get(LINK_CONTENT_TYPE)).get(0)).findFirst()
+      : ((List<Map<String,Object>>)cmaField.getArrayItems().get(VALIDATIONS)).stream()
+        .map(validation -> ((List<String>)validation.get(LINK_CONTENT_TYPE)).get(0)).findFirst();
 
-    // This code will only inspect the first entry to determine the type.
-    // The GBIF content model does make use of multi typed content and so this will potentially return the type in error
-    // but the use of this is deemed "ok" since we only care if it is a vocabulary or not.
-    if (ARRAY_TYPE.equals(cdaField.type())) {
-      linkContentType = ((List<Map<String,Object>>)cdaField.items().get(VALIDATIONS)).stream()
-                          .map(validation -> ((List<String>)validation.get(LINK_CONTENT_TYPE)).get(0)).findFirst();
-    }
-    Optional<String> fLinkType = linkContentType;
-    return (fLinkType.isPresent()
-            && vocabularies.stream().anyMatch(cdaContentType -> cdaContentType.id().equals(fLinkType.get())))? VOCABULARY : NESTED;
+    return linkContentType.map(fLinkType -> vocabularies.contains(fLinkType)? VOCABULARY : NESTED).orElse(NESTED);
   }
 
 }

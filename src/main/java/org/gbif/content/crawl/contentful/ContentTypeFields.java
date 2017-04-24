@@ -43,6 +43,7 @@ public class ContentTypeFields {
 
     fieldLinkType = cdaContentType.fields().stream().filter(cdaField -> cdaField.linkType() != null)
       .collect(Collectors.toMap(CDAField::id, cdaField -> ContentfulLinkType.typeOf(cdaField.linkType()).get()));
+
   }
 
   /**
@@ -75,4 +76,5 @@ public class ContentTypeFields {
               cache.computeIfAbsent(cdaContentType.id(), key -> new ContentTypeFields(cdaContentType))
             );
   }
+
 }
