@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -128,28 +129,12 @@ public class ContentTypeCrawler {
   }
 
   /**
-   * Gets the content of an asset.
-   */
-  private static Map<String, Object> getNestedContent(LocalizedResource resource, boolean localized) {
-    if(resource != null) {
-      return localized
-        ? resource.rawFields()
-        : resource.rawFields()
-          .entrySet()
-          .stream()
-          .filter(entry -> resource.getField(entry.getKey()) != null)
-          .collect(Collectors.toMap(Map.Entry::getKey, entry -> resource.getField(entry.getKey())));
-    }
-   return new HashMap<>();
-  }
-
-  /**
    * Extract the values as maps of the list of resources.
    */
-  private List<Map<String,Object>> toListValues(List<LocalizedResource> resources, boolean localized) {
+  private List<Map<String,Object>> toListValues(List<LocalizedResource> resources) {
     return resources.stream()
       .map(resource -> CDAEntry.class.isInstance(resource)? getAssociatedEntryFields((CDAEntry)resource) :
-                                                            getNestedContent(resource, localized)
+                                                           resource.rawFields()
     ).collect(Collectors.toList());
   }
 
@@ -163,30 +148,37 @@ public class ContentTypeCrawler {
       CDAField cdaField = contentTypeFields.getField(field);
       CMAFieldType fieldType = contentTypeFields.getFieldType(field);
       if(CMAFieldType.Link == fieldType) {
-        LocalizedResource fieldResourceEntry = cdaEntry.getField(field);
-        if (ContentfulLinkType.ASSET == contentTypeFields.getFieldLinkType(field)) {
-          entries.put(field, getNestedContent(fieldResourceEntry, cdaField.isLocalized()));
-        } else {
-          CDAEntry fieldCdaEntry = (CDAEntry)fieldResourceEntry;
-          VocabularyBuilder vocabularyBuilder = new VocabularyBuilder(vocabularyTerms);
-          vocabularyBuilder.of(fieldCdaEntry)
-            .one(vocValue -> entries.put(field, vocValue))
-            .gbifRegion(gbifRegion -> entries.put(REGION_FIELD, gbifRegion));
-          if(vocabularyBuilder.isEmpty()) {
-            newsLinker.processNewsTag(fieldCdaEntry, esTypeName, cdaEntry.id());
-            entries.put(field, getAssociatedEntryFields(fieldCdaEntry));
-          }
-        }
+
+        Optional.ofNullable(cdaEntry.getField(field))
+          .map(entryFieldValue -> (LocalizedResource)entryFieldValue)
+          .ifPresent(fieldResourceEntry -> {
+            if (ContentfulLinkType.ASSET == contentTypeFields.getFieldLinkType(field)) {
+              entries.put(field,  fieldResourceEntry.rawFields());
+            } else {
+              CDAEntry fieldCdaEntry = (CDAEntry)fieldResourceEntry;
+              VocabularyBuilder vocabularyBuilder = new VocabularyBuilder(vocabularyTerms);
+              vocabularyBuilder.of(fieldCdaEntry)
+                .one(vocValue -> entries.put(field, vocValue))
+                .gbifRegion(gbifRegion -> entries.put(REGION_FIELD, gbifRegion));
+              if(vocabularyBuilder.isEmpty()) {
+                newsLinker.processNewsTag(fieldCdaEntry, esTypeName, cdaEntry.id());
+                entries.put(field, getAssociatedEntryFields(fieldCdaEntry));
+              }
+            }
+        });
       } else if(CMAFieldType.Array == fieldType) {
-        VocabularyBuilder vocabularyBuilder = new VocabularyBuilder(vocabularyTerms);
-        List<LocalizedResource> fieldCdaEntries =cdaEntry.getField(field);
-        vocabularyBuilder.ofList(fieldCdaEntries)
-          .all(vocValues -> entries.put(field, vocValues))
-          .allGbifRegions(gbifRegions -> entries.put(REGION_FIELD, gbifRegions));
-        if(vocabularyBuilder.isEmpty()) {
-          newsLinker.processNewsTag(fieldCdaEntries, esTypeName, cdaEntry.id());
-          entries.put(field, toListValues(fieldCdaEntries, cdaField.isLocalized()));
-        }
+        Optional.ofNullable(cdaEntry.getField(field)).map(entryListValue -> (List<LocalizedResource>)entryListValue)
+          .ifPresent(fieldCdaEntries -> {
+            VocabularyBuilder vocabularyBuilder = new VocabularyBuilder(vocabularyTerms);
+            vocabularyBuilder.ofList(fieldCdaEntries)
+              .all(vocValues -> entries.put(field, vocValues))
+              .allGbifRegions(gbifRegions -> entries.put(REGION_FIELD, gbifRegions));
+            if(vocabularyBuilder.isEmpty()) {
+              newsLinker.processNewsTag(fieldCdaEntries, esTypeName, cdaEntry.id());
+              entries.put(field, toListValues(fieldCdaEntries));
+            }
+          });
+
       } else {
         entries.put(field, cdaField.isLocalized() && !collapsedFields.contains(field)? value : cdaEntry.getField(field));
       }
