@@ -1,7 +1,6 @@
 package org.gbif.content.crawl.contentful.crawl;
 
 import org.gbif.content.crawl.conf.ContentCrawlConfiguration;
-import org.gbif.content.crawl.contentful.backup.ContentfulPager;
 import org.gbif.content.crawl.es.ElasticSearchUtils;
 
 import java.util.HashMap;

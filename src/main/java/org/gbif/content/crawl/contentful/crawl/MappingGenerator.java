@@ -11,7 +11,7 @@ import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import com.contentful.java.cma.Constants;
+import com.contentful.java.cma.Constants.CMAFieldType;
 import com.contentful.java.cma.model.CMAContentType;
 import com.contentful.java.cma.model.CMAField;
 import com.google.common.collect.ImmutableMap;
@@ -35,7 +35,7 @@ public class MappingGenerator {
   /**
    * List of types that can be obtained using a non-localized version.
    */
-  public static final Set<Constants.CMAFieldType> COLLAPSIBLE_TYPES = EnumSet.of(Constants.CMAFieldType.Boolean);
+  public static final Set<CMAFieldType> COLLAPSIBLE_TYPES = EnumSet.of(CMAFieldType.Boolean);
 
   /**
    * List of FIELDS that can be obtained using a non-localized version.
@@ -67,15 +67,15 @@ public class MappingGenerator {
   /**
    * Mapping of Contentful to ElasticSearch data types.
    */
-  private static final Map<Constants.CMAFieldType,String> CONTENTFUL_ES_TYPE_MAP = new ImmutableMap.Builder()
-    .put(Constants.CMAFieldType.Symbol, KEYWORD)
-    .put(Constants.CMAFieldType.Text, "text")
-    .put(Constants.CMAFieldType.Boolean, "boolean")
-    .put(Constants.CMAFieldType.Date, "date")
-    .put(Constants.CMAFieldType.Object, NESTED)
-    .put(Constants.CMAFieldType.Location, "geo_point")
-    .put(Constants.CMAFieldType.Integer, "integer")
-    .put(Constants.CMAFieldType.Number, "double")
+  private static final Map<CMAFieldType,String> CONTENTFUL_ES_TYPE_MAP = new ImmutableMap.Builder()
+    .put(CMAFieldType.Symbol, KEYWORD)
+    .put(CMAFieldType.Text, "text")
+    .put(CMAFieldType.Boolean, "boolean")
+    .put(CMAFieldType.Date, "date")
+    .put(CMAFieldType.Object, NESTED)
+    .put(CMAFieldType.Location, "geo_point")
+    .put(CMAFieldType.Integer, "integer")
+    .put(CMAFieldType.Number, "double")
     .build();
 
   //Commonly used constants
@@ -255,9 +255,9 @@ public class MappingGenerator {
    * Checks if the CDAField represents a Link to another resource.
    */
   private static boolean isLink(CMAField cmaField) {
-    return cmaField.getType() == Constants.CMAFieldType.Link
-           || (cmaField.getType() == Constants.CMAFieldType.Array
-               && cmaField.getArrayItems().get(TYPE).equals(Constants.CMAFieldType.Link.name()));
+    return cmaField.getType() == CMAFieldType.Link
+           || (cmaField.getType() == CMAFieldType.Array
+               && cmaField.getArrayItems().get(TYPE).equals(CMAFieldType.Link.name()));
   }
 
   /**
@@ -347,7 +347,7 @@ public class MappingGenerator {
     if (isLink(cmaField)) {
       return Optional.ofNullable(getEsLinkType(cmaField));
     }
-    if (cmaField.getType() == Constants.CMAFieldType.Array) {
+    if (cmaField.getType() == CMAFieldType.Array) {
       return Optional.ofNullable(CONTENTFUL_ES_TYPE_MAP.get(cmaField.getArrayItems().get(TYPE)));
     }
     return Optional.ofNullable(CONTENTFUL_ES_TYPE_MAP.get(cmaField.getType()));

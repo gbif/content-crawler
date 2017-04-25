@@ -21,7 +21,7 @@ public class VocabularyBuilder {
   private final Set<String> values;
 
   //Collects derived GbifRegions from country vocabularies
-  private final EnumSet<GbifRegion> gbifRegions;
+  private final Set<GbifRegion> gbifRegions;
 
   private final VocabularyTerms vocabularyTerms;
 
@@ -106,8 +106,8 @@ public class VocabularyBuilder {
   /**
    * Accumulates vocabularies from a CDAEntry.
    */
-  public VocabularyBuilder of(CDAEntry cdaEntry) {
-    if(cdaEntry != null) {
+  public VocabularyBuilder of(CDAEntry resource) {
+    Optional.ofNullable(resource).ifPresent(cdaEntry -> {
       //tries to load a country vocabulary
       vocabularyTerms.countryCodeFieldOf(cdaEntry).map(cdaEntry::getField).ifPresent(countryCode -> {
         values.add((String)countryCode);
@@ -117,7 +117,7 @@ public class VocabularyBuilder {
       vocabularyTerms.termOf(cdaEntry).map(cdaEntry::getField).ifPresent(vocValue -> {
         values.add((String)vocValue);
       });
-    }
+    });
     return this;
   }
 

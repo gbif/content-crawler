@@ -126,8 +126,7 @@ public class ContentfulCrawler {
    * @return a new instance of a Contentful CDAClient.
    */
   private CDAClient buildCdaClient() {
-    return CDAClient.builder().setSpace(configuration.spaceId)
-      .setToken(configuration.cdaToken).build();
+    return CDAClient.builder().setSpace(configuration.spaceId).setToken(configuration.cdaToken).build();
   }
 
   /**

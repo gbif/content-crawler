@@ -60,6 +60,6 @@ public class VocabularyTerms {
    * Extract the vocabulary content.
    */
   public Optional<String> countryCodeFieldOf(CDAEntry cdaEntry) {
-    return cdaEntry.contentType().id().equals(countryContentTypeId)? Optional.of(ISO_CODE_FIELD) :Optional.empty();
+    return cdaEntry.contentType().id().equals(countryContentTypeId) ? Optional.of(ISO_CODE_FIELD) : Optional.empty();
   }
 }

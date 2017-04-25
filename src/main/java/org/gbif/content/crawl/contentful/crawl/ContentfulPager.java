@@ -1,4 +1,4 @@
-package org.gbif.content.crawl.contentful.backup;
+package org.gbif.content.crawl.contentful.crawl;
 
 import java.util.Iterator;
 import java.util.NoSuchElementException;

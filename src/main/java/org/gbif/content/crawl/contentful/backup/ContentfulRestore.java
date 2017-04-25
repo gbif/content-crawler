@@ -201,7 +201,6 @@ public class ContentfulRestore {
    * Creates a new instance of a Contentful CMAClient.
    */
   private CMAClient buildCmaClient() {
-    return new CMAClient.Builder()
-      .setAccessToken(configuration.cmaToken).build();
+    return new CMAClient.Builder().setAccessToken(configuration.cmaToken).build();
   }
 }

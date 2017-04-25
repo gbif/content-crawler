@@ -3,8 +3,8 @@ package org.gbif.content.crawl.contentful.crawl;
 import static org.gbif.content.crawl.es.ElasticSearchUtils.getEsIdxName;
 
 import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.Collections;
+import java.util.Optional;
 
 import com.contentful.java.cda.CDAEntry;
 import com.contentful.java.cda.LocalizedResource;
@@ -21,7 +21,11 @@ public class NewsLinker {
 
   private static final Logger LOG = LoggerFactory.getLogger(NewsLinker.class);
 
-  private static final String NEWS_UPDATE_SCRIPT  = "if (ctx._source.%1$s == null) {ctx._source.%1$s = [params.tag]} else if (ctx._source.%1$s.contains(params.tag)) { ctx.op = \"none\"  } else { ctx._source.%1$s.add(params.tag) }";
+  private static final String NEWS_UPDATE_SCRIPT  = "if (ctx._source.%1$s == null) "  //field doesn't exist
+                                                    + "{ctx._source.%1$s = [params.tag]} " //create new list/array
+                                                    + "else if (ctx._source.%1$s.contains(params.tag)) " //value exists
+                                                    + "{ ctx.op = \"none\"  } " //do nothing
+                                                    + "else { ctx._source.%1$s.add(params.tag) }"; //add new value
 
   private final String newsContentTypeId;
 
@@ -49,13 +53,13 @@ public class NewsLinker {
   /**
    * Processes a list of possible news entries.
    */
-  public void processNewsTag(Collection<LocalizedResource> resources, String esTypeName, String tagValue) {
-    if (resources != null) {
+  public void processNewsTag(Collection<LocalizedResource> contentResources, String esTypeName, String tagValue) {
+    Optional.ofNullable(contentResources).ifPresent(resources ->
       resources.stream()
         .filter(resource -> CDAEntry.class.isInstance(resource)
                             && ((CDAEntry) resource).contentType().id().equals(newsContentTypeId))
-        .forEach(cdaEntry -> insertTag((CDAEntry) cdaEntry, esTypeName, tagValue));
-    }
+        .forEach(cdaEntry -> insertTag((CDAEntry) cdaEntry, esTypeName, tagValue))
+    );
   }
 
   /**
@@ -63,10 +67,9 @@ public class NewsLinker {
    */
   private void insertTag(CDAEntry cdaEntry, String esTypeName, String tagValue) {
     try {
-      Map<String, Object> params = new HashMap<>();
-      params.put("tag", tagValue);
-      String scriptText = String.format(NEWS_UPDATE_SCRIPT, esTypeName + "Tag");
-      Script script = new Script(ScriptType.INLINE, "painless", scriptText, params);
+      Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG,
+                                 String.format(NEWS_UPDATE_SCRIPT, esTypeName + "Tag"),
+                                 Collections.singletonMap("tag", tagValue));
       esClient.prepareUpdate(getEsIdxName(cdaEntry.contentType().name()),
                              esNewsIndexType, cdaEntry.id()).setScript(script).get();
     } catch (Exception ex) {
