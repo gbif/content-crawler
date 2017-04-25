@@ -109,14 +109,14 @@ public class VocabularyBuilder {
   public VocabularyBuilder of(CDAEntry resource) {
     Optional.ofNullable(resource).ifPresent(cdaEntry -> {
       //tries to load a country vocabulary
-      vocabularyTerms.countryCodeFieldOf(cdaEntry).map(cdaEntry::getField).ifPresent(countryCode -> {
-        values.add((String)countryCode);
-        Optional.ofNullable(Country.fromIsoCode((String)countryCode).getGbifRegion()).ifPresent(gbifRegions::add);
-      });
+      vocabularyTerms.countryCodeFieldOf(cdaEntry)
+        .map(countryCodeField -> (String)cdaEntry.getField(countryCodeField))
+        .ifPresent(countryCode -> {
+          values.add(countryCode);
+          Optional.ofNullable(Country.fromIsoCode(countryCode).getGbifRegion()).ifPresent(gbifRegions::add);
+        });
       //tries to load a vocabulary
-      vocabularyTerms.termOf(cdaEntry).map(cdaEntry::getField).ifPresent(vocValue -> {
-        values.add((String)vocValue);
-      });
+      vocabularyTerms.termOf(cdaEntry).map(cdaEntry::getField).ifPresent(vocValue -> values.add((String)vocValue));
     });
     return this;
   }
