@@ -2,8 +2,8 @@ package org.gbif.content.crawl.contentful;
 
 import org.gbif.content.crawl.es.ElasticSearchUtils;
 
+import java.util.Collection;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 import com.contentful.java.cda.CDAEntry;
@@ -49,7 +49,7 @@ public class NewsLinker {
   /**
    * Processes a list of possible news entries
    */
-  public void processNewsTag(List<LocalizedResource> resources, String esTypeName, String tagValue) {
+  public void processNewsTag(Collection<LocalizedResource> resources, String esTypeName, String tagValue) {
     if(resources != null) {
       resources.stream()
         .filter(resource -> CDAEntry.class.isInstance(resource)

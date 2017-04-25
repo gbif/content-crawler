@@ -10,12 +10,17 @@ import com.contentful.java.cda.CDAEntry;
  */
 public class Meta {
 
-  //Field names
+  //Known field names
   private static final String META_FIELD = "meta";
   private static final String DRUPAL_FIELD = "drupal";
   private static final String CREATED_FIELD = "created";
 
-
+  /**
+   * Private constructor.
+   */
+  private Meta () {
+    //NOP
+  }
   /**
    * Extracts the Meta information from the CDAEntry.
    */
@@ -23,7 +28,7 @@ public class Meta {
     return Optional.ofNullable(cdaEntry.getField(META_FIELD))
               .map(metaValue -> {
                 Map<String,Object> metaValueMap =  (Map<String,Object>)metaValue;
-                return (String)((Map<String,Object>)(metaValueMap.get(DRUPAL_FIELD))).get(CREATED_FIELD);
+                return (String)((Map<String,Object>)metaValueMap.get(DRUPAL_FIELD)).get(CREATED_FIELD);
               });
   }
 

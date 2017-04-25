@@ -4,8 +4,8 @@ import org.gbif.api.vocabulary.Country;
 import org.gbif.api.vocabulary.GbifRegion;
 import org.gbif.content.crawl.VocabularyTerms;
 
+import java.util.Collection;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -18,10 +18,10 @@ import com.contentful.java.cda.CDAEntry;
 public class VocabularyBuilder {
 
   //Variable to store vocabulary values
-  private Set<String> values;
+  private final Set<String> values;
 
   //Collects derived GbifRegions from country vocabularies
-  private Set<GbifRegion> gbifRegions;
+  private final Set<GbifRegion> gbifRegions;
 
   private final VocabularyTerms vocabularyTerms;
 
@@ -124,7 +124,7 @@ public class VocabularyBuilder {
   /**
    * Accumulates vocabularies from a list of CDAEntry.
    */
-  public VocabularyBuilder ofList(List<?> resources) {
+  public VocabularyBuilder ofList(Collection<?> resources) {
     resources.stream().filter(CDAEntry.class::isInstance).forEach(resource -> of((CDAEntry)resource));
     return this;
   }

@@ -15,7 +15,7 @@ import com.contentful.java.cda.CDAField;
 public class ContentTypeFields {
 
   //Map cache of all type mappings per content type id
-  private static Map<String, ContentTypeFields> cache = new HashMap<>();
+  private static final Map<String, ContentTypeFields> cache = new HashMap<>();
 
   //CDAContent type to be analyzed
   private final CDAContentType cdaContentType;

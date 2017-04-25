@@ -4,8 +4,6 @@ import org.gbif.cli.BaseCommand;
 import org.gbif.cli.Command;
 import org.gbif.content.crawl.conf.ContentCrawlConfiguration;
 
-import java.io.IOException;
-
 import org.kohsuke.MetaInfServices;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,7 +38,7 @@ public class ContentfulRestoreCommand extends BaseCommand {
   protected void doRun() {
     try {
       new ContentfulRestore(configuration).run();
-    } catch (IOException e) {
+    } catch (Exception e) {
       LOG.error("Restore failed!", e);
       System.exit(1); // to enable triggering of e.g. an email from a Cron
     }

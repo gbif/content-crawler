@@ -2,7 +2,6 @@ package org.gbif.content.crawl.contentful;
 
 import org.gbif.content.crawl.conf.ContentCrawlConfiguration;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -19,7 +18,6 @@ import com.contentful.java.cma.model.CMAContentType;
 import com.contentful.java.cma.model.CMAEntry;
 import com.contentful.java.cma.model.CMAResource;
 import com.contentful.java.cma.model.CMASpace;
-import com.google.common.base.Charsets;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Throwables;
 import com.google.gson.Gson;
@@ -33,7 +31,6 @@ import okio.Okio;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static org.gbif.content.crawl.es.ElasticSearchUtils.createIndex;
 
 /**
  * Crawls all content from Contentful through the Management API and stores it for backup and disaster recovery
@@ -58,7 +55,7 @@ public class ContentfulBackup {
     Preconditions.checkNotNull(configuration.contentfulBackup, "Contentful Backup configuration can't be null");
     this.configuration = configuration;
     cmaClient = buildCmaClient();
-    startTime =  new SimpleDateFormat("yyyyMMdd-HHmmss").format(new Date()) ;
+    startTime =  new SimpleDateFormat("yyyyMMdd-HHmmss").format(new Date());
   }
 
   /**
@@ -67,7 +64,7 @@ public class ContentfulBackup {
   public void run() {
     try {
       CMAArray<CMASpace> result = cmaClient.spaces().fetchAll();
-      for (CMASpace space : result.getItems()) {
+      result.getItems().forEach(space -> {
         LOG.info("Backing up space name[{}] id[{}]", space.getName(), extractSysId(space));
 
         Path spaceDir = configuration.contentfulBackup.targetDir.resolve(extractSysId(space));
@@ -75,8 +72,7 @@ public class ContentfulBackup {
         backupContentTypes(space, spaceDir);
         backupEntries(space, spaceDir);
         backupAssets(space, spaceDir);
-      }
-
+      });
     } catch (Exception e) {
       Throwables.propagate(e);
     }
@@ -87,7 +83,7 @@ public class ContentfulBackup {
       contentTypePager = ContentfulManagementPager.newContentTypePager(cmaClient, PAGE_SIZE, extractSysId(space));
     Observable.fromIterable(contentTypePager)
               .doOnComplete(() -> LOG.info("Finished backing up content types"))
-              .doOnError(error -> Throwables.propagate(error))
+              .doOnError(Throwables::propagate)
               .subscribe(results -> {
                 results.getItems().forEach(contentType -> {
 
@@ -109,7 +105,7 @@ public class ContentfulBackup {
       entryPager = ContentfulManagementPager.newEntryPager(cmaClient, PAGE_SIZE, extractSysId(space));
     Observable.fromIterable(entryPager)
               .doOnComplete(() -> LOG.info("Finished backing up entries"))
-              .doOnError(error -> Throwables.propagate(error))
+              .doOnError(Throwables::propagate)
               .subscribe(results -> {
                 results.getItems().forEach(entry -> {
 
@@ -130,7 +126,6 @@ public class ContentfulBackup {
   }
 
   private void backupAssets(CMASpace space, Path spaceDir) {
-    String spaceId = extractSysId(space);
     OkHttpClient client = new OkHttpClient.Builder()
       .connectTimeout(HTTP_TIMEOUT_SECS, TimeUnit.SECONDS)
       .readTimeout(HTTP_TIMEOUT_SECS, TimeUnit.SECONDS)
@@ -142,7 +137,7 @@ public class ContentfulBackup {
       assetsPager = ContentfulManagementPager.newAssetsPager(cmaClient, PAGE_SIZE, extractSysId(space));
     Observable.fromIterable(assetsPager)
               .doOnComplete(() -> LOG.info("Finished backing up assets"))
-              .doOnError(error -> Throwables.propagate(error))
+              .doOnError(Throwables::propagate)
               .subscribe(results -> {
                 results.getItems().forEach(asset -> {
                   LOG.info("Asset: {}", GSON.toJson(extractSysId(asset)));
@@ -214,16 +209,16 @@ public class ContentfulBackup {
    * @See https://github.com/contentful/contentful-management.java/issues/71
    * @throws NullPointerException if you provide anything other than an object with a valid sys entry
    */
-  private String extractSysId(CMAResource resource) {
+  private static String extractSysId(CMAResource resource) {
     return String.valueOf(resource.getSys().get("id"));
   }
 
   // Extracts the id from e.g.
   //   sys: { contentType: {sys={type=Link, linkType=ContentType, id=Event}}}
-  private String extractContentTypeId(CMAEntry entry) {
+  private static String extractContentTypeId(CMAEntry entry) {
     return (String)
       ((Map)(
-          (Map)(entry.getSys().get("contentType"))
+          (Map)entry.getSys().get("contentType")
         ).get("sys"))
         .get("id");
   }

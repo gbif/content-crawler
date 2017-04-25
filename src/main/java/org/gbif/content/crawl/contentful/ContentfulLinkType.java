@@ -28,9 +28,9 @@ public enum ContentfulLinkType {
   /**
    * Literal value mapped to a Contentful link type name to a literal value.
    */
-  public static Optional<ContentfulLinkType> typeOf(String linkType) {
+  public static Optional<ContentfulLinkType> typeOf(String linkTypeName) {
     return Arrays.stream(ContentfulLinkType.values())
-      .filter(contentfulLinkType -> contentfulLinkType.linkType.equals(linkType))
+      .filter(contentfulLinkType -> contentfulLinkType.getLinkType().equals(linkTypeName))
       .findFirst();
   }
 }

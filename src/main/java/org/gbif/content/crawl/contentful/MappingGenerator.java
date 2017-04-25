@@ -1,6 +1,7 @@
 package org.gbif.content.crawl.contentful;
 
 import java.io.IOException;
+import java.util.Collection;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
@@ -17,6 +18,9 @@ import com.google.common.collect.ImmutableMap;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
 
+/**
+ * Generates the ElasticSearch mapping of a Contentful ContentType.
+ */
 public class MappingGenerator {
 
   private static final String KEYWORD = "keyword";
@@ -24,7 +28,7 @@ public class MappingGenerator {
   private static final String VOCABULARY = "vocabulary";
 
   /**
-   * Fields that are stored but not indexed/analized.
+   * Fields that are stored but not indexed/analised.
    */
   private static final Pattern IGNORED_FIELDS = Pattern.compile("space|revision|type");
 
@@ -82,7 +86,7 @@ public class MappingGenerator {
   /**
    * List of content types that store vocabularies.
    */
-  private final Set<String> vocabularies;
+  private final Collection<String> vocabularies;
 
   /**
    * Creates a Json structure like:
@@ -253,7 +257,7 @@ public class MappingGenerator {
   /**
    * Default constructor.
    */
-  public MappingGenerator(Set<CMAContentType> vocabularies) {
+  public MappingGenerator(Collection<CMAContentType> vocabularies) {
     this.vocabularies = vocabularies.stream().map(CMAContentType::getResourceId).collect(Collectors.toSet());
   }
 

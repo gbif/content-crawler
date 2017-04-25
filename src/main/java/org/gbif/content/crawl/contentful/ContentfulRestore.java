@@ -5,32 +5,17 @@ import org.gbif.content.crawl.conf.ContentCrawlConfiguration;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
-import java.util.function.Consumer;
 
 import com.contentful.java.cma.CMAClient;
-import com.contentful.java.cma.model.CMAArray;
 import com.contentful.java.cma.model.CMAAsset;
 import com.contentful.java.cma.model.CMAContentType;
 import com.contentful.java.cma.model.CMAEntry;
-import com.contentful.java.cma.model.CMAResource;
-import com.contentful.java.cma.model.CMASpace;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Throwables;
 import com.google.common.util.concurrent.RateLimiter;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import io.reactivex.Observable;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.Response;
-import okio.BufferedSink;
-import okio.Okio;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,7 +34,7 @@ public class ContentfulRestore {
   /**
    * Contentful Restore configuration is required to create an instance of this class.
    */
-  public ContentfulRestore(ContentCrawlConfiguration configuration) throws IOException {
+  public ContentfulRestore(ContentCrawlConfiguration configuration) {
     Preconditions.checkNotNull(configuration, "Crawler configuration can't be null");
     Preconditions.checkNotNull(configuration.contentfulRestore, "Contentful Restore configuration can't be null");
     this.configuration = configuration.contentfulRestore;
@@ -66,22 +51,18 @@ public class ContentfulRestore {
 
       // Restore all the entries, skipping the Asset meta folder
       Files.list(configuration.sourceDir)
-           .forEach(new Consumer<Path>() {
-                      @Override
-                      public void accept(Path path) {
-                        if (path.endsWith("Asset") || path.endsWith("ContentType")) {
-                          return;
-                        }
-
-                        try {
-                          LOG.info("Starting {}", path);
-                          restoreEntries(path);
-                        } catch (IOException e) {
-                          Throwables.propagate(e);
-                        }
+           .forEach(path ->  {
+                      if (path.endsWith("Asset") || path.endsWith("ContentType")) {
+                        return;
                       }
-                    }
-           );
+
+                      try {
+                        LOG.info("Starting {}", path);
+                        restoreEntries(path);
+                      } catch (IOException e) {
+                        Throwables.propagate(e);
+                      }
+                  });
 
     } catch (Exception e) {
       Throwables.propagate(e);
@@ -90,9 +71,7 @@ public class ContentfulRestore {
 
   private void restoreContentTypes() throws IOException {
     Files.list(configuration.sourceDir.resolve("./ContentType"))
-         .forEach(new Consumer<Path>() {
-           @Override
-           public void accept(Path path) {
+         .forEach(path -> {
              try {
                CMAContentType type = GSON.fromJson(new String(Files.readAllBytes(path)), CMAContentType.class);
                cleanSys(type.getSys());
@@ -114,7 +93,6 @@ public class ContentfulRestore {
              } catch (IOException e) {
                Throwables.propagate(e);
              }
-           }
          }
     );
   }
@@ -125,46 +103,43 @@ public class ContentfulRestore {
                                 "Assets directory [%s] is missing and should be sitting beside the sourceDir",
                                 assetsDir);
     Files.list(configuration.sourceDir.resolve("./Asset"))
-         .forEach(new Consumer<Path>() {
-                    @Override
-                    public void accept(Path path) {
+         .forEach(path -> {
+                    try {
+                      String assetAsJSON = new String(Files.readAllBytes(path));
+                      // In the backup the URL will have the likes of this:
+                      //   "url": "//images.contentful.com/
+                      // If we are to do disaster recovery, we actually need to make the backup directory visible on
+                      // the internet, and rewrite those to be something that contentful can access.  However, for
+                      // just copying a space (e.g. Production -> Development) Contentful will recognise these as
+                      // preprocessed, which is ideal for that purpose.  Full disaster recovery is not implemented, but
+                      // this is the only know issue.
+                      CMAAsset assetMeta = GSON.fromJson(assetAsJSON, CMAAsset.class);
+                      cleanSys(assetMeta.getSys());
+
                       try {
-                        String assetAsJSON = new String(Files.readAllBytes(path));
-                        // In the backup the URL will have the likes of this:
-                        //   "url": "//images.contentful.com/
-                        // If we are to do disaster recovery, we actually need to make the backup directory visible on
-                        // the internet, and rewrite those to be something that contentful can access.  However, for
-                        // just copying a space (e.g. Production -> Development) Contentful will recognise these as
-                        // preprocessed, which is ideal for that purpose.  Full disaster recovery is not implemented, but
-                        // this is the only know issue.
-                        CMAAsset assetMeta = GSON.fromJson(assetAsJSON, CMAAsset.class);
-                        cleanSys(assetMeta.getSys());
+                        CMAAsset existing = cmaClient.assets().fetchOne(configuration.spaceId, assetMeta.getResourceId());
+                        LOG.info("Asset exists: {}", assetMeta.getFields().get("title").get("en-GB"));
+                        rateLimiter.acquire();
 
-                        try {
-                          CMAAsset existing = cmaClient.assets().fetchOne(configuration.spaceId, assetMeta.getResourceId());
-                          LOG.info("Asset exists: {}", assetMeta.getFields().get("title").get("en-GB"));
+                      } catch (RuntimeException e) {
+                        LOG.info("Restoring asset: {}", assetMeta.getFields().get("title").get("en-GB"));
+
+                        CMAAsset created = cmaClient.assets().create(configuration.spaceId, assetMeta);
+                        // If you are developing a disaster recovery, here you would need to do something like this:
+                        // cmaClient.assets().process(...);
+
+                        // Assets which are not processed cannot be published
+                        if (created.getFields().get("file") != null &&
+                            created.getFields().get("file").get("en-GB") != null &&
+                            ((Map<String, String>)created.getFields().get("file").get("en-GB")).get("url") != null) {
+                          cmaClient.assets().publish(created);
                           rateLimiter.acquire();
-
-                        } catch (RuntimeException e) {
-                          LOG.info("Restoring asset: {}", assetMeta.getFields().get("title").get("en-GB"));
-
-                          CMAAsset created = cmaClient.assets().create(configuration.spaceId, assetMeta);
-                          // If you are developing a disaster recovery, here you would need to do something like this:
-                          // cmaClient.assets().process(...);
-
-                          // Assets which are not processed cannot be published
-                          if (created.getFields().get("file") != null &&
-                              created.getFields().get("file").get("en-GB") != null &&
-                              ((Map<String, String>)created.getFields().get("file").get("en-GB")).get("url") != null) {
-                            cmaClient.assets().publish(created);
-                            rateLimiter.acquire();
-                          }
-
                         }
 
-                      } catch (IOException e) {
-                        Throwables.propagate(e);
                       }
+
+                    } catch (IOException e) {
+                      Throwables.propagate(e);
                     }
                   }
          );
@@ -172,9 +147,7 @@ public class ContentfulRestore {
 
   private void restoreEntries(Path entryDirectory) throws IOException {
     Files.list(entryDirectory)
-         .forEach(new Consumer<Path>() {
-                    @Override
-                    public void accept(Path path) {
+         .forEach(path -> {
                       try {
                         LOG.info("Restoring {}", path.getFileName());
                         CMAEntry entry = GSON.fromJson(new String(Files.readAllBytes(path)), CMAEntry.class);
@@ -195,7 +168,6 @@ public class ContentfulRestore {
                       } catch (IOException e) {
                         Throwables.propagate(e);
                       }
-                    }
                   }
          );
   }
@@ -203,7 +175,7 @@ public class ContentfulRestore {
   /**
    * @return the content type id of the entry
    */
-  private String getContentTypeId(CMAEntry entry) {
+  private static String getContentTypeId(CMAEntry entry) {
     // there is no other way to extract this
     try {
       return (String)((Map<String, Object>)((Map<String, Object>)entry.getSys().get("contentType"))
@@ -218,7 +190,7 @@ public class ContentfulRestore {
   /**
    * Clean up the Contentful Sys metadata suitable for reposting into the new space.
    */
-  private static void cleanSys(HashMap<String, Object> sys) {
+  private static void cleanSys(Map<String, Object> sys) {
     sys.remove("space"); // will change by definition of this restore function
     sys.remove("publishedBy"); // user might not exist
     sys.remove("updatedBy"); // user might not exist

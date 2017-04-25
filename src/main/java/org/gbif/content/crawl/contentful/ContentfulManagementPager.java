@@ -5,9 +5,6 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 
 import com.contentful.java.cma.CMAClient;
-import com.contentful.java.cma.ModuleAssets;
-import com.contentful.java.cma.ModuleContentTypes;
-import com.contentful.java.cma.ModuleEntries;
 import com.contentful.java.cma.model.CMAArray;
 import com.contentful.java.cma.model.CMAAsset;
 import com.contentful.java.cma.model.CMAContentType;
@@ -44,15 +41,15 @@ class ContentfulManagementPager<T extends CMAResource> implements Iterable<CMAAr
   }
 
   static ContentfulManagementPager<CMAEntry> newEntryPager(CMAClient client, int pageSize, String spaceId) {
-    return new ContentfulManagementPager<CMAEntry>(client, pageSize, spaceId, Mode.ENTRIES);
+    return new ContentfulManagementPager<>(client, pageSize, spaceId, Mode.ENTRIES);
   }
 
   static ContentfulManagementPager<CMAAsset> newAssetsPager(CMAClient client, int pageSize, String spaceId) {
-    return new ContentfulManagementPager<CMAAsset>(client, pageSize, spaceId, Mode.ASSETS);
+    return new ContentfulManagementPager<>(client, pageSize, spaceId, Mode.ASSETS);
   }
 
   static ContentfulManagementPager<CMAContentType> newContentTypePager(CMAClient client, int pageSize, String spaceId) {
-    return new ContentfulManagementPager<CMAContentType>(client, pageSize, spaceId, Mode.CONTENT_TYPES);
+    return new ContentfulManagementPager<>(client, pageSize, spaceId, Mode.CONTENT_TYPES);
   }
 
   private class ContentfulIterator<T extends CMAResource> implements Iterator<CMAArray<T>> {
@@ -64,14 +61,15 @@ class ContentfulManagementPager<T extends CMAResource> implements Iterable<CMAAr
       Map<String, String> query = Maps.newHashMap(ImmutableMap.of("skip", String.valueOf(skip)));
 
       // This is a nuisance, but the Contentful API doesn't share a common interface
-      if (Mode.ENTRIES == mode)
+      if (Mode.ENTRIES == mode) {
         current = (CMAArray<T>) cmaClient.entries().fetchAll(spaceId, query);
-      else if (Mode.ASSETS == mode)
+      } else if (Mode.ASSETS == mode) {
         current = (CMAArray<T>) cmaClient.assets().fetchAll(spaceId, query);
-      else if (Mode.CONTENT_TYPES == mode)
+      } else if (Mode.CONTENT_TYPES == mode) {
         current = (CMAArray<T>) cmaClient.contentTypes().fetchAll(spaceId, query);
-      else
+      } else {
         throw new IllegalStateException("Unsupported mode of operation"); // should never happen
+      }
 
       skip += pageSize;
       return current.getItems()!=null && !current.getItems().isEmpty();

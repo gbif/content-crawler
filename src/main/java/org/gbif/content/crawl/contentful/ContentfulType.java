@@ -30,9 +30,9 @@ public enum ContentfulType {
   /**
    * Gets the literal associated to Contentful type name.
    */
-  public static Optional<ContentfulType> typeOf(String typeName) {
+  public static Optional<ContentfulType> typeOf(String type) {
    return Arrays.stream(ContentfulType.values())
-            .filter(contentfulType -> contentfulType.getTypeName().equals(typeName))
+            .filter(contentfulType -> contentfulType.getTypeName().equals(type))
             .findFirst();
   }
 
