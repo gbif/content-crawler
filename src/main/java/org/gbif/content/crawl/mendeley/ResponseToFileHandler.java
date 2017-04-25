@@ -29,7 +29,7 @@ public class ResponseToFileHandler implements ResponseHandler {
     ) {
       out.write(responseAsJson);
     }
-    pageNumber +=1;
+    pageNumber += 1;
   }
 
   @Override

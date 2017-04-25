@@ -1,4 +1,4 @@
-package org.gbif.content.crawl.contentful;
+package org.gbif.content.crawl.contentful.crawl;
 
 import org.gbif.cli.BaseCommand;
 import org.gbif.cli.Command;

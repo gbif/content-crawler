@@ -1,4 +1,4 @@
-package org.gbif.content.crawl.contentful;
+package org.gbif.content.crawl.contentful.crawl;
 
 import java.util.Arrays;
 import java.util.Optional;

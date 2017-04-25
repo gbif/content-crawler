@@ -1,4 +1,4 @@
-package org.gbif.content.crawl.contentful;
+package org.gbif.content.crawl.contentful.backup;
 
 import org.gbif.content.crawl.conf.ContentCrawlConfiguration;
 

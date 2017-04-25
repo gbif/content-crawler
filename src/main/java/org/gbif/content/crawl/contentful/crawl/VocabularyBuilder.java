@@ -1,10 +1,10 @@
-package org.gbif.content.crawl.contentful;
+package org.gbif.content.crawl.contentful.crawl;
 
 import org.gbif.api.vocabulary.Country;
 import org.gbif.api.vocabulary.GbifRegion;
-import org.gbif.content.crawl.VocabularyTerms;
 
 import java.util.Collection;
+import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
@@ -21,7 +21,7 @@ public class VocabularyBuilder {
   private final Set<String> values;
 
   //Collects derived GbifRegions from country vocabularies
-  private final Set<GbifRegion> gbifRegions;
+  private final EnumSet<GbifRegion> gbifRegions;
 
   private final VocabularyTerms vocabularyTerms;
 
@@ -31,7 +31,7 @@ public class VocabularyBuilder {
   public VocabularyBuilder(VocabularyTerms vocabularyTerms) {
     //Initialize values
     values = new HashSet<>();
-    gbifRegions = new HashSet<>();
+    gbifRegions = EnumSet.noneOf(GbifRegion.class);
     this.vocabularyTerms = vocabularyTerms;
   }
 

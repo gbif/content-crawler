@@ -1,4 +1,4 @@
-package org.gbif.content.crawl.contentful.meta;
+package org.gbif.content.crawl.contentful.crawl;
 
 import java.util.Map;
 import java.util.Optional;
@@ -18,18 +18,18 @@ public class Meta {
   /**
    * Private constructor.
    */
-  private Meta () {
+  private Meta() {
     //NOP
   }
+
   /**
    * Extracts the Meta information from the CDAEntry.
    */
   public static Optional<String> getMetaCreatedDate(CDAEntry cdaEntry) {
     return Optional.ofNullable(cdaEntry.getField(META_FIELD))
-              .map(metaValue -> {
-                Map<String,Object> metaValueMap =  (Map<String,Object>)metaValue;
-                return (String)((Map<String,Object>)metaValueMap.get(DRUPAL_FIELD)).get(CREATED_FIELD);
-              });
+              .map(metaValue ->
+                (String)((Map<String,Object>)((Map<String,Object>)metaValue).get(DRUPAL_FIELD)).get(CREATED_FIELD)
+              );
   }
 
 }

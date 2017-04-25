@@ -53,6 +53,13 @@ public class MendeleyDocumentCrawler {
       OAuthJSONAccessTokenResponse token = getToken(config.mendeley);
       Observable
         .fromIterable(new MendeleyPager(targetUrl, token, requestConfig, httpClient))
+        .doOnTerminate(() -> handlers.forEach(handler -> {
+          try {
+            handler.finish();
+          } catch (Exception ex){
+            LOG.error("Error finishing handlers", ex);
+          }
+        }))
         .subscribe(response -> handlers.parallelStream().forEach(handler -> {
           try {
             handler.handleResponse(response);

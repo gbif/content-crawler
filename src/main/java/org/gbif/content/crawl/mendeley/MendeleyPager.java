@@ -60,7 +60,7 @@ public class MendeleyPager implements Iterable<String> {
     /**
      * Initializes the nextUrl using the initial target url.
      */
-    private MendeleyIterator() {
+    MendeleyIterator() {
       nextUrl = Optional.ofNullable(targetUrl);
     }
 

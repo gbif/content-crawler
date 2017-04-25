@@ -1,4 +1,4 @@
-package org.gbif.content.crawl;
+package org.gbif.content.crawl.contentful.crawl;
 
 import java.util.HashMap;
 import java.util.Map;

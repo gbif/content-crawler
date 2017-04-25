@@ -174,7 +174,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
    * Changes the name to the lowerCamelCase and replace some field names.
    */
   private static void normalizeName(JsonNode root, JsonNode nodeValue, String fieldName) {
-    if (fieldName.equals(CREATED)) {
+    if(fieldName.equals(CREATED)) {
       replaceNodeName((ObjectNode) root, nodeValue, fieldName, ES_CREATED_AT_FL);
     } else if (fieldName.equals(LAST_MODIFIED)) {
       replaceNodeName((ObjectNode) root, nodeValue, fieldName, ES_UPDATED_AT_FL);

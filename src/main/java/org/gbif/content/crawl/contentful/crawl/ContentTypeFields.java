@@ -1,4 +1,4 @@
-package org.gbif.content.crawl.contentful;
+package org.gbif.content.crawl.contentful.crawl;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -7,6 +7,7 @@ import java.util.stream.Collectors;
 
 import com.contentful.java.cda.CDAContentType;
 import com.contentful.java.cda.CDAField;
+import com.contentful.java.cma.Constants.CMAFieldType;
 
 /**
  * This class creates a cache of common lookup operations on content type fields.
@@ -24,7 +25,7 @@ public class ContentTypeFields {
   private final Map<String,Integer> fieldIdx;
 
   //Maps field names to types
-  private final Map<String,ContentfulType> fieldType;
+  private final Map<String,CMAFieldType> fieldType;
 
   //Maps field names to link types
   private final Map<String,ContentfulLinkType> fieldLinkType;
@@ -39,7 +40,7 @@ public class ContentTypeFields {
       .collect(Collectors.toMap(CDAField::id, cdaField -> cdaContentType.fields().indexOf(cdaField)));
 
     fieldType = cdaContentType.fields().stream()
-      .collect(Collectors.toMap(CDAField::id, cdaField -> ContentfulType.typeOf(cdaField.type()).get()));
+      .collect(Collectors.toMap(CDAField::id, cdaField -> CMAFieldType.valueOf(cdaField.type())));
 
     fieldLinkType = cdaContentType.fields().stream().filter(cdaField -> cdaField.linkType() != null)
       .collect(Collectors.toMap(CDAField::id, cdaField -> ContentfulLinkType.typeOf(cdaField.linkType()).get()));
@@ -56,7 +57,7 @@ public class ContentTypeFields {
   /**
    * Returns the ContentfulType of a field.
    */
-  public ContentfulType getFieldType(String fieldName) {
+  public CMAFieldType getFieldType(String fieldName) {
     return fieldType.get(fieldName);
   }
 

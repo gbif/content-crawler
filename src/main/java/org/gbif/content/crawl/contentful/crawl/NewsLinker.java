@@ -1,6 +1,6 @@
-package org.gbif.content.crawl.contentful;
+package org.gbif.content.crawl.contentful.crawl;
 
-import org.gbif.content.crawl.es.ElasticSearchUtils;
+import static org.gbif.content.crawl.es.ElasticSearchUtils.getEsIdxName;
 
 import java.util.Collection;
 import java.util.HashMap;
@@ -47,10 +47,10 @@ public class NewsLinker {
   }
 
   /**
-   * Processes a list of possible news entries
+   * Processes a list of possible news entries.
    */
   public void processNewsTag(Collection<LocalizedResource> resources, String esTypeName, String tagValue) {
-    if(resources != null) {
+    if (resources != null) {
       resources.stream()
         .filter(resource -> CDAEntry.class.isInstance(resource)
                             && ((CDAEntry) resource).contentType().id().equals(newsContentTypeId))
@@ -67,7 +67,8 @@ public class NewsLinker {
       params.put("tag", tagValue);
       String scriptText = String.format(NEWS_UPDATE_SCRIPT, esTypeName + "Tag");
       Script script = new Script(ScriptType.INLINE, "painless", scriptText, params);
-      esClient.prepareUpdate(ElasticSearchUtils.getEsIdxName(cdaEntry.contentType().name()), esNewsIndexType, cdaEntry.id()).setScript(script).get();
+      esClient.prepareUpdate(getEsIdxName(cdaEntry.contentType().name()),
+                             esNewsIndexType, cdaEntry.id()).setScript(script).get();
     } catch (Exception ex) {
       LOG.error("Error updating news tag {} from entry {} ", tagValue, cdaEntry, ex);
     }

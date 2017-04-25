@@ -1,4 +1,4 @@
-package org.gbif.content.crawl.contentful;
+package org.gbif.content.crawl.contentful.crawl;
 
 import java.io.IOException;
 import java.util.Collection;
@@ -89,6 +89,7 @@ public class MappingGenerator {
   private final Collection<String> vocabularies;
 
   /**
+   * Mapping properties.
    * Creates a Json structure like:
    * "properties": {
    *   "fieldName": {
@@ -114,6 +115,7 @@ public class MappingGenerator {
   }
 
   /**
+   * Ignored fields mapping.
    * Produces the following JSON structure:
    * {
    *  "ignored_fields": {
@@ -140,6 +142,7 @@ public class MappingGenerator {
   }
 
   /**
+   * Add mapping to reversed links.
    * Produces the following JSON structure:
    * {
    *  "ignored_fields": {
@@ -169,6 +172,7 @@ public class MappingGenerator {
 
 
   /**
+   * Assets mapping.
    * Produces the following JSON structure:
    * {
    *  "asset_files": {
@@ -193,6 +197,7 @@ public class MappingGenerator {
   }
 
   /**
+   * Default nested mapping.
    * Produces the following JSON structure:
    * {
    *  "asset_fieldName": {
@@ -215,6 +220,7 @@ public class MappingGenerator {
   }
 
   /**
+   * Template for dynamic field mapping.
    * Produces a Json object like:
    * {
    *   "fieldName": {
@@ -248,10 +254,10 @@ public class MappingGenerator {
   /**
    * Checks if the CDAField represents a Link to another resource.
    */
-  private static boolean isLink(CMAField cdaField) {
-    return cdaField.getType() == Constants.CMAFieldType.Link
-           || (cdaField.getType() == Constants.CMAFieldType.Array
-               && cdaField.getArrayItems().get(TYPE).equals(Constants.CMAFieldType.Link.name()));
+  private static boolean isLink(CMAField cmaField) {
+    return cmaField.getType() == Constants.CMAFieldType.Link
+           || (cmaField.getType() == Constants.CMAFieldType.Array
+               && cmaField.getArrayItems().get(TYPE).equals(Constants.CMAFieldType.Link.name()));
   }
 
   /**
