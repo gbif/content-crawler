@@ -6,6 +6,8 @@ import org.gbif.api.vocabulary.Language;
 import org.gbif.content.crawl.conf.ContentCrawlConfiguration;
 
 import java.io.IOException;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Map;
@@ -61,7 +63,6 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
   private static final Logger LOG = LoggerFactory.getLogger(ElasticSearchIndexHandler.class);
   private static final ObjectMapper MAPPER = new ObjectMapper();
   public static final String LAST_MODIFIED = "last_modified";
-  public static final String CREATED = "created";
 
   private final Client client;
   private final ContentCrawlConfiguration conf;
@@ -128,6 +129,30 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
   }
 
   /**
+   * Evaluates the fields year, month and day to calculate the createdAt field.
+   * Some documents in Mendeley are reported with incorrect 'day of the month' values, this function uses
+   * Date math to avoid errors at indexing time in ElasticSearch.
+   */
+  private static Optional<String> createdAt(ObjectNode objectNode) {
+    return Optional.ofNullable(objectNode.get("year"))
+            .map(JsonNode::asText)
+            .map(yearValue -> LocalDate.ofYearDay(Integer.parseInt(yearValue),1)
+                              .withMonth(getDateBasedField(objectNode, "month"))
+                              .plusDays(getDateBasedField(objectNode, "day") - 1)
+                              .atStartOfDay()
+                              .format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T00:00:00.000Z'")));
+  }
+
+  /**
+   * Gets the integer value of fields month and day.
+   */
+  private static Integer getDateBasedField(ObjectNode objectNode, String field) {
+    return Optional.ofNullable(objectNode.get(field))
+            .map(monthNode -> Integer.parseInt(monthNode.asText()))
+            .orElse(1);
+  }
+
+  /**
    * Replaces the specials field names and values.
    *  - Replaces field name type for literature_type.
    *  - Replaces the language name for ISOLanguage code.
@@ -153,6 +178,8 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
       }
 
     });
+    createdAt(docNode)
+      .ifPresent(createdAtValue -> docNode.put(ES_CREATED_AT_FL, createdAtValue));
   }
 
   /**
@@ -174,9 +201,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
    * Changes the name to the lowerCamelCase and replace some field names.
    */
   private static void normalizeName(JsonNode root, JsonNode nodeValue, String fieldName) {
-    if (fieldName.equals(CREATED)) {
-      replaceNodeName((ObjectNode) root, nodeValue, fieldName, ES_CREATED_AT_FL);
-    } else if (fieldName.equals(LAST_MODIFIED)) {
+    if (fieldName.equals(LAST_MODIFIED)) {
       replaceNodeName((ObjectNode) root, nodeValue, fieldName, ES_UPDATED_AT_FL);
     } else {
       String camelCaseName = CaseFormat.LOWER_UNDERSCORE.to(CaseFormat.LOWER_CAMEL, fieldName);

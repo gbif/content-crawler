@@ -82,7 +82,7 @@ public class EsDocBuilder {
       vocabularyBuilder.of(fieldCdaEntry)
         .one(vocValue -> entries.put(field, vocValue))
         .gbifRegion(gbifRegion -> entries.put(REGION_FIELD, gbifRegion));
-      if(vocabularyBuilder.isEmpty()) {
+      if (vocabularyBuilder.isEmpty()) {
         nestedEntriesConsumer.accept(fieldCdaEntry);
         entries.put(field, getAssociatedEntryFields(fieldCdaEntry));
       }
