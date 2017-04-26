@@ -43,7 +43,7 @@ public class ContentTypeFields {
       .collect(Collectors.toMap(CDAField::id, cdaField -> CMAFieldType.valueOf(cdaField.type())));
 
     fieldLinkType = cdaContentType.fields().stream().filter(cdaField -> cdaField.linkType() != null)
-      .collect(Collectors.toMap(CDAField::id, cdaField -> ContentfulLinkType.typeOf(cdaField.linkType()).get()));
+      .collect(Collectors.toMap(CDAField::id, cdaField -> ContentfulLinkType.valueOf(cdaField.linkType())));
 
   }
 

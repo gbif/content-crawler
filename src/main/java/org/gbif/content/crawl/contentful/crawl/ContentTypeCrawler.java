@@ -152,7 +152,7 @@ public class ContentTypeCrawler {
         Optional.ofNullable(cdaEntry.getField(field))
           .map(entryFieldValue -> (LocalizedResource)entryFieldValue)
           .ifPresent(fieldResourceEntry -> {
-            if (ContentfulLinkType.ASSET == contentTypeFields.getFieldLinkType(field)) {
+            if (ContentfulLinkType.Asset == contentTypeFields.getFieldLinkType(field)) {
               entries.put(field,  fieldResourceEntry.rawFields());
             } else {
               CDAEntry fieldCdaEntry = (CDAEntry)fieldResourceEntry;
