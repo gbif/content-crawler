@@ -43,6 +43,9 @@ public class VocabularyTerms {
     cache.put(countryContentTypeId, fieldName);
   }
 
+  /**
+   * Gets the term field of vocabulary content type.
+   */
   private static String getVocabularyField(CMAContentType contentType, String fieldName) {
     return contentType.getFields().stream().filter(cdaField -> fieldName.equals(cdaField.getId()))
       .findFirst().map(CMAField::getId)

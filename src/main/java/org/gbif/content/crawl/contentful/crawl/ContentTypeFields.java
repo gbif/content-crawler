@@ -3,11 +3,15 @@ package org.gbif.content.crawl.contentful.crawl;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.contentful.java.cda.CDAContentType;
 import com.contentful.java.cda.CDAField;
 import com.contentful.java.cma.Constants.CMAFieldType;
+
+import static org.gbif.content.crawl.contentful.crawl.MappingGenerator.COLLAPSIBLE_FIELDS;
+import static org.gbif.content.crawl.contentful.crawl.MappingGenerator.COLLAPSIBLE_TYPES;
 
 /**
  * This class creates a cache of common lookup operations on content type fields.
@@ -30,6 +34,8 @@ public class ContentTypeFields {
   //Maps field names to link types
   private final Map<String,ContentfulLinkType> fieldLinkType;
 
+  private final Set<String> collapsibleFields;
+
   /**
    * Initializes all maps and local variables.
    */
@@ -45,7 +51,13 @@ public class ContentTypeFields {
     fieldLinkType = cdaContentType.fields().stream().filter(cdaField -> cdaField.linkType() != null)
       .collect(Collectors.toMap(CDAField::id, cdaField -> ContentfulLinkType.valueOf(cdaField.linkType())));
 
+    collapsibleFields = cdaContentType.fields().stream()
+                          .filter(cdaField -> COLLAPSIBLE_TYPES.contains(cdaField.type())
+                                              || COLLAPSIBLE_FIELDS.matcher(cdaField.id()).matches())
+                          .map(CDAField::id).collect(Collectors.toSet());
+
   }
+
 
   /**
    * Returns the CDAField of a field.
@@ -66,6 +78,13 @@ public class ContentTypeFields {
    */
   public ContentfulLinkType getFieldLinkType(String fieldName) {
     return fieldLinkType.get(fieldName);
+  }
+
+  /**
+   * Cans this field be a single value?.
+   */
+  public boolean isCollapsible(String field) {
+    return collapsibleFields.contains(field);
   }
 
   /**

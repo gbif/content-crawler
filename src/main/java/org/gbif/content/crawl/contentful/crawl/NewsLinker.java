@@ -44,22 +44,32 @@ public class NewsLinker {
    * This method updates the news index by adding a new field [contentTypeName]Tag which stores all the ids
    * related to that news from this content type, it is used for creating RSS feeds for specific elements.
    */
-  public void processNewsTag(CDAEntry cdaEntry, String esTypeName, String tagValue) {
-    if (cdaEntry != null && cdaEntry.contentType().id().equals(newsContentTypeId)) {
+  private void processNewsTag(CDAEntry cdaEntry, String esTypeName, String tagValue) {
+    if (cdaEntry.contentType().id().equals(newsContentTypeId)) {
       insertTag(cdaEntry, esTypeName, tagValue);
+    }
+  }
+
+  /**
+   * Processes the news associated to an entry.
+   * Accepts list of localized resources and a single CDAEntry.
+   */
+  public void processNewsTag(Object entry, String esTypeName, String tagValue) {
+    if (Collection.class.isInstance(entry)) {
+      processNewsTag((Collection<LocalizedResource>)entry, esTypeName, tagValue);
+    } else {
+      processNewsTag((CDAEntry)entry, esTypeName, tagValue);
     }
   }
 
   /**
    * Processes a list of possible news entries.
    */
-  public void processNewsTag(Collection<LocalizedResource> contentResources, String esTypeName, String tagValue) {
-    Optional.ofNullable(contentResources).ifPresent(resources ->
-      resources.stream()
-        .filter(resource -> CDAEntry.class.isInstance(resource)
-                            && ((CDAEntry) resource).contentType().id().equals(newsContentTypeId))
-        .forEach(cdaEntry -> insertTag((CDAEntry) cdaEntry, esTypeName, tagValue))
-    );
+  private void processNewsTag(Collection<LocalizedResource> resources, String esTypeName, String tagValue) {
+    resources.stream()
+      .filter(resource -> CDAEntry.class.isInstance(resource)
+                          && ((CDAEntry) resource).contentType().id().equals(newsContentTypeId))
+      .forEach(cdaEntry -> insertTag((CDAEntry) cdaEntry, esTypeName, tagValue));
   }
 
   /**

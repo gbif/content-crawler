@@ -92,7 +92,7 @@ public class VocabularyBuilder {
    * All collected values.
    */
   public Optional<Set<String>> all() {
-    return values.isEmpty()? Optional.empty() : Optional.of(values);
+    return values.isEmpty() ? Optional.empty() : Optional.of(values);
   }
 
   /**

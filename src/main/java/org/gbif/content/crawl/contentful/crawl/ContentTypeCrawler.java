@@ -3,23 +3,11 @@ package org.gbif.content.crawl.contentful.crawl;
 import org.gbif.content.crawl.conf.ContentCrawlConfiguration;
 import org.gbif.content.crawl.es.ElasticSearchUtils;
 
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 import com.contentful.java.cda.CDAClient;
-import com.contentful.java.cda.CDAContentType;
 import com.contentful.java.cda.CDAEntry;
-import com.contentful.java.cda.CDAField;
-import com.contentful.java.cda.LocalizedResource;
 import com.contentful.java.cma.model.CMAContentType;
-import com.contentful.java.cma.model.CMAField;
-import com.contentful.java.cma.Constants.CMAFieldType;
 import io.reactivex.Observable;
 import org.elasticsearch.action.bulk.BulkRequestBuilder;
 import org.elasticsearch.action.bulk.BulkResponse;
@@ -27,28 +15,16 @@ import org.elasticsearch.client.Client;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static org.gbif.content.crawl.contentful.crawl.MappingGenerator.COLLAPSIBLE_FIELDS;
-import static org.gbif.content.crawl.contentful.crawl.MappingGenerator.COLLAPSIBLE_TYPES;
-
 /**
- * Crawls a single contentful content type.
+ * Crawls a single Contentful content type.
  */
 public class ContentTypeCrawler {
 
   private static final Logger LOG = LoggerFactory.getLogger(ContentTypeCrawler.class);
 
-  private static final Pattern LINKED_ENTRY_FIELDS = Pattern.compile(".*summary.*|.*title.*|label|url");
-
   private static final String CONTENT_TYPE_FIELD = "contentType";
 
-  private static final String REGION_FIELD = "gbifRegion";
-
-
-  private static final String ID_FIELD = "id";
-
   private static final int PAGE_SIZE = 20;
-
-  private final Set<String> collapsedFields;
 
   private final CMAContentType contentType;
 
@@ -73,7 +49,6 @@ public class ContentTypeCrawler {
                             VocabularyTerms vocabularyTerms,
                             String newsContentTypeId) {
     this.contentType = contentType;
-    collapsedFields = getCollapsedFields(contentType);
     //index name has to be in lowercase
     esIdxName = ElasticSearchUtils.getEsIdxName(contentType.getName());
     //ES type name for this content typ
@@ -110,118 +85,23 @@ public class ContentTypeCrawler {
                    bulkRequest.add(esClient.prepareIndex(esIdxName.toLowerCase(),
                                                          configuration.indexBuild.esIndexType,
                                                          cdaResource.id())
-                                     .setSource(getIndexedFields((CDAEntry)cdaResource)))
+                                     .setSource(getESDoc((CDAEntry)cdaResource)))
         ));
   }
 
   /**
    * Extracts the fields that will be indexed in ElasticSearch.
    */
-  private Map<String,Object> getIndexedFields(CDAEntry cdaEntry) {
+  private Map<String,Object> getESDoc(CDAEntry cdaEntry) {
+    EsDocBuilder esDocBuilder = new EsDocBuilder(cdaEntry, vocabularyTerms, nestedCdaEntry -> {
+      newsLinker.processNewsTag(nestedCdaEntry, esTypeName, cdaEntry.id());
+    });
     //Add all rawFields
-    Map<String, Object> indexedFields = fieldsFromEntry(cdaEntry);
-    //Add meta attributes
-    indexedFields.putAll(cdaEntry.attrs());
+    Map<String, Object> indexedFields = esDocBuilder.toEsDoc();
     indexedFields.put(CONTENT_TYPE_FIELD, esTypeName);
-    //Updates the information from the meta field
-    Meta.getMetaCreatedDate(cdaEntry).ifPresent(createdDate -> indexedFields.replace("createdAt", createdDate));
     return indexedFields;
   }
 
-  /**
-   * Extract the values as maps of the list of resources.
-   */
-  private List<Map<String,Object>> toListValues(List<LocalizedResource> resources) {
-    return resources.stream()
-      .map(resource -> CDAEntry.class.isInstance(resource)? getAssociatedEntryFields((CDAEntry)resource) :
-                                                           resource.rawFields()
-    ).collect(Collectors.toList());
-  }
-
-  /**
-   * Iterates trough each Asset entry in cdaEntry and retrieves its value.
-   */
-  private  Map<String,Object> fieldsFromEntry(CDAEntry cdaEntry) {
-    Map<String,Object> entries = new HashMap<>();
-    ContentTypeFields contentTypeFields = ContentTypeFields.of(cdaEntry.contentType());
-    cdaEntry.rawFields().forEach((field,value) -> {
-      CDAField cdaField = contentTypeFields.getField(field);
-      CMAFieldType fieldType = contentTypeFields.getFieldType(field);
-      if(CMAFieldType.Link == fieldType) {
-
-        Optional.ofNullable(cdaEntry.getField(field))
-          .map(entryFieldValue -> (LocalizedResource)entryFieldValue)
-          .ifPresent(fieldResourceEntry -> {
-            if (ContentfulLinkType.Asset == contentTypeFields.getFieldLinkType(field)) {
-              entries.put(field,  fieldResourceEntry.rawFields());
-            } else {
-              CDAEntry fieldCdaEntry = (CDAEntry)fieldResourceEntry;
-              VocabularyBuilder vocabularyBuilder = new VocabularyBuilder(vocabularyTerms);
-              vocabularyBuilder.of(fieldCdaEntry)
-                .one(vocValue -> entries.put(field, vocValue))
-                .gbifRegion(gbifRegion -> entries.put(REGION_FIELD, gbifRegion));
-              if(vocabularyBuilder.isEmpty()) {
-                newsLinker.processNewsTag(fieldCdaEntry, esTypeName, cdaEntry.id());
-                entries.put(field, getAssociatedEntryFields(fieldCdaEntry));
-              }
-            }
-        });
-      } else if(CMAFieldType.Array == fieldType) {
-        Optional.ofNullable(cdaEntry.getField(field)).map(entryListValue -> (List<LocalizedResource>)entryListValue)
-          .ifPresent(fieldCdaEntries -> {
-            VocabularyBuilder vocabularyBuilder = new VocabularyBuilder(vocabularyTerms);
-            vocabularyBuilder.ofList(fieldCdaEntries)
-              .all(vocValues -> entries.put(field, vocValues))
-              .allGbifRegions(gbifRegions -> entries.put(REGION_FIELD, gbifRegions));
-            if(vocabularyBuilder.isEmpty()) {
-              newsLinker.processNewsTag(fieldCdaEntries, esTypeName, cdaEntry.id());
-              entries.put(field, toListValues(fieldCdaEntries));
-            }
-          });
-
-      } else {
-        entries.put(field, cdaField.isLocalized() && !collapsedFields.contains(field)? value : cdaEntry.getField(field));
-      }
-    });
-    return entries;
-  }
-
-  /**
-   * Associated entities are indexed using title, summary and id.
-   */
-  private static Map<String, Object> getAssociatedEntryFields(CDAEntry cdaEntry) {
-    Map<String, Object> fields = new LinkedHashMap<>();
-    if(cdaEntry != null) {
-      fields.put(ID_FIELD, cdaEntry.id());
-      fields.putAll(cdaEntry.rawFields().entrySet().stream()
-                      .filter(entry -> LINKED_ENTRY_FIELDS.matcher(entry.getKey()).matches()
-                                       && cdaEntry.getField(entry.getKey()) != null)  //a project had a null url value
-                      .collect(Collectors.toMap(Map.Entry::getKey,
-                                                entry -> isLocalized(entry.getKey(), cdaEntry.contentType())
-                                                  ? entry.getValue()
-                                                  : cdaEntry.getField(entry.getKey()))));
-    }
-    return fields;
-  }
-
-  /**
-   * Is the fieldName localized in the CDAContentType.
-   */
-  private static boolean isLocalized(String fieldName, CDAContentType cdaContentType) {
-    return ContentTypeFields.of(cdaContentType).getField(fieldName).isLocalized();
-  }
-
-
-  /**
-   *
-   * Returns a Set of the fields that can be get straight from an entry instead of getting its localized version.
-   */
-  private static Set<String> getCollapsedFields(CMAContentType cmaContentType) {
-    return cmaContentType.getFields().stream()
-      .filter(cdaField -> COLLAPSIBLE_TYPES.contains(cdaField.getType())
-                          || COLLAPSIBLE_FIELDS.matcher(cdaField.getId()).matches())
-      .map(CMAField::getId).collect(Collectors.toSet());
-  }
 
   /**
    * Creates, if doesn't exists, an ElasticSearch index that matches the name of the contentType.
