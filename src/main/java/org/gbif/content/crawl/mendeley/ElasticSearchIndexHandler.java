@@ -38,6 +38,12 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
   //Mendeley fields used by this handler
   private static final String ML_ID_FL = "id";
   private static final String ML_TAGS_FL = "tags";
+  private static final String ML_MONTH_FL = "month";
+  private static final String ML_DAY_FL = "day";
+  private static final String ML_YEAR_FL = "year";
+  //Format used to store the createdAt field
+  private static final String CREATED_AT_FMT = "yyyy-MM-dd'T00:00:00.000Z'";
+
 
   //Elasticsearch fields created by this handler
   private static final String ES_COUNTRY_RESEARCHER_FL = "countriesOfResearcher";
@@ -134,13 +140,13 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
    * Date math to avoid errors at indexing time in ElasticSearch.
    */
   private static Optional<String> createdAt(ObjectNode objectNode) {
-    return Optional.ofNullable(objectNode.get("year"))
+    return Optional.ofNullable(objectNode.get(ML_YEAR_FL))
             .map(JsonNode::asText)
             .map(yearValue -> LocalDate.ofYearDay(Integer.parseInt(yearValue),1)
-                              .withMonth(getDateBasedField(objectNode, "month"))
-                              .plusDays(getDateBasedField(objectNode, "day") - 1)
+                              .withMonth(getDateBasedField(objectNode, ML_MONTH_FL))
+                              .plusDays(getDateBasedField(objectNode, ML_DAY_FL) - 1)
                               .atStartOfDay()
-                              .format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T00:00:00.000Z'")));
+                              .format(DateTimeFormatter.ofPattern(CREATED_AT_FMT)));
   }
 
   /**
