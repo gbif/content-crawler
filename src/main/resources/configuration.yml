@@ -11,8 +11,6 @@ mendeley:
   indexBuild:
     esIndexName: content
     esIndexType: literature
-    #Delete the Index before crawl it?
-    deleteIndex: true
 
 # Optional: If included will push documents to the referenced Elastic Search index
 elasticSearch:
@@ -28,8 +26,6 @@ contentful:
   indexBuild:
     #contentTypes: [dataUse]
     esIndexName: content
-    #Delete the Index before crawl it?
-    deleteIndex: true
     countryVocabulary: "CountryVocabulary"
     newsContentType: "News"
     vocabularies:

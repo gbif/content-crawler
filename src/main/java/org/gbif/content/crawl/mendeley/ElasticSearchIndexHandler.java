@@ -29,6 +29,9 @@ import org.slf4j.LoggerFactory;
 import static org.gbif.content.crawl.es.ElasticSearchUtils.buildEsClient;
 import static org.gbif.content.crawl.es.ElasticSearchUtils.createIndex;
 import static org.gbif.content.crawl.es.ElasticSearchUtils.indexMappings;
+import static org.gbif.content.crawl.es.ElasticSearchUtils.getEsIdxName;
+import static org.gbif.content.crawl.es.ElasticSearchUtils.getEsIndexingIdxName;
+import static org.gbif.content.crawl.es.ElasticSearchUtils.swapIndexToAlias;
 
 /**
  * Parses the documents from the response and adds them to the index.
@@ -70,14 +73,16 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
   private static final ObjectMapper MAPPER = new ObjectMapper();
   public static final String LAST_MODIFIED = "last_modified";
 
-  private final Client client;
+  private final Client esClient;
   private final ContentCrawlConfiguration conf;
+  private final String esIdxName;
 
   public ElasticSearchIndexHandler(ContentCrawlConfiguration conf) {
     this.conf = conf;
     LOG.info("Connecting to ES cluster {}:{}", conf.elasticSearch.host, conf.elasticSearch.port);
-    client = buildEsClient(conf.elasticSearch);
-    createIndex(client, conf.mendeley.indexBuild, indexMappings(ES_MAPPING_FILE));
+    esClient = buildEsClient(conf.elasticSearch);
+    esIdxName = getEsIndexingIdxName(conf.mendeley.indexBuild.esIndexName);
+    createIndex(esClient, conf.mendeley.indexBuild.esIndexType, esIdxName, indexMappings(ES_MAPPING_FILE));
   }
 
   /**
@@ -86,7 +91,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
    */
   @Override
   public void handleResponse(String responseAsJson) throws IOException {
-    BulkRequestBuilder bulkRequest = client.prepareBulk();
+    BulkRequestBuilder bulkRequest = esClient.prepareBulk();
     //process each Json node
     MAPPER.readTree(responseAsJson).elements().forEachRemaining(document -> {
       toCamelCasedFields(document);
@@ -94,8 +99,8 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
       if (document.has(ML_TAGS_FL)) {
         handleTags(document);
       }
-      bulkRequest.add(client.prepareIndex(conf.mendeley.indexBuild.esIndexName, conf.mendeley.indexBuild.esIndexType,
-                                          document.get(ML_ID_FL).asText()).setSource(document.toString()));
+      bulkRequest.add(esClient.prepareIndex(esIdxName, conf.mendeley.indexBuild.esIndexType,
+                                            document.get(ML_ID_FL).asText()).setSource(document.toString()));
     });
 
     BulkResponse bulkResponse = bulkRequest.get();
@@ -227,6 +232,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
 
   @Override
   public void finish() {
-    client.close();
+    swapIndexToAlias(esClient, getEsIdxName(conf.mendeley.indexBuild.esIndexName), esIdxName);
+    esClient.close();
   }
 }

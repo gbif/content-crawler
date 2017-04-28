@@ -5,10 +5,14 @@ import org.gbif.content.crawl.conf.ContentCrawlConfiguration;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.Date;
+import java.util.concurrent.ExecutionException;
 import java.util.regex.Pattern;
 
 import com.google.common.base.CaseFormat;
 import org.apache.commons.io.IOUtils;
+import org.elasticsearch.action.admin.indices.alias.get.GetAliasesRequest;
+import org.elasticsearch.action.admin.indices.alias.get.GetAliasesResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.transport.InetSocketTransportAddress;
@@ -46,19 +50,13 @@ public class ElasticSearchUtils {
    * Creates, if doesn't exists, an ElasticSearch index that matches the name of the contentType.
    * If the flag configuration.contentful.deleteIndex is ON and the index exist, it will be removed.
    */
-  public static void createIndex(Client esClient, ContentCrawlConfiguration.IndexBuild configuration,
+  public static void createIndex(Client esClient, String typeName,
                                  String idxName, String source) {
     //create ES idx if it doesn't exists
-    if (!esClient.admin().indices().prepareExists(idxName).get().isExists()) {
-      esClient.admin().indices().prepareCreate(idxName)
-        .addMapping(configuration.esIndexType, source).get();
-    } else if (configuration.deleteIndex) { //if the index exists and should be recreated
-      //Delete the index
+    if (esClient.admin().indices().prepareExists(idxName).get().isExists()) {
       esClient.admin().indices().prepareDelete(idxName).get();
-      //Re-create the index
-      esClient.admin().indices().prepareCreate(idxName)
-        .addMapping(configuration.esIndexType, source).get();
     }
+    esClient.admin().indices().prepareCreate(idxName).addMapping(typeName, source).get();
   }
 
   /**
@@ -67,7 +65,25 @@ public class ElasticSearchUtils {
    */
   public static void createIndex(Client esClient, ContentCrawlConfiguration.IndexBuild configuration,
                                  String source) {
-    createIndex(esClient, configuration, configuration.esIndexName, source);
+    createIndex(esClient, configuration.esIndexType, getEsIndexingIdxName(configuration.esIndexName), source);
+  }
+
+  /**
+   * This method delete all the indecxs associated to the alias and associates the alias to toIdx.
+   */
+  public static void swapIndexToAlias(Client esClient, String alias, String toIdx) {
+    try {
+      GetAliasesResponse getAliasesResponse = esClient.admin().indices()
+                                                .getAliases(new GetAliasesRequest().aliases(alias)).get();
+      esClient.admin().indices().prepareAliases().addAlias(toIdx, alias).get();
+      getAliasesResponse.getAliases().keysIt().forEachRemaining(aliasedIdx -> {
+        if (!toIdx.equals(aliasedIdx)) {
+          esClient.admin().indices().prepareDelete(aliasedIdx).get();
+        }
+      });
+    } catch (InterruptedException|ExecutionException ex) {
+      throw new IllegalStateException(ex);
+    }
   }
 
   /**
@@ -87,6 +103,14 @@ public class ElasticSearchUtils {
    */
   public static String getEsIdxName(String contentTypeName) {
     return REPLACEMENTS.matcher(contentTypeName).replaceAll("").toLowerCase();
+  }
+
+  /**
+   * Index name to be used while indexing.
+   * @return getEsIdxName(contentTypeName) + time in milliseconds
+   */
+  public static String getEsIndexingIdxName(String contentTypeName) {
+    return getEsIdxName(contentTypeName) + new Date().getTime();
   }
 
   /**

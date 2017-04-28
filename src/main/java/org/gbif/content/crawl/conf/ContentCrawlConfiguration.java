@@ -152,10 +152,6 @@ public class ContentCrawlConfiguration {
 
 
   public static class IndexBuild {
-    @Parameter(
-      names = "-deleteIndex",
-      description = "Delete ElasticSearch index(es) before running crawlers")
-    public Boolean deleteIndex = false;
 
     @Parameter(
       names = "-esIndexType",

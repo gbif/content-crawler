@@ -1,7 +1,6 @@
 package org.gbif.content.crawl.contentful.crawl;
 
 import org.gbif.content.crawl.conf.ContentCrawlConfiguration;
-import org.gbif.content.crawl.es.ElasticSearchUtils;
 
 import java.util.Map;
 
@@ -14,6 +13,12 @@ import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.client.Client;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static org.gbif.content.crawl.es.ElasticSearchUtils.getEsIdxName;
+import static org.gbif.content.crawl.es.ElasticSearchUtils.getEsIndexingIdxName;
+import static org.gbif.content.crawl.es.ElasticSearchUtils.createIndex;
+import static org.gbif.content.crawl.es.ElasticSearchUtils.swapIndexToAlias;
+import static org.gbif.content.crawl.es.ElasticSearchUtils.toFieldNameFormat;
 
 /**
  * Crawls a single Contentful content type.
@@ -29,6 +34,8 @@ public class ContentTypeCrawler {
   private final CMAContentType contentType;
 
   private final String esIdxName;
+
+  private final String esIdxAlias;
 
   private final String esTypeName;
 
@@ -50,9 +57,11 @@ public class ContentTypeCrawler {
                             String newsContentTypeId) {
     this.contentType = contentType;
     //index name has to be in lowercase
-    esIdxName = ElasticSearchUtils.getEsIdxName(contentType.getName());
+    esIdxName = getEsIndexingIdxName(contentType.getName());
+    //Index alias
+    esIdxAlias = getEsIdxName(contentType.getName());
     //ES type name for this content typ
-    esTypeName = ElasticSearchUtils.toFieldNameFormat(contentType.getName());
+    esTypeName = toFieldNameFormat(contentType.getName());
     //Used to create links in the news index
     newsLinker = new NewsLinker(newsContentTypeId, esClient, configuration.indexBuild.esIndexType);
 
@@ -73,7 +82,8 @@ public class ContentTypeCrawler {
    */
   public void crawl() {
     //gets or (re)create the ES idx if doesn't exists
-    createIndex();
+    createIndex(esClient, configuration.indexBuild.esIndexType, esIdxName,
+                                   mappingGenerator.getEsMapping(contentType));
     LOG.info("Indexing ContentType [{}] into ES Index [{}]", contentType.getName(), esIdxName);
     //Prepares the bulk/batch request
     BulkRequestBuilder bulkRequest = esClient.prepareBulk();
@@ -82,11 +92,11 @@ public class ContentTypeCrawler {
       .doOnComplete(() -> executeBulkRequest(bulkRequest))
       .subscribe(results -> results.items()
         .forEach(cdaResource ->
-                   bulkRequest.add(esClient.prepareIndex(esIdxName.toLowerCase(),
-                                                         configuration.indexBuild.esIndexType,
+                   bulkRequest.add(esClient.prepareIndex(esIdxName, configuration.indexBuild.esIndexType,
                                                          cdaResource.id())
                                      .setSource(getESDoc((CDAEntry)cdaResource)))
         ));
+    swapIndexToAlias(esClient, esIdxAlias, esIdxName);
   }
 
   /**
@@ -102,24 +112,6 @@ public class ContentTypeCrawler {
     return indexedFields;
   }
 
-
-  /**
-   * Creates, if doesn't exists, an ElasticSearch index that matches the name of the contentType.
-   * If the flag configuration.contentful.deleteIndex is ON and the index exist, it will be removed.
-   */
-  private void createIndex() {
-    //create ES idx if it doesn't exists
-    if (!esClient.admin().indices().prepareExists(esIdxName).get().isExists()) {
-      esClient.admin().indices().prepareCreate(esIdxName)
-        .addMapping(configuration.indexBuild.esIndexType, mappingGenerator.getEsMapping(contentType)).get();
-    } else if (configuration.indexBuild.deleteIndex) { //if the index exists and should be recreated
-      //Delete the index
-      esClient.admin().indices().prepareDelete(esIdxName).get();
-      //Re-create the index
-      esClient.admin().indices().prepareCreate(esIdxName)
-        .addMapping(configuration.indexBuild.esIndexType, mappingGenerator.getEsMapping(contentType)).get();
-    }
-  }
 
   /**
    * Performs the execution of a ElasticSearch BulkRequest and logs the correspondent results.
