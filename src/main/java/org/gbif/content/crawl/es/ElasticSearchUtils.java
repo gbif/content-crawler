@@ -25,6 +25,9 @@ public class ElasticSearchUtils {
 
   private static final Pattern REPLACEMENTS = Pattern.compile(":\\s+|\\s+");
 
+  //This an alias used for all active cms/content indices
+  private static final String CONTENT_ALIAS = "content";
+
   /**
    * Utility class must have private methods.
    */
@@ -73,10 +76,13 @@ public class ElasticSearchUtils {
    */
   public static void swapIndexToAlias(Client esClient, String alias, String toIdx) {
     try {
-      GetAliasesResponse getAliasesResponse = esClient.admin().indices()
-                                                .getAliases(new GetAliasesRequest().aliases(alias)).get();
+      //Sets the idx alias
       esClient.admin().indices().prepareAliases().addAlias(toIdx, alias).get();
-      getAliasesResponse.getAliases().keysIt().forEachRemaining(aliasedIdx -> {
+      //Promote new index to alla content indices
+      esClient.admin().indices().prepareAliases().addAlias(toIdx, CONTENT_ALIAS).get();
+      GetAliasesResponse aliasesResponse = esClient.admin().indices()
+        .getAliases(new GetAliasesRequest().aliases(alias)).get();
+      aliasesResponse.getAliases().keysIt().forEachRemaining(aliasedIdx -> {
         if (!toIdx.equals(aliasedIdx)) {
           esClient.admin().indices().prepareDelete(aliasedIdx).get();
         }
