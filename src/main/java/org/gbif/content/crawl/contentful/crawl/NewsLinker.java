@@ -56,7 +56,7 @@ public class NewsLinker {
    */
   public void processNewsTag(Object entry, String esTypeName, String tagValue) {
     if (Collection.class.isInstance(entry)) {
-      processNewsTag((Collection<LocalizedResource>)entry, esTypeName, tagValue);
+      processNewsTag((Collection<?>)entry, esTypeName, tagValue);
     } else {
       processNewsTag((CDAEntry)entry, esTypeName, tagValue);
     }
@@ -65,7 +65,7 @@ public class NewsLinker {
   /**
    * Processes a list of possible news entries.
    */
-  private void processNewsTag(Collection<LocalizedResource> resources, String esTypeName, String tagValue) {
+  private void processNewsTag(Collection<?> resources, String esTypeName, String tagValue) {
     resources.stream()
       .filter(resource -> CDAEntry.class.isInstance(resource)
                           && ((CDAEntry) resource).contentType().id().equals(newsContentTypeId))
