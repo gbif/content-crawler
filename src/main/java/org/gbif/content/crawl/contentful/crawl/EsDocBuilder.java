@@ -8,11 +8,13 @@ import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import com.contentful.java.cda.CDAContentType;
 import com.contentful.java.cda.CDAEntry;
 import com.contentful.java.cda.LocalizedResource;
 import com.contentful.java.cma.Constants;
+import com.google.common.collect.Lists;
 
 /**
  * Translates a CDAEntry into Map object indexable in ElasticSearch.
@@ -55,7 +57,7 @@ public class EsDocBuilder {
         if (Constants.CMAFieldType.Link == fieldType) {
            processLinkField((LocalizedResource)fieldValue, field);
         } else if (Constants.CMAFieldType.Array == fieldType) {
-          processArrayField((List<LocalizedResource>)fieldValue, field);
+          processArrayField((List<?>)fieldValue, field);
         } else {
           entries.put(field, contentTypeFields.getField(field).isLocalized()
                              && !contentTypeFields.isCollapsible(field) ? value : fieldValue);
@@ -94,7 +96,7 @@ public class EsDocBuilder {
    * @param entryListValue list of entries to be processed
    * @param field field name
    */
-  private void processArrayField(List<LocalizedResource> entryListValue, String field) {
+  private void processArrayField(List<?> entryListValue, String field) {
     VocabularyBuilder vocabularyBuilder = new VocabularyBuilder(vocabularyTerms);
     vocabularyBuilder.ofList(entryListValue)
       .all(vocValues -> entries.put(field, vocValues))
@@ -108,11 +110,20 @@ public class EsDocBuilder {
   /**
    * Extract the values as maps of the list of resources.
    */
-  private static List<Map<String,Object>> toListValues(List<LocalizedResource> resources) {
+  private static List<?> toListValues(List<?> resources) {
     return resources.stream()
-      .map(resource -> CDAEntry.class.isInstance(resource)? getAssociatedEntryFields((CDAEntry)resource) :
-        resource.rawFields())
+      .flatMap(resource -> {
+        if (CDAEntry.class.isInstance(resource)) {
+          return Stream.of(getAssociatedEntryFields((CDAEntry) resource));
+        } else if (LocalizedResource.class.isInstance(resource)) {
+          return Stream.of(((LocalizedResource)resource).rawFields());
+        } else if (String.class.isInstance(resource)) {
+          return Stream.of((String)resource);
+        }
+        return Stream.empty();
+      })
       .collect(Collectors.toList());
+
   }
 
   /**
