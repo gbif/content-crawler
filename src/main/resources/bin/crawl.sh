@@ -40,7 +40,7 @@ else
 fi
 rm -f latest.sha1
 echo "Running crawler"
-java -jar content-crawler.jar $COMMAND --conf $P.yml  ls
+java -jar content-crawler.jar $COMMAND --conf $P.yml
 rm -f $P.yml
 echo "Crawl has finished"
 
