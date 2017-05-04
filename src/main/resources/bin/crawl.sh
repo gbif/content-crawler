@@ -3,13 +3,13 @@
 #Downloads latest snapshot.
 function download {
   echo "Downloading content crawler"
-  wget -O content-crawler.jar "http://repository.gbif.org/service/local/artifact/maven/redirect?g=org.gbif.content&a=content-crawler&v=LATEST&r=snapshots&e=jar"
+  wget -O content-crawler.jar "http://repository.gbif.org/service/local/artifact/maven/redirect?g=org.gbif.content&a=content-crawler&v=LATEST&r=$1&e=jar"
   mv latest.sha1 jar.sha1
 }
 
 #Downloads latest sha1 checksum.
 function downloadJarSha1 {
-  curl -s -L "http://repository.gbif.org/service/local/artifact/maven/resolve?g=org.gbif.content&a=content-crawler&v=LATEST&r=snapshots&e=jar" | xmllint --xpath "///sha1/text()" - > latest.sha1
+  curl -s -L "http://repository.gbif.org/service/local/artifact/maven/resolve?g=org.gbif.content&a=content-crawler&v=LATEST&r=$1&e=jar" | sed -n 's/<sha1>\(.*\)<\/sha1>/\1/p' > latest.sha1
 }
 
 #Download configuration settings from GitHub.
@@ -25,17 +25,18 @@ set -e
 P=$1
 TOKEN=$2
 COMMAND=$3
+REPOSITORY=${4:-snapshots}
 
 downloadConfig $TOKEN $P
-downloadJarSha1
+downloadJarSha1 $REPOSITORY
 if [ -f jar.sha1 ] && [ -f content-crawler.jar ]; then
   if ! cmp -s latest.sha1 jar.sha1; then
-    download
+    download $REPOSITORY
   else
     echo "Using previously download jar file since content is the same"
   fi
 else
- download
+ download $REPOSITORY
 fi
 rm -f latest.sha1
 echo "Running crawler"
