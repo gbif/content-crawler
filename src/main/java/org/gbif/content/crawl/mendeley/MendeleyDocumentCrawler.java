@@ -3,7 +3,6 @@ package org.gbif.content.crawl.mendeley;
 import org.gbif.content.crawl.conf.ContentCrawlConfiguration;
 
 import java.io.IOException;
-import java.net.UnknownHostException;
 import java.util.List;
 
 import com.google.common.collect.Lists;
@@ -28,6 +27,9 @@ import org.slf4j.LoggerFactory;
  */
 public class MendeleyDocumentCrawler {
 
+  //Buffer to use in Observables to accumulate results before handle them
+  private static final int CRAWL_BUFFER = 10;
+
   private static final Logger LOG = LoggerFactory.getLogger(MendeleyDocumentCrawler.class);
   private final RequestConfig requestConfig;
 
@@ -35,9 +37,9 @@ public class MendeleyDocumentCrawler {
   private final List<ResponseHandler> handlers = Lists.newArrayList();
 
 
-  public MendeleyDocumentCrawler(ContentCrawlConfiguration config) throws UnknownHostException {
+  public MendeleyDocumentCrawler(ContentCrawlConfiguration config) {
     this.config = config;
-    int timeOut = config.mendeley.httpTimeoutInSecs * 1000;
+    int timeOut = config.mendeley.httpTimeout;
     requestConfig = RequestConfig.custom().setSocketTimeout(timeOut).setConnectTimeout(timeOut)
                       .setConnectionRequestTimeout(timeOut).build();
     handlers.add(new ResponseToFileHandler(config.mendeley.targetDir));
@@ -53,6 +55,10 @@ public class MendeleyDocumentCrawler {
       OAuthJSONAccessTokenResponse token = getToken(config.mendeley);
       Observable
         .fromIterable(new MendeleyPager(targetUrl, token, requestConfig, httpClient))
+        .doOnError(err -> {
+          LOG.error("Error crawling Mendeley", err);
+          throw new RuntimeException(err);})
+        .buffer(CRAWL_BUFFER)
         .doOnTerminate(() -> handlers.forEach(handler -> {
           try {
             handler.finish();
@@ -60,13 +66,17 @@ public class MendeleyDocumentCrawler {
             LOG.error("Error finishing handlers", ex);
           }
         }))
-        .subscribe(response -> handlers.parallelStream().forEach(handler -> {
-          try {
-            handler.handleResponse(response);
-          } catch (Exception e) {
-            LOG.error("Unable to process response", e);
-          }
-        }));
+        .subscribe(
+          responses ->
+            responses.parallelStream().forEach(response->
+              handlers.parallelStream().forEach(handler -> {
+                try {
+                  handler.handleResponse(response);
+                } catch (Exception e) {
+                  LOG.error("Unable to process response", e);
+                }
+              })
+        ));
     } catch (OAuthSystemException | OAuthProblemException e) {
       LOG.error("Unable ot authenticate with Mendeley", e);
     }

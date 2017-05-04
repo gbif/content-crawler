@@ -25,6 +25,20 @@ public class ElasticSearchUtils {
 
   private static final Pattern REPLACEMENTS = Pattern.compile(":\\s+|\\s+");
 
+  //Index settings used at indexing time
+  private static final Settings INDEXING_SETTINGS = Settings.builder()
+                                                      .put("index.refresh_interval", "-1")
+                                                      .put("index.number_of_shards", "3")
+                                                      .put("index.number_of_replicas", "0")
+                                                      .put("index.translog.durability","async")
+                                                      .build();
+
+  //Index settings used at production/searching time
+  private static final Settings SEARCH_SETTINGS = Settings.builder()
+                                                    .put("index.refresh_interval", "5s")
+                                                    .put("index.number_of_replicas", "1")
+                                                    .build();
+
   //This an alias used for all active cms/content indices
   private static final String CONTENT_ALIAS = "content";
 
@@ -59,7 +73,7 @@ public class ElasticSearchUtils {
     if (esClient.admin().indices().prepareExists(idxName).get().isExists()) {
       esClient.admin().indices().prepareDelete(idxName).get();
     }
-    esClient.admin().indices().prepareCreate(idxName).addMapping(typeName, source).get();
+    esClient.admin().indices().prepareCreate(idxName).addMapping(typeName, source).setSettings(INDEXING_SETTINGS).get();
   }
 
   /**
@@ -78,6 +92,7 @@ public class ElasticSearchUtils {
     try {
       //Sets the idx alias
       esClient.admin().indices().prepareAliases().addAlias(toIdx, alias).get();
+      esClient.admin().indices().prepareUpdateSettings(toIdx).setSettings(SEARCH_SETTINGS).get();
       //Promote new index to alla content indices
       esClient.admin().indices().prepareAliases().addAlias(toIdx, CONTENT_ALIAS).get();
       GetAliasesResponse aliasesResponse = esClient.admin().indices()

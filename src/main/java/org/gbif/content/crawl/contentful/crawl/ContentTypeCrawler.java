@@ -25,6 +25,9 @@ import static org.gbif.content.crawl.es.ElasticSearchUtils.toFieldNameFormat;
  */
 public class ContentTypeCrawler {
 
+  //Buffer to use in Observables to accumulate results before send them to ElasticSearch
+  private static final int CRAWL_BUFFER = 10;
+
   private static final Logger LOG = LoggerFactory.getLogger(ContentTypeCrawler.class);
 
   private static final String CONTENT_TYPE_FIELD = "contentType";
@@ -82,20 +85,24 @@ public class ContentTypeCrawler {
    */
   public void crawl() {
     //gets or (re)create the ES idx if doesn't exists
-    createIndex(esClient, configuration.indexBuild.esIndexType, esIdxName,
-                                   mappingGenerator.getEsMapping(contentType));
+    createIndex(esClient, configuration.indexBuild.esIndexType, esIdxName, mappingGenerator.getEsMapping(contentType));
     LOG.info("Indexing ContentType [{}] into ES Index [{}]", contentType.getName(), esIdxName);
     //Prepares the bulk/batch request
     BulkRequestBuilder bulkRequest = esClient.prepareBulk();
     //Retrieves resources in a CDAArray
     Observable.fromIterable(new ContentfulPager(cdaClient, PAGE_SIZE, contentType.getResourceId()))
+      .doOnError(err -> { LOG.error("Error crawling content type", err);
+                          throw new RuntimeException(err);})
+      .buffer(CRAWL_BUFFER)
       .doOnComplete(() -> executeBulkRequest(bulkRequest))
-      .subscribe(results -> results.items()
-        .forEach(cdaResource ->
-                   bulkRequest.add(esClient.prepareIndex(esIdxName, configuration.indexBuild.esIndexType,
-                                                         cdaResource.id())
-                                     .setSource(getESDoc((CDAEntry)cdaResource)))
-        ));
+      .subscribe( results -> results.stream().forEach(
+                              cdaArray -> cdaArray.items()
+                              .forEach(cdaResource ->
+                                         bulkRequest.add(esClient.prepareIndex(esIdxName,
+                                                                               configuration.indexBuild.esIndexType,
+                                                                               cdaResource.id())
+                                                           .setSource(getESDoc((CDAEntry)cdaResource)))))
+      );
     swapIndexToAlias(esClient, esIdxAlias, esIdxName);
   }
 

@@ -80,7 +80,7 @@ public class ContentCrawlConfiguration {
     @Parameter(
       names = "-timeout",
       description = "Timeout for the HTTP calls in seconds, defaulting to 10 secs")
-    public int httpTimeoutInSecs;
+    public int httpTimeout = 10000;
 
     public IndexBuild indexBuild;
   }
