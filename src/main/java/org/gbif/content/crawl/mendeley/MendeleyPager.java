@@ -1,6 +1,7 @@
 package org.gbif.content.crawl.mendeley;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
@@ -88,7 +89,7 @@ public class MendeleyPager implements Iterable<String> {
                 Optional.ofNullable(httpResponse.getFirstHeader("Mendeley-Count"))
                   .ifPresent(totalResults -> LOG.info("Mendeley reports total results: {}", totalResults.getValue()));
                 nextUrl = nextPageFromHeaders(httpResponse);
-                return EntityUtils.toString(httpResponse.getEntity());
+                return EntityUtils.toString(httpResponse.getEntity(), StandardCharsets.UTF_8.name());
               } catch (IOException ex) {
                 LOG.error("Error contacting Mendeley endpoint", ex);
                 throw new RuntimeException(ex);
