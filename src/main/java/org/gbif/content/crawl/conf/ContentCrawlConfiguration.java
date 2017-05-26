@@ -82,6 +82,11 @@ public class ContentCrawlConfiguration {
       description = "Timeout for the HTTP calls in seconds, defaulting to 10 secs")
     public int httpTimeout = 10000;
 
+    @Parameter(
+      names = "-gbifApiUrl",
+      description = "URL to GBIF API")
+    public String gbifApiUrl;
+
     public IndexBuild indexBuild;
   }
 

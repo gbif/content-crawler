@@ -11,6 +11,7 @@ mendeley:
   indexBuild:
     esIndexName: content
     esIndexType: literature
+  gbifApiUrl: http://api.gbif-dev.org/
 
 # Optional: If included will push documents to the referenced Elastic Search index
 elasticSearch:

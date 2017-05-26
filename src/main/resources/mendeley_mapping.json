@@ -159,6 +159,9 @@
     "gbifRegion": {
       "type": "keyword"
     },
+    "gbifDOI": {
+      "type": "keyword"
+    },
     "translators": {
       "type": "nested",
       "properties": {

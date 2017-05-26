@@ -1,9 +1,17 @@
 package org.gbif.content.crawl.mendeley;
 
+import org.gbif.api.model.occurrence.Download;
+import org.gbif.api.service.occurrence.DownloadRequestService;
+import org.gbif.api.service.registry.DatasetOccurrenceDownloadUsageService;
+import org.gbif.api.service.registry.DatasetService;
+import org.gbif.api.service.registry.OccurrenceDownloadService;
 import org.gbif.api.util.VocabularyUtils;
 import org.gbif.api.vocabulary.Country;
 import org.gbif.api.vocabulary.Language;
 import org.gbif.content.crawl.conf.ContentCrawlConfiguration;
+import org.gbif.registry.ws.client.guice.RegistryWsClientModule;
+import org.gbif.ws.client.guice.AnonymousAuthModule;
+import org.gbif.ws.client.guice.GbifApplicationAuthModule;
 
 import java.io.IOException;
 import java.time.LocalDate;
@@ -12,7 +20,9 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Properties;
 import java.util.Set;
+import java.util.stream.StreamSupport;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -20,6 +30,8 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
 import com.google.common.base.CaseFormat;
 import com.google.common.collect.Maps;
+import com.google.inject.Guice;
+import com.google.inject.Injector;
 import org.elasticsearch.action.bulk.BulkRequestBuilder;
 import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.client.Client;
@@ -56,6 +68,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
   private static final String ES_UPDATED_AT_FL = "updatedAt";
 
   private static final String ES_GBIF_REGION_FL = "gbifRegion";
+  private static final String ES_GBIF_DOI_FL = "gbifDOI";
 
   private static final String ES_MAPPING_FILE = "mendeley_mapping.json";
 
@@ -69,6 +82,8 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
 
   private static final String LANGUAGE_FIELD = "language";
 
+  private static final String GBIF_DOI_TAG = ES_GBIF_DOI_FL + ':';
+
   private static final Logger LOG = LoggerFactory.getLogger(ElasticSearchIndexHandler.class);
   private static final ObjectMapper MAPPER = new ObjectMapper();
   public static final String LAST_MODIFIED = "last_modified";
@@ -76,12 +91,19 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
   private final Client esClient;
   private final ContentCrawlConfiguration conf;
   private final String esIdxName;
+  private final OccurrenceDownloadService downloadService;
+  private final DatasetService datasetService;
 
   public ElasticSearchIndexHandler(ContentCrawlConfiguration conf) {
     this.conf = conf;
     LOG.info("Connecting to ES cluster {}:{}", conf.elasticSearch.host, conf.elasticSearch.port);
     esClient = buildEsClient(conf.elasticSearch);
     esIdxName = getEsIndexingIdxName(conf.mendeley.indexBuild.esIndexName);
+    Properties registryConf = new Properties();
+    registryConf.put("registry.ws.url",conf.mendeley.gbifApiUrl);
+    Injector injector = Guice.createInjector(new RegistryWsClientModule(registryConf), new AnonymousAuthModule());
+    downloadService = injector.getInstance(OccurrenceDownloadService.class);
+    datasetService = injector.getInstance(DatasetService.class);
     createIndex(esClient, conf.mendeley.indexBuild.esIndexType, esIdxName, indexMappings(ES_MAPPING_FILE));
   }
 
@@ -114,28 +136,43 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
   /**
    * Process tags. Adds publishers countries and biodiversity countries from tag values.
    */
-  private static void handleTags(JsonNode document) {
+  private void handleTags(JsonNode document) {
     Set<TextNode> countriesOfResearches = new HashSet<>();
     Set<TextNode> countriesOfCoverage = new HashSet<>();
     Set<TextNode> regions = new HashSet<>();
+    Set<TextNode> gbifDatasets = new HashSet<>();
     document.get(ML_TAGS_FL).elements().forEachRemaining(node -> {
       String value = node.textValue();
-      Optional.ofNullable(Country.fromIsoCode(value))
-        .ifPresent(country -> countriesOfResearches.add(TextNode.valueOf(country.getIso2LetterCode())));
+      if (value.startsWith(GBIF_DOI_TAG)) {
+        String keyValue  = value.replaceFirst(GBIF_DOI_TAG,"");
+        Optional<Download> downloadOpt = Optional.ofNullable(downloadService.get(keyValue));
+        downloadOpt.ifPresent(download ->
+          new DatasetUsageIterable(downloadService, download.getKey())
+            .forEach(response -> response.getResults()
+              .forEach(usage -> gbifDatasets.add(TextNode.valueOf(usage.getDatasetKey().toString()))))
+        );
+        if(!downloadOpt.isPresent()) {
+          Optional.ofNullable(datasetService.listByDOI(keyValue))
+            .ifPresent(datasets ->
+                         datasets.forEach(dataset -> gbifDatasets.add(TextNode.valueOf(dataset.getKey().toString()))));
+        }
+      } else { //try country parser
+        Optional.ofNullable(Country.fromIsoCode(value)).ifPresent(country -> countriesOfResearches.add(TextNode.valueOf(country.getIso2LetterCode())));
 
-      //VocabularyUtils uses Guava optionals
-      com.google.common.base.Optional<Country> bioCountry = VocabularyUtils.lookup(value, Country.class);
-      if (bioCountry.isPresent()) {
-        Country bioCountryValue = bioCountry.get();
-        countriesOfCoverage.add(TextNode.valueOf(bioCountryValue.getIso2LetterCode()));
-        Optional.ofNullable(bioCountryValue.getGbifRegion())
-          .ifPresent(region -> regions.add(TextNode.valueOf(region.name())));
+        //VocabularyUtils uses Guava optionals
+        com.google.common.base.Optional<Country> bioCountry = VocabularyUtils.lookup(value, Country.class);
+        if (bioCountry.isPresent()) {
+          Country bioCountryValue = bioCountry.get();
+          countriesOfCoverage.add(TextNode.valueOf(bioCountryValue.getIso2LetterCode()));
+          Optional.ofNullable(bioCountryValue.getGbifRegion()).ifPresent(region -> regions.add(TextNode.valueOf(region.name())));
+        }
       }
     });
     ObjectNode docNode  = (ObjectNode)document;
     docNode.putArray(ES_COUNTRY_RESEARCHER_FL).addAll(countriesOfResearches);
     docNode.putArray(ES_COUNTRY_COVERAGE_FL).addAll(countriesOfCoverage);
     docNode.putArray(ES_GBIF_REGION_FL).addAll(regions);
+    docNode.putArray(ES_GBIF_DOI_FL).addAll(gbifDatasets);
     docNode.put(CONTENT_TYPE_FIELD, CONTENT_TYPE_FIELD_VALUE);
   }
 
