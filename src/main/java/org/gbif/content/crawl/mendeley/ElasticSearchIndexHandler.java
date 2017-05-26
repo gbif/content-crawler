@@ -68,7 +68,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
   private static final String ES_UPDATED_AT_FL = "updatedAt";
 
   private static final String ES_GBIF_REGION_FL = "gbifRegion";
-  private static final String ES_GBIF_DOI_FL = "gbifDOI";
+  private static final String ES_GBIF_DATASET_FL = "gbifDataset";
 
   private static final String ES_MAPPING_FILE = "mendeley_mapping.json";
 
@@ -82,7 +82,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
 
   private static final String LANGUAGE_FIELD = "language";
 
-  private static final String GBIF_DOI_TAG = ES_GBIF_DOI_FL + ':';
+  private static final String GBIF_DOI_TAG = "gbifDOI:";
 
   private static final Logger LOG = LoggerFactory.getLogger(ElasticSearchIndexHandler.class);
   private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -172,7 +172,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
     docNode.putArray(ES_COUNTRY_RESEARCHER_FL).addAll(countriesOfResearches);
     docNode.putArray(ES_COUNTRY_COVERAGE_FL).addAll(countriesOfCoverage);
     docNode.putArray(ES_GBIF_REGION_FL).addAll(regions);
-    docNode.putArray(ES_GBIF_DOI_FL).addAll(gbifDatasets);
+    docNode.putArray(ES_GBIF_DATASET_FL).addAll(gbifDatasets);
     docNode.put(CONTENT_TYPE_FIELD, CONTENT_TYPE_FIELD_VALUE);
   }
 

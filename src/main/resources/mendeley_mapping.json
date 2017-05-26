@@ -159,7 +159,7 @@
     "gbifRegion": {
       "type": "keyword"
     },
-    "gbifDOI": {
+    "gbifDataset": {
       "type": "keyword"
     },
     "translators": {
