@@ -149,7 +149,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
         String keyValue  = value.replaceFirst(GBIF_DOI_TAG,"");
         Optional<Download> downloadOpt = Optional.ofNullable(downloadService.get(keyValue));
         downloadOpt.ifPresent(download ->
-          new DatasetUsageIterable(downloadService, download.getKey())
+          RegistryIterables.ofDatasetUsages(downloadService, download.getKey())
             .forEach(response -> response.getResults()
               .forEach(usage ->
                        { gbifDatasets.add(TextNode.valueOf(usage.getDatasetKey().toString()));
@@ -161,7 +161,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
               }))
         );
         if(!downloadOpt.isPresent()) {
-          new DatasetsByDoiIterable(datasetService,keyValue)
+          RegistryIterables.ofListByDoi(datasetService, keyValue)
             .forEach(response -> response.getResults()
               .forEach(dataset -> {
                 gbifDatasets.add(TextNode.valueOf(dataset.getKey().toString()));
