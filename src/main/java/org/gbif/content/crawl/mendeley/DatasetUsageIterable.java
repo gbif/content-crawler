@@ -28,14 +28,14 @@ public class DatasetUsageIterable implements Iterable<PagingResponse<DatasetOccu
 
     @Override
     public boolean hasNext() {
-      return response.isEndOfRecords();
+      response = downloadService.listDatasetUsages(downloadKey, pagingRequest);
+      return response != null && !response.isEndOfRecords();
     }
 
     @Override
     public PagingResponse<DatasetOccurrenceDownloadUsage> next() {
       pagingRequest.setOffset(pagingRequest.getOffset() +  PAGE_SIZE);
-      response = downloadService.listDatasetUsages(downloadKey, pagingRequest);
-      return  response;
+      return response;
     }
   }
 

@@ -28,14 +28,14 @@ public class DatasetsByDoiIterable implements Iterable<PagingResponse<Dataset>> 
 
     @Override
     public boolean hasNext() {
-      return response.isEndOfRecords();
+      response = datasetService.listByDOI(doi, pagingRequest);
+      return response != null && !response.isEndOfRecords();
     }
 
     @Override
     public PagingResponse<Dataset> next() {
-      pagingRequest.setOffset(pagingRequest.getOffset() +  PAGE_SIZE);
-      response = datasetService.listByDOI(doi, pagingRequest);
-      return  response;
+      pagingRequest.setOffset(pagingRequest.getOffset() + PAGE_SIZE);
+      return response;
     }
   }
 
