@@ -68,7 +68,8 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
   private static final String ES_UPDATED_AT_FL = "updatedAt";
 
   private static final String ES_GBIF_REGION_FL = "gbifRegion";
-  private static final String ES_GBIF_DATASET_FL = "gbifDataset";
+  private static final String ES_GBIF_DATASET_FL = "gbifDatasetKey";
+  private static final String ES_PUBLISHING_ORG_FL =  "publishingOrganizationKey";
 
   private static final String ES_MAPPING_FILE = "mendeley_mapping.json";
 
@@ -141,6 +142,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
     Set<TextNode> countriesOfCoverage = new HashSet<>();
     Set<TextNode> regions = new HashSet<>();
     Set<TextNode> gbifDatasets = new HashSet<>();
+    Set<TextNode> publishingOrganizations = new HashSet<>();
     document.get(ML_TAGS_FL).elements().forEachRemaining(node -> {
       String value = node.textValue();
       if (value.startsWith(GBIF_DOI_TAG)) {
@@ -149,12 +151,25 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
         downloadOpt.ifPresent(download ->
           new DatasetUsageIterable(downloadService, download.getKey())
             .forEach(response -> response.getResults()
-              .forEach(usage -> gbifDatasets.add(TextNode.valueOf(usage.getDatasetKey().toString()))))
+              .forEach(usage ->
+                       { gbifDatasets.add(TextNode.valueOf(usage.getDatasetKey().toString()));
+                         Optional.ofNullable(datasetService.get(usage.getDatasetKey()))
+                           .ifPresent(dataset ->  Optional.ofNullable(dataset.getPublishingOrganizationKey())
+                             .ifPresent(publishingOrganizationKey -> publishingOrganizations
+                               .add(TextNode.valueOf(publishingOrganizationKey.toString()))
+                             ));
+              }))
         );
         if(!downloadOpt.isPresent()) {
-          Optional.ofNullable(datasetService.listByDOI(keyValue))
-            .ifPresent(datasets ->
-                         datasets.forEach(dataset -> gbifDatasets.add(TextNode.valueOf(dataset.getKey().toString()))));
+          new DatasetsByDoiIterable(datasetService,keyValue)
+            .forEach(response -> response.getResults()
+              .forEach(dataset -> {
+                gbifDatasets.add(TextNode.valueOf(dataset.getKey().toString()));
+                Optional.ofNullable(dataset.getPublishingOrganizationKey())
+                  .ifPresent(publishingOrganizationKey -> publishingOrganizations
+                                                            .add(TextNode.valueOf(publishingOrganizationKey.toString()))
+                  );
+              }));
         }
       } else { //try country parser
         Optional.ofNullable(Country.fromIsoCode(value)).ifPresent(country -> countriesOfResearches.add(TextNode.valueOf(country.getIso2LetterCode())));
@@ -173,6 +188,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
     docNode.putArray(ES_COUNTRY_COVERAGE_FL).addAll(countriesOfCoverage);
     docNode.putArray(ES_GBIF_REGION_FL).addAll(regions);
     docNode.putArray(ES_GBIF_DATASET_FL).addAll(gbifDatasets);
+    docNode.putArray(ES_PUBLISHING_ORG_FL).addAll(publishingOrganizations);
     docNode.put(CONTENT_TYPE_FIELD, CONTENT_TYPE_FIELD_VALUE);
   }
 
