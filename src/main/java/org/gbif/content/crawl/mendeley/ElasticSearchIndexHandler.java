@@ -23,6 +23,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.StreamSupport;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -50,6 +52,9 @@ import static org.gbif.content.crawl.es.ElasticSearchUtils.swapIndexToAlias;
  * Parses the documents from the response and adds them to the index.
  */
 public class ElasticSearchIndexHandler implements ResponseHandler {
+
+  private static final String URL_BACK_SLASH = "%2F";
+  private static final Pattern BACK_SLASH = Pattern.compile("/", Pattern.LITERAL);
 
   //Mendeley fields used by this handler
   private static final String ML_ID_FL = "id";
@@ -84,7 +89,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
 
   private static final String LANGUAGE_FIELD = "language";
 
-  private static final String GBIF_DOI_TAG = "gbifDOI:";
+  private static final Pattern GBIF_DOI_TAG = Pattern.compile("gbifDOI:", Pattern.LITERAL);
 
   private static final Logger LOG = LoggerFactory.getLogger(ElasticSearchIndexHandler.class);
   private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -146,8 +151,8 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
     Set<TextNode> publishingOrganizations = new HashSet<>();
     document.get(ML_TAGS_FL).elements().forEachRemaining(node -> {
       String value = node.textValue();
-      if (value.startsWith(GBIF_DOI_TAG)) {
-        String keyValue  = value.replaceFirst(GBIF_DOI_TAG,"").replace("/","%2F");
+      if (value.startsWith(GBIF_DOI_TAG.pattern())) {
+        String keyValue  = BACK_SLASH.matcher(GBIF_DOI_TAG.matcher(value).replaceFirst("")).replaceAll(URL_BACK_SLASH);
         Optional<Download> downloadOpt = Optional.ofNullable(downloadService.get(keyValue));
         downloadOpt.ifPresent(download ->
           RegistryIterables.ofDatasetUsages(downloadService, download.getKey())
