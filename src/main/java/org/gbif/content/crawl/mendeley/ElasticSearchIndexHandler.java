@@ -76,6 +76,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
   private static final String ES_GBIF_REGION_FL = "gbifRegion";
   private static final String ES_GBIF_DATASET_FL = "gbifDatasetKey";
   private static final String ES_PUBLISHING_ORG_FL =  "publishingOrganizationKey";
+  private static final String ES_DOWNLOAD_FL = "gbifDownloadKey";
 
   private static final String ES_MAPPING_FILE = "mendeley_mapping.json";
 
@@ -149,22 +150,23 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
     Set<TextNode> regions = new HashSet<>();
     Set<TextNode> gbifDatasets = new HashSet<>();
     Set<TextNode> publishingOrganizations = new HashSet<>();
+    Set<TextNode> gbifDownloads = new HashSet<>();
     document.get(ML_TAGS_FL).elements().forEachRemaining(node -> {
       String value = node.textValue();
       if (value.startsWith(GBIF_DOI_TAG.pattern())) {
         String keyValue  = BACK_SLASH.matcher(GBIF_DOI_TAG.matcher(value).replaceFirst("")).replaceAll(URL_BACK_SLASH);
         Optional<Download> downloadOpt = Optional.ofNullable(downloadService.get(keyValue));
-        downloadOpt.ifPresent(download ->
-          RegistryIterables.ofDatasetUsages(downloadService, download.getKey())
-            .forEach(response -> response.getResults()
-              .forEach(usage ->
-                       { gbifDatasets.add(TextNode.valueOf(usage.getDatasetKey().toString()));
-                         Optional.ofNullable(datasetService.get(usage.getDatasetKey()))
-                           .ifPresent(dataset ->  Optional.ofNullable(dataset.getPublishingOrganizationKey())
-                             .ifPresent(publishingOrganizationKey -> publishingOrganizations
-                               .add(TextNode.valueOf(publishingOrganizationKey.toString()))
-                             ));
-              }))
+        downloadOpt.ifPresent(download -> {
+                                gbifDownloads.add(TextNode.valueOf(download.getKey()));
+                                RegistryIterables.ofDatasetUsages(downloadService, download.getKey())
+                                  .forEach(response -> response.getResults().forEach(usage -> {
+                                    gbifDatasets.add(TextNode.valueOf(usage.getDatasetKey().toString()));
+                                    Optional.ofNullable(datasetService.get(usage.getDatasetKey()))
+                                      .ifPresent(dataset -> Optional.ofNullable(dataset.getPublishingOrganizationKey())
+                                        .ifPresent(publishingOrganizationKey -> publishingOrganizations.add(TextNode.valueOf(
+                                          publishingOrganizationKey.toString()))));
+                                  }));
+                              }
         );
         if(!downloadOpt.isPresent()) {
           RegistryIterables.ofListByDoi(datasetService, keyValue)
@@ -195,6 +197,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
     docNode.putArray(ES_GBIF_REGION_FL).addAll(regions);
     docNode.putArray(ES_GBIF_DATASET_FL).addAll(gbifDatasets);
     docNode.putArray(ES_PUBLISHING_ORG_FL).addAll(publishingOrganizations);
+    docNode.putArray(ES_DOWNLOAD_FL).addAll(gbifDownloads);
     docNode.put(CONTENT_TYPE_FIELD, CONTENT_TYPE_FIELD_VALUE);
   }
 
