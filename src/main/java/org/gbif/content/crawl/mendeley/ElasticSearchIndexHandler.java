@@ -14,6 +14,7 @@ import org.gbif.ws.client.guice.AnonymousAuthModule;
 import org.gbif.ws.client.guice.GbifApplicationAuthModule;
 
 import java.io.IOException;
+import java.net.URLEncoder;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
@@ -146,7 +147,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
     document.get(ML_TAGS_FL).elements().forEachRemaining(node -> {
       String value = node.textValue();
       if (value.startsWith(GBIF_DOI_TAG)) {
-        String keyValue  = value.replaceFirst(GBIF_DOI_TAG,"");
+        String keyValue  = value.replaceFirst(GBIF_DOI_TAG,"").replace("/","%2F");
         Optional<Download> downloadOpt = Optional.ofNullable(downloadService.get(keyValue));
         downloadOpt.ifPresent(download ->
           RegistryIterables.ofDatasetUsages(downloadService, download.getKey())

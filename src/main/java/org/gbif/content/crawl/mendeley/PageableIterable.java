@@ -25,8 +25,11 @@ public class PageableIterable<T> implements Iterable<PagingResponse<T>> {
 
     @Override
     public boolean hasNext() {
-      response = dataSupplier.apply(pagingRequest);
-      return response != null && !response.isEndOfRecords();
+      if (response == null || !response.isEndOfRecords()) {
+        response = dataSupplier.apply(pagingRequest);
+        return Boolean.TRUE;
+      }
+      return Boolean.FALSE;
     }
 
     @Override
