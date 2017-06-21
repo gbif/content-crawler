@@ -29,6 +29,7 @@ import java.util.stream.StreamSupport;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.BooleanNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
 import com.google.common.base.CaseFormat;
@@ -89,6 +90,8 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
   private static final String CONTENT_TYPE_FIELD_VALUE = "literature";
 
   private static final String LANGUAGE_FIELD = "language";
+
+  private static final String SEARCHABLE_FIELD = "searchable";
 
   private static final Pattern GBIF_DOI_TAG = Pattern.compile("gbifDOI:", Pattern.LITERAL);
 
@@ -251,6 +254,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
       }
 
     });
+    docNode.set(SEARCHABLE_FIELD, BooleanNode.valueOf(Boolean.TRUE));
     createdAt(docNode)
       .ifPresent(createdAtValue -> docNode.put(ES_CREATED_AT_FL, createdAtValue));
   }

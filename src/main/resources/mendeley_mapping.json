@@ -198,6 +198,10 @@
     },
     "patentLegalStatus": {
       "type": "keyword"
+    },
+    "searchable": {
+      "type": "boolean",
+      "null_value": true
     }
   }
 }
