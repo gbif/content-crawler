@@ -13,26 +13,36 @@ mendeley:
     esIndexType: literature
   gbifApiUrl: http://api.gbif-dev.org/
   controlledTags:
-    topics:
-      - "policy"
-      - "Marine"
-      - "Human_health"
-      - "Evolution"
-      - "Conservation"
+    "topics":
       - "Agriculture"
+      - "Biodiversity_science"
       - "Biogeography"
-      - "morphology"
-      - "taxonomy"
-      - "Invasives"
+      - "Citizen_science"
+      - "Climate_change"
+      - "Conservation"
       - "Data_management"
       - "Data_paper"
-    relevance:
+      - "Ecology"
+      - "Ecosystem_services"
+      - "Evolution"
+      - "Freshwater"
+      - "Human_health"
+      - "Invasives"
+      - "Marine"
+      - "Phylogenetics"
+      - "Species_distributions"
+      - "Taxonomy"
+    "relevance":
       - "GBIF_used"
-      - "GBIF_mentioned"
-      - "GBIF_author"
-      - "GBIF_published"
       - "GBIF_cited"
       - "GBIF_discussed"
+      - "GBIF_primary"
+      - "GBIF_acknowledged"
+      - "GBIF_published"
+      - "GBIF_author"
+      - "GBIF_mentioned"
+      - "GBIF_funded"
+
 
 
 # Optional: If included will push documents to the referenced Elastic Search index
