@@ -79,6 +79,9 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
   private static final String ES_PUBLISHING_ORG_FL =  "publishingOrganizationKey";
   private static final String ES_DOWNLOAD_FL = "gbifDownloadKey";
 
+  private static final String ES_TOPIC_FL = "topic";
+  private static final String ES_RELEVANCE_FL = "relevance";
+
   private static final String ES_MAPPING_FILE = "mendeley_mapping.json";
 
   private static final String LITERATURE_TYPE_FIELD = "literatureType";
@@ -92,6 +95,9 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
   private static final String LANGUAGE_FIELD = "language";
 
   private static final String SEARCHABLE_FIELD = "searchable";
+
+  private static final String BIO_COUNTRY_POSTFIX = "_biodiversity";
+  private static final Pattern BIO_COUNTRY_POSTFIX_PAT = Pattern.compile(BIO_COUNTRY_POSTFIX);
 
   private static final Pattern GBIF_DOI_TAG = Pattern.compile("gbifDOI:", Pattern.LITERAL);
 
@@ -154,6 +160,8 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
     Set<TextNode> gbifDatasets = new HashSet<>();
     Set<TextNode> publishingOrganizations = new HashSet<>();
     Set<TextNode> gbifDownloads = new HashSet<>();
+    Set<TextNode> topics = new HashSet<>();
+    Set<TextNode> relevance = new HashSet<>();
     document.get(ML_TAGS_FL).elements().forEachRemaining(node -> {
       String value = node.textValue();
       if (value.startsWith(GBIF_DOI_TAG.pattern())) {
@@ -183,14 +191,28 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
               }));
         }
       } else { //try country parser
-        Optional.ofNullable(Country.fromIsoCode(value)).ifPresent(country -> countriesOfResearches.add(TextNode.valueOf(country.getIso2LetterCode())));
-
         //VocabularyUtils uses Guava optionals
-        com.google.common.base.Optional<Country> bioCountry = VocabularyUtils.lookup(value, Country.class);
-        if (bioCountry.isPresent()) {
-          Country bioCountryValue = bioCountry.get();
-          countriesOfCoverage.add(TextNode.valueOf(bioCountryValue.getIso2LetterCode()));
-          Optional.ofNullable(bioCountryValue.getGbifRegion()).ifPresent(region -> regions.add(TextNode.valueOf(region.name())));
+        String lowerCaseValue = value.toLowerCase();
+        if (lowerCaseValue.endsWith(BIO_COUNTRY_POSTFIX)) {
+          com.google.common.base.Optional<Country> bioCountry = VocabularyUtils.lookup(BIO_COUNTRY_POSTFIX_PAT
+                                                                                         .matcher(lowerCaseValue)
+                                                                                         .replaceAll(""),
+                                                                                       Country.class);
+          if (bioCountry.isPresent()) {
+            Country bioCountryValue = bioCountry.get();
+            countriesOfCoverage.add(TextNode.valueOf(bioCountryValue.getIso2LetterCode()));
+            Optional.ofNullable(bioCountryValue.getGbifRegion())
+              .ifPresent(region -> regions.add(TextNode.valueOf(region.name())));
+          }
+        } else {
+          Optional<Country> researcherCountry = Optional.ofNullable(Country.fromIsoCode(value));
+          if (researcherCountry.isPresent()) {
+            countriesOfResearches.add(TextNode.valueOf(researcherCountry.get().getIso2LetterCode()));
+          } else { // try controlled terms
+            if(!addIfIsControlledTerm(ES_TOPIC_FL, value, topics)) {
+              addIfIsControlledTerm(ES_RELEVANCE_FL, value, relevance);
+            }
+          }
         }
       }
     });
@@ -200,8 +222,20 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
     docNode.putArray(ES_GBIF_REGION_FL).addAll(regions);
     docNode.putArray(ES_GBIF_DATASET_FL).addAll(gbifDatasets);
     docNode.putArray(ES_PUBLISHING_ORG_FL).addAll(publishingOrganizations);
-    docNode.putArray(ES_DOWNLOAD_FL).addAll(gbifDownloads);
+    docNode.putArray(ES_RELEVANCE_FL).addAll(relevance);
+    docNode.putArray(ES_TOPIC_FL).addAll(topics);
     docNode.put(CONTENT_TYPE_FIELD, CONTENT_TYPE_FIELD_VALUE);
+  }
+
+  /**
+   * If the value appears in the list of conf.mendeley.controlledTags[controlledTermName] it is added to terms.
+   */
+  private boolean addIfIsControlledTerm(String controlledTermName, String value, Set<TextNode> terms) {
+    Optional<String> controlledTermValue = conf.mendeley.controlledTags.get(controlledTermName).stream()
+                                            .filter(controlledTerm -> controlledTerm.equalsIgnoreCase(value))
+                                            .findAny();
+    controlledTermValue.ifPresent(matchTerm -> terms.add(TextNode.valueOf(matchTerm)));
+    return controlledTermValue.isPresent();
   }
 
   /**

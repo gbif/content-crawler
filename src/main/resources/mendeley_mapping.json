@@ -202,6 +202,12 @@
     "searchable": {
       "type": "boolean",
       "null_value": true
+    },
+    "topic": {
+      "type": "keyword"
+    },
+    "relevance": {
+      "type": "keyword"
     }
   }
 }

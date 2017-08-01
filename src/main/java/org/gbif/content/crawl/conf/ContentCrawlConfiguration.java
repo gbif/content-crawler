@@ -4,9 +4,11 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import javax.annotation.Nullable;
 import javax.validation.constraints.NotNull;
@@ -86,6 +88,11 @@ public class ContentCrawlConfiguration {
       names = "-gbifApiUrl",
       description = "URL to GBIF API")
     public String gbifApiUrl;
+
+    @Parameter(
+      names = "-controlledTags",
+      description = "Tags values that must be handled as separate fields in the resulting index")
+    public Map<String,List<String>> controlledTags = new HashMap<>();
 
     public IndexBuild indexBuild;
   }
