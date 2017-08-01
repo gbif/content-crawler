@@ -188,16 +188,12 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
         //VocabularyUtils uses Guava optionals
         String lowerCaseValue = value.toLowerCase();
         if (lowerCaseValue.endsWith(BIO_COUNTRY_POSTFIX)) {
-          com.google.common.base.Optional<Country> bioCountry = VocabularyUtils.lookup(BIO_COUNTRY_POSTFIX_PAT
-                                                                                         .matcher(lowerCaseValue)
-                                                                                         .replaceAll(""),
-                                                                                       Country.class);
-          if (bioCountry.isPresent()) {
-            Country bioCountryValue = bioCountry.get();
-            countriesOfCoverage.add(TextNode.valueOf(bioCountryValue.getIso2LetterCode()));
-            Optional.ofNullable(bioCountryValue.getGbifRegion())
-              .ifPresent(region -> regions.add(TextNode.valueOf(region.name())));
-          }
+          Optional.ofNullable(Country.fromIsoCode(BIO_COUNTRY_POSTFIX_PAT.matcher(lowerCaseValue).replaceAll("")))
+            .ifPresent(bioCountry -> {
+              countriesOfCoverage.add(TextNode.valueOf(bioCountry.getIso2LetterCode()));
+              Optional.ofNullable(bioCountry.getGbifRegion())
+                .ifPresent(region -> regions.add(TextNode.valueOf(region.name())));
+            });
         } else {
           Optional<Country> researcherCountry = Optional.ofNullable(Country.fromIsoCode(value));
           if (researcherCountry.isPresent()) {
