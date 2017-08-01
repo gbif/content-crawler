@@ -1,8 +1,6 @@
 package org.gbif.content.crawl.mendeley;
 
 import org.gbif.api.model.occurrence.Download;
-import org.gbif.api.service.occurrence.DownloadRequestService;
-import org.gbif.api.service.registry.DatasetOccurrenceDownloadUsageService;
 import org.gbif.api.service.registry.DatasetService;
 import org.gbif.api.service.registry.OccurrenceDownloadService;
 import org.gbif.api.util.VocabularyUtils;
@@ -11,10 +9,8 @@ import org.gbif.api.vocabulary.Language;
 import org.gbif.content.crawl.conf.ContentCrawlConfiguration;
 import org.gbif.registry.ws.client.guice.RegistryWsClientModule;
 import org.gbif.ws.client.guice.AnonymousAuthModule;
-import org.gbif.ws.client.guice.GbifApplicationAuthModule;
 
 import java.io.IOException;
-import java.net.URLEncoder;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
@@ -23,9 +19,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.StreamSupport;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -79,7 +73,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
   private static final String ES_PUBLISHING_ORG_FL =  "publishingOrganizationKey";
   private static final String ES_DOWNLOAD_FL = "gbifDownloadKey";
 
-  private static final String ES_TOPIC_FL = "topic";
+  private static final String ES_TOPICS_FL = "topics";
   private static final String ES_RELEVANCE_FL = "relevance";
 
   private static final String ES_MAPPING_FILE = "mendeley_mapping.json";
@@ -209,7 +203,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
           if (researcherCountry.isPresent()) {
             countriesOfResearches.add(TextNode.valueOf(researcherCountry.get().getIso2LetterCode()));
           } else { // try controlled terms
-            if(!addIfIsControlledTerm(ES_TOPIC_FL, value, topics)) {
+            if(!addIfIsControlledTerm(ES_TOPICS_FL, value, topics)) {
               addIfIsControlledTerm(ES_RELEVANCE_FL, value, relevance);
             }
           }
@@ -223,7 +217,8 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
     docNode.putArray(ES_GBIF_DATASET_FL).addAll(gbifDatasets);
     docNode.putArray(ES_PUBLISHING_ORG_FL).addAll(publishingOrganizations);
     docNode.putArray(ES_RELEVANCE_FL).addAll(relevance);
-    docNode.putArray(ES_TOPIC_FL).addAll(topics);
+    docNode.putArray(ES_TOPICS_FL).addAll(topics);
+    docNode.putArray(ES_DOWNLOAD_FL).addAll(gbifDownloads);
     docNode.put(CONTENT_TYPE_FIELD, CONTENT_TYPE_FIELD_VALUE);
   }
 

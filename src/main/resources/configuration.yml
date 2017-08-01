@@ -13,7 +13,7 @@ mendeley:
     esIndexType: literature
   gbifApiUrl: http://api.gbif-dev.org/
   controlledTags:
-    topic:
+    topics:
       - "policy"
       - "Marine"
       - "Human_health"
