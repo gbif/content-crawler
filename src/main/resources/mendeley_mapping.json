@@ -203,7 +203,7 @@
       "type": "boolean",
       "null_value": true
     },
-    "topic": {
+    "topics": {
       "type": "keyword"
     },
     "relevance": {
