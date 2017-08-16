@@ -14,13 +14,13 @@ import static org.gbif.content.crawl.contentful.crawl.MappingGenerator.COLLAPSIB
 import static org.gbif.content.crawl.contentful.crawl.MappingGenerator.COLLAPSIBLE_TYPES;
 
 /**
- * This class creates a cache of common lookup operations on content type fields.
+ * This class creates a CACHE of common lookup operations on content type fields.
  * It's used to avoid recurrent iterations over fields to extract data used during indexing.
  */
 public class ContentTypeFields {
 
-  //Map cache of all type mappings per content type id
-  private static final Map<String, ContentTypeFields> cache = new HashMap<>();
+  //Map CACHE of all type mappings per content type id
+  private static final Map<String, ContentTypeFields> CACHE = new HashMap<>();
 
   //CDAContent type to be analyzed
   private final CDAContentType cdaContentType;
@@ -91,9 +91,9 @@ public class ContentTypeFields {
    * Gets a ContentTypeFields of CDAContentType.
    */
   public static ContentTypeFields of(CDAContentType cdaContentType) {
-    return Optional.ofNullable(cache.get(cdaContentType.id()))
+    return Optional.ofNullable(CACHE.get(cdaContentType.id()))
             .orElseGet(() ->
-              cache.computeIfAbsent(cdaContentType.id(), key -> new ContentTypeFields(cdaContentType))
+              CACHE.computeIfAbsent(cdaContentType.id(), key -> new ContentTypeFields(cdaContentType))
             );
   }
 

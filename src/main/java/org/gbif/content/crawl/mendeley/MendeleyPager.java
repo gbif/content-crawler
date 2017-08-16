@@ -72,7 +72,7 @@ public class MendeleyPager implements Iterable<String> {
 
     @Override
     public String next() {
-      return nextUrl.map( targetUrl -> {
+      return nextUrl.map(targetUrl -> {
               HttpGet httpGet = new HttpGet(targetUrl);
               httpGet.setHeader(HttpHeaders.AUTHORIZATION, "Bearer " + token.getAccessToken());
               httpGet.setConfig(requestConfig);
@@ -93,7 +93,8 @@ public class MendeleyPager implements Iterable<String> {
               } catch (IOException ex) {
                 LOG.error("Error contacting Mendeley endpoint", ex);
                 throw new RuntimeException(ex);
-              }}).orElseThrow(() -> new NoSuchElementException("No more elements to crawl"));
+              }
+      }).orElseThrow(() -> new NoSuchElementException("No more elements to crawl"));
     }
   }
 

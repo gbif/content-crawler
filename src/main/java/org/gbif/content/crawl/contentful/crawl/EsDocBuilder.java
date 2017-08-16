@@ -55,7 +55,7 @@ public class EsDocBuilder {
       Optional.ofNullable(cdaEntry.getField(field)).ifPresent(fieldValue -> {
         Constants.CMAFieldType fieldType = contentTypeFields.getFieldType(field);
         if (Constants.CMAFieldType.Link == fieldType) {
-           processLinkField((LocalizedResource)fieldValue, field);
+          processLinkField((LocalizedResource)fieldValue, field);
         } else if (Constants.CMAFieldType.Array == fieldType) {
           processArrayField((List<?>)fieldValue, field);
         } else {
@@ -67,7 +67,7 @@ public class EsDocBuilder {
     entries.putAll(cdaEntry.attrs());
     //Updates the information from the meta field
     Meta.getMetaCreatedDate(cdaEntry).ifPresent(createdDate -> entries.replace("createdAt", createdDate));
-    return  entries;
+    return entries;
   }
 
   /**
@@ -115,9 +115,11 @@ public class EsDocBuilder {
       .flatMap(resource -> {
         if (CDAEntry.class.isInstance(resource)) {
           return Stream.of(getAssociatedEntryFields((CDAEntry) resource));
-        } else if (LocalizedResource.class.isInstance(resource)) {
+        }
+        if (LocalizedResource.class.isInstance(resource)) {
           return Stream.of(((LocalizedResource)resource).rawFields());
-        } else if (String.class.isInstance(resource)) {
+        }
+        if (String.class.isInstance(resource)) {
           return Stream.of((String)resource);
         }
         return Stream.empty();

@@ -96,13 +96,13 @@ public class ElasticSearchUtils {
       //Promote new index to alla content indices
       esClient.admin().indices().prepareAliases().addAlias(toIdx, CONTENT_ALIAS).get();
       GetAliasesResponse aliasesResponse = esClient.admin().indices()
-        .getAliases(new GetAliasesRequest().aliases(alias)).get();
+                                            .getAliases(new GetAliasesRequest().aliases(alias)).get();
       aliasesResponse.getAliases().keysIt().forEachRemaining(aliasedIdx -> {
         if (!toIdx.equals(aliasedIdx)) {
           esClient.admin().indices().prepareDelete(aliasedIdx).get();
         }
       });
-    } catch (InterruptedException|ExecutionException ex) {
+    } catch (InterruptedException | ExecutionException ex) {
       throw new IllegalStateException(ex);
     }
   }

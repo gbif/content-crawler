@@ -57,12 +57,12 @@ public class MendeleyDocumentCrawler {
         .fromIterable(new MendeleyPager(targetUrl, token, requestConfig, httpClient))
         .doOnError(err -> {
           LOG.error("Error crawling Mendeley", err);
-          throw new RuntimeException(err);})
+          throw new RuntimeException(err); })
         .buffer(CRAWL_BUFFER)
         .doOnTerminate(() -> handlers.forEach(handler -> {
           try {
             handler.finish();
-          } catch (Exception ex){
+          } catch (Exception ex) {
             LOG.error("Error finishing handlers", ex);
           }
         }))

@@ -21,7 +21,7 @@ import org.elasticsearch.common.xcontent.XContentFactory;
 /**
  * Generates the ElasticSearch mapping of a Contentful ContentType.
  */
-public class MappingGenerator {
+public class  MappingGenerator {
 
   private static final String KEYWORD = "keyword";
   private static final String NESTED = "nested";

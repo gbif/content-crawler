@@ -3,7 +3,6 @@ package org.gbif.content.crawl.mendeley;
 import org.gbif.api.model.occurrence.Download;
 import org.gbif.api.service.registry.DatasetService;
 import org.gbif.api.service.registry.OccurrenceDownloadService;
-import org.gbif.api.util.VocabularyUtils;
 import org.gbif.api.vocabulary.Country;
 import org.gbif.api.vocabulary.Language;
 import org.gbif.content.crawl.conf.ContentCrawlConfiguration;
@@ -280,8 +279,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
 
     });
     docNode.set(SEARCHABLE_FIELD, BooleanNode.valueOf(Boolean.TRUE));
-    createdAt(docNode)
-      .ifPresent(createdAtValue -> docNode.put(ES_CREATED_AT_FL, createdAtValue));
+    createdAt(docNode).ifPresent(createdAtValue -> docNode.put(ES_CREATED_AT_FL, createdAtValue));
   }
 
   /**

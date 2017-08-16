@@ -24,10 +24,8 @@ public class ResponseToFileHandler implements ResponseHandler {
   @Override
   public void handleResponse(String responseAsJson) throws Exception {
     File targetFile = new File(targetDir, "page_" + pageNumber + ".response.json");
-    try (
-      Writer out = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(targetFile),
-                                                             StandardCharsets.UTF_8.name()));
-    ) {
+    try (Writer out = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(targetFile),
+                                                                StandardCharsets.UTF_8.name()))) {
       out.write(responseAsJson);
     }
     pageNumber += 1;

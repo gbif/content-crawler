@@ -92,7 +92,8 @@ public class ContentTypeCrawler {
     //Retrieves resources in a CDAArray
     Observable.fromIterable(new ContentfulPager(cdaClient, PAGE_SIZE, contentType.getResourceId()))
       .doOnError(err -> { LOG.error("Error crawling content type", err);
-                          throw new RuntimeException(err);})
+                          throw new RuntimeException(err);
+                        })
       .buffer(CRAWL_BUFFER)
       .doOnComplete(() -> executeBulkRequest(bulkRequest))
       .subscribe( results -> results.stream().forEach(
