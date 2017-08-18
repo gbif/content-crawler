@@ -116,7 +116,7 @@ public class VocabularyBuilder {
           Optional.ofNullable(Country.fromIsoCode(countryCode).getGbifRegion()).ifPresent(gbifRegions::add);
         });
       //tries to load a vocabulary
-      vocabularyTerms.termOf(cdaEntry).map(cdaEntry::getField).ifPresent(vocValue -> values.add((String)vocValue));
+      vocabularyTerms.termOf(cdaEntry).map(cdaEntry::getField).ifPresent(vocValue -> values.add(((String)vocValue).replace(' ','_')));
     });
     return this;
   }

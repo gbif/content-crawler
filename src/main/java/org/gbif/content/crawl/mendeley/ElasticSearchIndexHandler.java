@@ -224,7 +224,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
     Optional<String> controlledTermValue = conf.mendeley.controlledTags.get(controlledTermName).stream()
                                             .filter(controlledTerm -> controlledTerm.equalsIgnoreCase(value))
                                             .findAny();
-    controlledTermValue.ifPresent(matchTerm -> terms.add(TextNode.valueOf(matchTerm)));
+    controlledTermValue.ifPresent(matchTerm -> terms.add(TextNode.valueOf(matchTerm.replace(' ', '_'))));
     return controlledTermValue.isPresent();
   }
 
