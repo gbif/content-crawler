@@ -324,7 +324,7 @@ public class  MappingGenerator {
             } else if (COLLAPSIBLE_TYPES.contains(cmaField.getType())
                        || COLLAPSIBLE_FIELDS.matcher(cmaField.getId()).matches()) {
               collapsedFields.put(cmaField.getId(), esType);
-            } else if (!NESTED.equals(esType)) {
+            } else if (!NESTED.equals(esType) && cmaField.isLocalized()) { //localizable fields have nested elements
               addTemplateField("path_match", cmaField.getId(), cmaField.getId() + ".*", esType, mapping);
             } else {
               addTemplateField("match", cmaField.getId(), cmaField.getId(), esType, mapping);
