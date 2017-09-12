@@ -3,7 +3,7 @@
 #Downloads latest snapshot.
 function download {
   echo "Downloading content crawler"
-  wget -O content-crawler.jar "http://repository.gbif.org/service/local/artifact/maven/redirect?g=org.gbif.content&a=content-crawler&v=LATEST&r=$1&e=jar"
+  wget --progress=dot:mega -O content-crawler.jar "http://repository.gbif.org/service/local/artifact/maven/redirect?g=org.gbif.content&a=content-crawler&v=LATEST&r=$1&e=jar"
   mv latest.sha1 jar.sha1
 }
 
@@ -43,6 +43,3 @@ echo "Running crawler"
 java -jar content-crawler.jar $COMMAND --conf $P.yml
 rm -f $P.yml
 echo "Crawl has finished"
-
-
-
