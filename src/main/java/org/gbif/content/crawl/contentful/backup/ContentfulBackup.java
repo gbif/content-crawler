@@ -146,35 +146,38 @@ public class ContentfulBackup {
                   // metadata about the asset
                   try {
                     Map<String, Map> languages = (Map) asset.getFields().get("file");
-                    for (Map.Entry<String, Map> e : languages.entrySet()) {
+                    if (languages != null) {
+                      for (Map.Entry<String, Map> e : languages.entrySet()) {
 
-                      // skip any asset that has no URL as it is meaningless and indicates bad content
-                      if (e.getValue().get("url") != null) {
-                        String assetUrl = String.valueOf(e.getValue().get("url"));
-                        LOG.info("Language[{}] has URL[{}]", e.getKey(), assetUrl);
+                        // skip any asset that has no URL as it is meaningless and indicates bad content
+                        if (e.getValue().get("url") != null) {
+                          String assetUrl = String.valueOf(e.getValue().get("url"));
+                          LOG.info("Language[{}] has URL[{}]", e.getKey(), assetUrl);
 
-                        // we map the local path to the URL path (wu1jj10r9bwp is the spaceID)
-                        // //assets.contentful.com/wu1jj10r9bwp/59Vy2G95H2EIE8yOIcgSSu/ae59118ae9989c26119972f1662aff3f/test.pdf
-                        //String path = assetUrl.substring(assetUrl.indexOf(spaceId) + spaceId.length() + 1);
-                        Path targetFile = assetsDir.resolve(extractAssetPath(assetUrl));
+                          // we map the local path to the URL path (wu1jj10r9bwp is the spaceID)
+                          // //assets.contentful.com/wu1jj10r9bwp/59Vy2G95H2EIE8yOIcgSSu/ae59118ae9989c26119972f1662aff3f/test.pdf
+                          //String path = assetUrl.substring(assetUrl.indexOf(spaceId) + spaceId.length() + 1);
+                          Path targetFile = assetsDir.resolve(extractAssetPath(assetUrl));
 
-                        if (Files.exists(targetFile)) {
-                          LOG.info("Skipping asset file which already exists: {}", targetFile.toAbsolutePath());
-                        } else {
-                          Files.createDirectories(targetFile.getParent()); // defensive coding
-                          Files.createFile(targetFile);
+                          if (Files.exists(targetFile)) {
+                            LOG.info("Skipping asset file which already exists: {}", targetFile.toAbsolutePath());
+                          } else {
+                            Files.createDirectories(targetFile.getParent()); // defensive coding
+                            Files.createFile(targetFile);
 
-                          try (BufferedSink sink = Okio.buffer(Okio.sink(targetFile))) {
-                            Request request = new Request.Builder()
-                              .url("http://" + assetUrl)
-                              .build();
+                            try (BufferedSink sink = Okio.buffer(Okio.sink(targetFile))) {
+                              Request request = new Request.Builder()
+                                .url("http://" + assetUrl)
+                                .build();
 
-                            Response response = client.newCall(request).execute();
-                            sink.writeAll(response.body().source());
+                              Response response = client.newCall(request).execute();
+                              sink.writeAll(response.body().source());
+                            }
                           }
                         }
                       }
                     }
+
 
                     // Save as e.g. ./spaceId/<timestamp>/Asset/contentId.json
                     Path contentDir = spaceDir.resolve(Paths.get(startTime, "Asset"));
