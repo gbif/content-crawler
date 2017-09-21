@@ -208,6 +208,10 @@
     },
     "relevance": {
       "type": "keyword"
+    },
+    "peerReview": {
+      "type": "boolean",
+      "null_value": false
     }
   }
 }

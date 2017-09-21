@@ -26,9 +26,11 @@ import com.fasterxml.jackson.databind.node.BooleanNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
 import com.google.common.base.CaseFormat;
+import com.google.common.base.Equivalence;
 import com.google.common.collect.Maps;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
+import org.apache.commons.lang3.mutable.MutableBoolean;
 import org.elasticsearch.action.bulk.BulkRequestBuilder;
 import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.client.Client;
@@ -89,10 +91,13 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
 
   private static final String SEARCHABLE_FIELD = "searchable";
 
+  private static final String ES_PEER_REVIEW_FIELD = "peerReview";
+
   private static final String BIO_COUNTRY_POSTFIX = "_biodiversity";
   private static final Pattern BIO_COUNTRY_POSTFIX_PAT = Pattern.compile(BIO_COUNTRY_POSTFIX);
 
   private static final Pattern GBIF_DOI_TAG = Pattern.compile("gbifDOI:", Pattern.LITERAL);
+  private static final Pattern PEER_REVIEW_TAG = Pattern.compile("peer_review:", Pattern.LITERAL);
 
   private static final Logger LOG = LoggerFactory.getLogger(ElasticSearchIndexHandler.class);
   private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -155,6 +160,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
     Set<TextNode> gbifDownloads = new HashSet<>();
     Set<TextNode> topics = new HashSet<>();
     Set<TextNode> relevance = new HashSet<>();
+    final MutableBoolean peerReviewValue = new MutableBoolean(Boolean.FALSE);
     document.get(ML_TAGS_FL).elements().forEachRemaining(node -> {
       String value = node.textValue();
       if (value.startsWith(GBIF_DOI_TAG.pattern())) {
@@ -183,6 +189,8 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
                   );
               }));
         }
+      } else if (value.startsWith(PEER_REVIEW_TAG.pattern())) {
+        peerReviewValue.setValue(Boolean.parseBoolean(PEER_REVIEW_TAG.matcher(value).replaceFirst("")));
       } else { //try country parser
         //VocabularyUtils uses Guava optionals
         String lowerCaseValue = value.toLowerCase();
@@ -214,6 +222,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
     docNode.putArray(ES_RELEVANCE_FL).addAll(relevance);
     docNode.putArray(ES_TOPICS_FL).addAll(topics);
     docNode.putArray(ES_DOWNLOAD_FL).addAll(gbifDownloads);
+    docNode.put(ES_PEER_REVIEW_FIELD, peerReviewValue.getValue());
     docNode.put(CONTENT_TYPE_FIELD, CONTENT_TYPE_FIELD_VALUE);
   }
 
