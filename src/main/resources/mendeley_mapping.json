@@ -212,6 +212,10 @@
     "peerReview": {
       "type": "boolean",
       "null_value": false
+    },
+    "openAccess": {
+      "type": "boolean",
+      "null_value": false
     }
   }
 }

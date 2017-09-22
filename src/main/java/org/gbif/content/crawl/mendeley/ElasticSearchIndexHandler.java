@@ -93,11 +93,14 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
 
   private static final String ES_PEER_REVIEW_FIELD = "peerReview";
 
+  private static final String OPEN_ACCESS_FIELD = "openAccess";
+
   private static final String BIO_COUNTRY_POSTFIX = "_biodiversity";
   private static final Pattern BIO_COUNTRY_POSTFIX_PAT = Pattern.compile(BIO_COUNTRY_POSTFIX);
 
   private static final Pattern GBIF_DOI_TAG = Pattern.compile("gbifDOI:", Pattern.LITERAL);
   private static final Pattern PEER_REVIEW_TAG = Pattern.compile("peer_review:", Pattern.LITERAL);
+  private static final Pattern OPEN_ACCESS_TAG = Pattern.compile("open_access:", Pattern.LITERAL);
 
   private static final Logger LOG = LoggerFactory.getLogger(ElasticSearchIndexHandler.class);
   private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -161,6 +164,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
     Set<TextNode> topics = new HashSet<>();
     Set<TextNode> relevance = new HashSet<>();
     final MutableBoolean peerReviewValue = new MutableBoolean(Boolean.FALSE);
+    final MutableBoolean openAccessValue = new MutableBoolean(Boolean.FALSE);
     document.get(ML_TAGS_FL).elements().forEachRemaining(node -> {
       String value = node.textValue();
       if (value.startsWith(GBIF_DOI_TAG.pattern())) {
@@ -191,6 +195,8 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
         }
       } else if (value.startsWith(PEER_REVIEW_TAG.pattern())) {
         peerReviewValue.setValue(Boolean.parseBoolean(PEER_REVIEW_TAG.matcher(value).replaceFirst("")));
+      } else if (value.startsWith(OPEN_ACCESS_TAG.pattern())) {
+        openAccessValue.setValue(Boolean.parseBoolean(OPEN_ACCESS_TAG.matcher(value).replaceFirst("")));
       } else { //try country parser
         //VocabularyUtils uses Guava optionals
         String lowerCaseValue = value.toLowerCase();
@@ -223,6 +229,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
     docNode.putArray(ES_TOPICS_FL).addAll(topics);
     docNode.putArray(ES_DOWNLOAD_FL).addAll(gbifDownloads);
     docNode.put(ES_PEER_REVIEW_FIELD, peerReviewValue.getValue());
+    docNode.put(OPEN_ACCESS_FIELD, openAccessValue.getValue());
     docNode.put(CONTENT_TYPE_FIELD, CONTENT_TYPE_FIELD_VALUE);
   }
 
