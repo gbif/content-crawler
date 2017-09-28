@@ -11,6 +11,8 @@ import java.util.regex.Pattern;
 
 import com.google.common.base.CaseFormat;
 import org.apache.commons.io.IOUtils;
+import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequestBuilder;
+import org.elasticsearch.action.admin.indices.alias.IndicesAliasesResponse;
 import org.elasticsearch.action.admin.indices.alias.get.GetAliasesRequest;
 import org.elasticsearch.action.admin.indices.alias.get.GetAliasesResponse;
 import org.elasticsearch.client.Client;
@@ -35,7 +37,7 @@ public class ElasticSearchUtils {
 
   //Index settings used at production/searching time
   private static final Settings SEARCH_SETTINGS = Settings.builder()
-                                                    .put("index.refresh_interval", "5s")
+                                                    .put("index.refresh_interval", "1s")
                                                     .put("index.number_of_replicas", "1")
                                                     .build();
 
@@ -86,22 +88,27 @@ public class ElasticSearchUtils {
   }
 
   /**
-   * This method delete all the indecxs associated to the alias and associates the alias to toIdx.
+   * This method delete all the indexes associated to the alias and associates the alias to toIdx.
    */
   public static void swapIndexToAlias(Client esClient, String alias, String toIdx) {
     try {
       //Sets the idx alias
-      esClient.admin().indices().prepareAliases().addAlias(toIdx, alias).get();
-      esClient.admin().indices().prepareUpdateSettings(toIdx).setSettings(SEARCH_SETTINGS).get();
-      //Promote new index to alla content indices
-      esClient.admin().indices().prepareAliases().addAlias(toIdx, CONTENT_ALIAS).get();
-      GetAliasesResponse aliasesResponse = esClient.admin().indices()
+      GetAliasesResponse aliasesGetResponse = esClient.admin().indices()
                                             .getAliases(new GetAliasesRequest().aliases(alias)).get();
-      aliasesResponse.getAliases().keysIt().forEachRemaining(aliasedIdx -> {
-        if (!toIdx.equals(aliasedIdx)) {
-          esClient.admin().indices().prepareDelete(aliasedIdx).get();
-        }
-      });
+
+      IndicesAliasesRequestBuilder aliasesRequestBuilder = esClient.admin().indices().prepareAliases();
+      //add the new alias and add it to content alias
+      aliasesRequestBuilder.addAlias(toIdx, alias).addAlias(toIdx, CONTENT_ALIAS);
+
+      //add the removal all existing indexes of that alias
+      aliasesGetResponse.getAliases().keysIt().forEachRemaining(aliasesRequestBuilder::removeIndex);
+
+      //Execute all the alias operations in a single/atomic call
+      aliasesRequestBuilder.get();
+
+      //Update setting to search production
+      esClient.admin().indices().prepareUpdateSettings(toIdx).setSettings(SEARCH_SETTINGS).get();
+
     } catch (InterruptedException | ExecutionException ex) {
       throw new IllegalStateException(ex);
     }
