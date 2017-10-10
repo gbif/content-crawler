@@ -27,6 +27,7 @@ public class  MappingGenerator {
   private static final String TEXT = "text";
   private static final String NESTED = "nested";
   private static final String VOCABULARY = "vocabulary";
+  private static final String TITLE_FIELD = "title";
 
   /**
    * Fields that are stored but not indexed/analised.
@@ -70,7 +71,7 @@ public class  MappingGenerator {
    */
   private static final Map<CMAFieldType,String> CONTENTFUL_ES_TYPE_MAP = new ImmutableMap.Builder()
     .put(CMAFieldType.Symbol, KEYWORD)
-    .put(CMAFieldType.Text, "text")
+    .put(CMAFieldType.Text, TEXT)
     .put(CMAFieldType.Boolean, "boolean")
     .put(CMAFieldType.Date, "date")
     .put(CMAFieldType.Object, NESTED)
@@ -316,7 +317,7 @@ public class  MappingGenerator {
         addDefaultIgnoredFields(mapping);
         addFileAssetMapping(mapping);
         addGenericTagsMapping(mapping);
-        addNestedMapping(mapping, "title", TEXT);
+        addNestedMapping(mapping, TITLE_FIELD, TEXT);
         addNestedMapping(mapping, "description", TEXT);
         contentType.getFields().stream().filter(cmaField -> !cmaField.isDisabled()).forEach(cmaField ->
           esType(cmaField).ifPresent(esType -> {
@@ -350,6 +351,9 @@ public class  MappingGenerator {
     }
     if (cmaField.getType() == CMAFieldType.Array) {
       return Optional.ofNullable(CONTENTFUL_ES_TYPE_MAP.get(cmaField.getArrayItems().get(TYPE)));
+    }
+    if (TITLE_FIELD.equalsIgnoreCase(cmaField.getName())) {
+      return Optional.ofNullable(TEXT);
     }
     return Optional.ofNullable(CONTENTFUL_ES_TYPE_MAP.get(cmaField.getType()));
   }
