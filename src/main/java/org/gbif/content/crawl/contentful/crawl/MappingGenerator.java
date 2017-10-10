@@ -317,7 +317,7 @@ public class  MappingGenerator {
         addFileAssetMapping(mapping);
         addGenericTagsMapping(mapping);
         addNestedMapping(mapping, "title", TEXT);
-        addNestedMapping(mapping, "description", "text");
+        addNestedMapping(mapping, "description", TEXT);
         contentType.getFields().stream().filter(cmaField -> !cmaField.isDisabled()).forEach(cmaField ->
           esType(cmaField).ifPresent(esType -> {
             if (VOCABULARY.equals(esType)) {
