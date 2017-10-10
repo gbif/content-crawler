@@ -24,6 +24,7 @@ import org.elasticsearch.common.xcontent.XContentFactory;
 public class  MappingGenerator {
 
   private static final String KEYWORD = "keyword";
+  private static final String TEXT = "text";
   private static final String NESTED = "nested";
   private static final String VOCABULARY = "vocabulary";
 
@@ -315,7 +316,7 @@ public class  MappingGenerator {
         addDefaultIgnoredFields(mapping);
         addFileAssetMapping(mapping);
         addGenericTagsMapping(mapping);
-        addNestedMapping(mapping, "title", KEYWORD);
+        addNestedMapping(mapping, "title", TEXT);
         addNestedMapping(mapping, "description", "text");
         contentType.getFields().stream().filter(cmaField -> !cmaField.isDisabled()).forEach(cmaField ->
           esType(cmaField).ifPresent(esType -> {

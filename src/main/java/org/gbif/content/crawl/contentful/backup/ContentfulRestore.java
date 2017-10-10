@@ -78,7 +78,7 @@ public class ContentfulRestore {
 
                try {
                  CMAContentType existing = cmaClient.contentTypes().fetchOne(configuration.spaceId, type.getResourceId());
-                 LOG.info("Content type exists: {}", type.getName());
+                 LOG.info("Content type exists: {}", existing.getName());
                  rateLimiter.acquire();
 
                } catch (RuntimeException e) {

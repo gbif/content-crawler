@@ -50,7 +50,7 @@
       "title": {
         "path_match": "title.*",
         "mapping": {
-          "type": "keyword"
+          "type": "text"
         }
       }
     }
