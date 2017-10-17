@@ -17,7 +17,8 @@
       "type": "keyword"
     },
     "title": {
-      "type": "text"
+      "type": "text",
+      "boost": 10
     },
     "literatureType": {
       "type": "keyword"
