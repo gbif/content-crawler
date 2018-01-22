@@ -94,6 +94,9 @@ public class ElasticSearchUtils {
       //Update setting to search production
       esClient.admin().indices().prepareUpdateSettings(toIdx).setSettings(SEARCH_SETTINGS).get();
 
+      //Keeping 1 segment per idx should be enough for small indexes
+      esClient.admin().indices().prepareForceMerge(toIdx).setMaxNumSegments(1).get();
+
       //Sets the idx alias
       GetAliasesResponse aliasesGetResponse = esClient.admin().indices()
                                             .getAliases(new GetAliasesRequest().aliases(alias)).get();
