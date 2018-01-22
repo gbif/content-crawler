@@ -37,8 +37,10 @@ public class MendeleyCrawlCommand extends BaseCommand {
       crawler.run();
     } catch (UnknownHostException e) {
       LOG.error("Invalid configuration", e);
+      throw new RuntimeException(e);
     } catch (IOException e) {
       LOG.error("Error contacting remote endpoints", e);
+      throw new RuntimeException(e);
     }
   }
 }

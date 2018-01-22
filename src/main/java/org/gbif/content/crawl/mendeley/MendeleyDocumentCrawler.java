@@ -3,9 +3,7 @@ package org.gbif.content.crawl.mendeley;
 import org.gbif.content.crawl.conf.ContentCrawlConfiguration;
 
 import java.io.IOException;
-import java.util.List;
 
-import com.google.common.collect.Lists;
 import io.reactivex.Observable;
 
 import org.apache.http.client.config.RequestConfig;
