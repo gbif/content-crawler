@@ -74,6 +74,7 @@ public class MendeleyDocumentCrawler {
                   handler.handleResponse(response);
                 } catch (Exception e) {
                   LOG.error("Unable to process response", e);
+                  throw new RuntimeException(e);
                 }
               })
         ));
