@@ -53,20 +53,31 @@ elasticSearch:
 
 #Contentful crawler configuration
 contentful:
-  cdaToken:
-  cmaToke:
-  spaceId:
+  cdaToken: cbe898627179356da24491ea99ded861c34b78459f0362064b11d377fd6ebd97
+  cmaToken: CFPAT-846cd78935cdd5faf81946c1b1f8f06ca902985e86e6ecf4f05c533b24fcadab
+  spaceId: uo17ejk9rkwj
   indexBuild:
     #contentTypes: [dataUse]
-    esIndexName: content
-    countryVocabulary: "CountryVocabulary"
-    newsContentType: "News"
-    vocabularies:
-      - "Vocabulary1"
-      - "Vocabulary2"
-    contentTypes:
-      - "Content 1"
-      - "Content 2"
+    esIndexType: content
+  countryVocabulary: "Vocabulary: Countries"
+  newsContentType: "News"
+  vocabularies:
+    - "Vocabulary: Audience"
+    - "Vocabulary: Countries"
+    - "Vocabulary: Purpose"
+    - "Vocabulary: Topic"
+  contentTypes:
+    - "News"
+    - "Call"
+    - "Data Use"
+    - "Event"
+    - "Ogranisation"
+    - "Participant"
+    - "Programme"
+    - "Project"
+    - "Tool"
+    - "Article"
+    - "Document"
 
 #Contentful backup configuration
 contentfulBackup:

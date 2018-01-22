@@ -6,6 +6,7 @@ import org.gbif.api.service.registry.OccurrenceDownloadService;
 import org.gbif.api.vocabulary.Country;
 import org.gbif.api.vocabulary.Language;
 import org.gbif.content.crawl.conf.ContentCrawlConfiguration;
+import org.gbif.content.crawl.es.ElasticSearchUtils;
 import org.gbif.registry.ws.client.guice.RegistryWsClientModule;
 import org.gbif.ws.client.guice.AnonymousAuthModule;
 
@@ -149,6 +150,15 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
     } else {
       LOG.info("Indexed [{}] documents", bulkResponse.getItems().length);
     }
+  }
+
+  /**
+   * Deletes de Index in case of error.
+   * @throws Exception
+   */
+  @Override
+  public void rollback() throws Exception {
+    esClient.admin().indices().prepareDelete(esIdxName).get();
   }
 
   /**

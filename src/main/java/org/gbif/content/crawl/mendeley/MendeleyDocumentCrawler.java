@@ -34,7 +34,7 @@ public class MendeleyDocumentCrawler {
   private final RequestConfig requestConfig;
 
   private final ContentCrawlConfiguration config;
-  private final List<ResponseHandler> handlers = Lists.newArrayList();
+  private final ResponseHandler handler;
 
 
   public MendeleyDocumentCrawler(ContentCrawlConfiguration config) {
@@ -42,10 +42,7 @@ public class MendeleyDocumentCrawler {
     int timeOut = config.mendeley.httpTimeout;
     requestConfig = RequestConfig.custom().setSocketTimeout(timeOut).setConnectTimeout(timeOut)
                       .setConnectionRequestTimeout(timeOut).build();
-    handlers.add(new ResponseToFileHandler(config.mendeley.targetDir));
-    if (config.elasticSearch != null) {
-      handlers.add(new ElasticSearchIndexHandler(config));
-    }
+    handler = new ComposeHandler(config);
   }
 
   public void run() throws IOException {
@@ -59,27 +56,33 @@ public class MendeleyDocumentCrawler {
           LOG.error("Error crawling Mendeley", err);
           throw new RuntimeException(err); })
         .buffer(CRAWL_BUFFER)
-        .doOnTerminate(() -> handlers.forEach(handler -> {
-          try {
-            handler.finish();
-          } catch (Exception ex) {
-            LOG.error("Error finishing handlers", ex);
-          }
-        }))
+        .doOnTerminate(handler::finish)
         .subscribe(
           responses ->
-            responses.parallelStream().forEach(response->
-              handlers.parallelStream().forEach(handler -> {
+            responses.parallelStream().forEach(response -> {
                 try {
                   handler.handleResponse(response);
                 } catch (Exception e) {
                   LOG.error("Unable to process response", e);
+                  silentRollback(handler);
                   throw new RuntimeException(e);
                 }
               })
-        ));
+        );
     } catch (OAuthSystemException | OAuthProblemException e) {
       LOG.error("Unable ot authenticate with Mendeley", e);
+    }
+  }
+
+  /**
+   * Calls the rollback and throw a runtime error.
+   * @param responseHandler
+   */
+  private static void silentRollback(ResponseHandler responseHandler) {
+    try {
+      responseHandler.rollback();
+    } catch (Exception ex) {
+      throw new RuntimeException(ex);
     }
   }
 

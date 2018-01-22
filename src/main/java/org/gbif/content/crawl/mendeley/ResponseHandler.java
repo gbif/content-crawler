@@ -6,4 +6,5 @@ package org.gbif.content.crawl.mendeley;
 interface ResponseHandler {
   void handleResponse(String responseAsJson) throws Exception;
   void finish() throws Exception;
+  void rollback() throws Exception;
 }

@@ -32,6 +32,11 @@ public class ResponseToFileHandler implements ResponseHandler {
   }
 
   @Override
+  public void rollback() throws Exception {
+    //NOP
+  }
+
+  @Override
   public void finish() {
     //NOP
   }
