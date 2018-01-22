@@ -91,6 +91,9 @@ public class ElasticSearchUtils {
    */
   public static void swapIndexToAlias(Client esClient, String alias, String toIdx) {
     try {
+      //Update setting to search production
+      esClient.admin().indices().prepareUpdateSettings(toIdx).setSettings(SEARCH_SETTINGS).get();
+
       //Sets the idx alias
       GetAliasesResponse aliasesGetResponse = esClient.admin().indices()
                                             .getAliases(new GetAliasesRequest().aliases(alias)).get();
@@ -104,9 +107,6 @@ public class ElasticSearchUtils {
 
       //Execute all the alias operations in a single/atomic call
       aliasesRequestBuilder.get();
-
-      //Update setting to search production
-      esClient.admin().indices().prepareUpdateSettings(toIdx).setSettings(SEARCH_SETTINGS).get();
 
     } catch (InterruptedException | ExecutionException ex) {
       throw new IllegalStateException(ex);
