@@ -47,7 +47,7 @@ mendeley:
 
 # Optional: If included will push documents to the referenced Elastic Search index
 elasticSearch:
-  host: develastic-vh.gbif.org
+  host: cms-search.gbif-dev.org
 #  port: 9300
   cluster: content-cluster
 
@@ -78,6 +78,7 @@ contentful:
     - "Tool"
     - "Article"
     - "Document"
+    - "Network"
 
 #Contentful backup configuration
 contentfulBackup:

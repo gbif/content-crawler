@@ -96,7 +96,7 @@ public class ContentTypeCrawler {
                         })
       .buffer(CRAWL_BUFFER)
       .doOnComplete(() -> executeBulkRequest(bulkRequest))
-      .subscribe( results -> results.stream().forEach(
+      .subscribe( results -> results.forEach(
                               cdaArray -> cdaArray.items()
                               .forEach(cdaResource ->
                                          bulkRequest.add(esClient.prepareIndex(esIdxName,

@@ -29,6 +29,8 @@ public class  MappingGenerator {
   private static final String VOCABULARY = "vocabulary";
   private static final String TITLE_FIELD = "title";
 
+  private static final Pattern ES_COMPLEX_TYPES = Pattern.compile("nested|object");
+
   /**
    * Fields that are stored but not indexed/analised.
    */
@@ -263,6 +265,15 @@ public class  MappingGenerator {
   }
 
   /**
+   * Validates if the field and the derived elasticsearch type define a simple type, i.e.: non-nested elements.
+   */
+  private static boolean isSimpleField(CMAField cmaField, String esType) {
+      return COLLAPSIBLE_TYPES.contains(cmaField.getType())
+              || COLLAPSIBLE_FIELDS.matcher(cmaField.getId()).matches()
+              || (!ES_COMPLEX_TYPES.matcher(esType).matches() && !cmaField.isLocalized());
+  }
+
+  /**
    * Default constructor.
    */
   public MappingGenerator(Collection<CMAContentType> vocabularies) {
@@ -319,12 +330,12 @@ public class  MappingGenerator {
         addGenericTagsMapping(mapping);
         addNestedMapping(mapping, TITLE_FIELD, TEXT);
         addNestedMapping(mapping, "description", TEXT);
-        contentType.getFields().stream().filter(cmaField -> !cmaField.isDisabled()).forEach(cmaField ->
+        contentType.getFields().stream()
+          .filter(cmaField -> !cmaField.isDisabled()).forEach(cmaField ->
           esType(cmaField).ifPresent(esType -> {
             if (VOCABULARY.equals(esType)) {
               collapsedFields.put(cmaField.getId(), KEYWORD);
-            } else if (COLLAPSIBLE_TYPES.contains(cmaField.getType())
-                       || COLLAPSIBLE_FIELDS.matcher(cmaField.getId()).matches()) {
+            } else if (isSimpleField(cmaField, esType)) {
               collapsedFields.put(cmaField.getId(), esType);
             } else if (!NESTED.equals(esType) && cmaField.isLocalized()) { //localizable fields have nested elements
               addTemplateField("path_match", cmaField.getId(), cmaField.getId() + ".*", esType, mapping);
@@ -353,7 +364,7 @@ public class  MappingGenerator {
       return Optional.ofNullable(CONTENTFUL_ES_TYPE_MAP.get(cmaField.getArrayItems().get(TYPE)));
     }
     if (TITLE_FIELD.equalsIgnoreCase(cmaField.getName())) {
-      return Optional.ofNullable(TEXT);
+      return Optional.of(TEXT);
     }
     return Optional.ofNullable(CONTENTFUL_ES_TYPE_MAP.get(cmaField.getType()));
   }
