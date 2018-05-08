@@ -14,7 +14,6 @@ import com.contentful.java.cda.CDAContentType;
 import com.contentful.java.cda.CDAEntry;
 import com.contentful.java.cda.LocalizedResource;
 import com.contentful.java.cma.Constants;
-import com.google.common.collect.Lists;
 
 /**
  * Translates a CDAEntry into Map object indexable in ElasticSearch.
@@ -23,7 +22,7 @@ public class EsDocBuilder {
 
   private static final String REGION_FIELD = "gbifRegion";
 
-  private static final Pattern LINKED_ENTRY_FIELDS = Pattern.compile(".*summary.*|.*title.*|label|url");
+  private static final Pattern LINKED_ENTRY_FIELDS = Pattern.compile(".*summary.*|.*title.*|label|url|country|isoCode");
 
   private static final String ID_FIELD = "id";
 
@@ -135,13 +134,21 @@ public class EsDocBuilder {
     Map<String, Object> fields = new LinkedHashMap<>();
     fields.put(ID_FIELD, cdaEntry.id());
     fields.putAll(cdaEntry.rawFields().entrySet().stream()
-                    .filter(entry -> LINKED_ENTRY_FIELDS.matcher(entry.getKey()).matches()
-                                     && cdaEntry.getField(entry.getKey()) != null)  //a project had a null url value
+                    .filter(entry ->  LINKED_ENTRY_FIELDS.matcher(entry.getKey()).matches()  &&
+                                      cdaEntry.getField(entry.getKey()) != null)  //a project had a null url value
                     .collect(Collectors.toMap(Map.Entry::getKey,
-                                              entry -> isLocalized(entry.getKey(), cdaEntry.contentType())
-                                                ? entry.getValue()
-                                                : cdaEntry.getField(entry.getKey()))));
+                                              entry -> getValue(entry, cdaEntry))));
     return fields;
+  }
+
+  private static Object getValue(Map.Entry<String,Object> entry, CDAEntry cdaEntry) {
+      Object value = cdaEntry.getField(entry.getKey());
+      if(value instanceof  CDAEntry) {
+          return getAssociatedEntryFields((CDAEntry)value);
+      }
+      return isLocalized(entry.getKey(), cdaEntry.contentType())
+              ? entry.getValue()
+              : cdaEntry.getField(entry.getKey());
   }
 
   /**

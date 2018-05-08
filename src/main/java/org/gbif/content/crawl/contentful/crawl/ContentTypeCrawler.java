@@ -2,6 +2,7 @@ package org.gbif.content.crawl.contentful.crawl;
 
 import org.gbif.content.crawl.conf.ContentCrawlConfiguration;
 
+import java.util.HashMap;
 import java.util.Map;
 
 import com.contentful.java.cda.CDAClient;
@@ -50,6 +51,7 @@ public class ContentTypeCrawler {
   private final CDAClient cdaClient;
   private final ContentCrawlConfiguration.Contentful configuration;
   private final VocabularyTerms vocabularyTerms;
+
 
   public ContentTypeCrawler(CMAContentType contentType,
                             MappingGenerator mappingGenerator,
@@ -111,11 +113,10 @@ public class ContentTypeCrawler {
    * Extracts the fields that will be indexed in ElasticSearch.
    */
   private Map<String,Object> getESDoc(CDAEntry cdaEntry) {
-    EsDocBuilder esDocBuilder = new EsDocBuilder(cdaEntry, vocabularyTerms, nestedCdaEntry -> {
-      newsLinker.processNewsTag(nestedCdaEntry, esTypeName, cdaEntry.id());
-    });
+    EsDocBuilder esDocBuilder = new EsDocBuilder(cdaEntry, vocabularyTerms,
+            nestedCdaEntry -> newsLinker.processNewsTag(nestedCdaEntry, esTypeName, cdaEntry.id()));
     //Add all rawFields
-    Map<String, Object> indexedFields = esDocBuilder.toEsDoc();
+    Map<String, Object> indexedFields =  new HashMap<>(esDocBuilder.toEsDoc());
     indexedFields.put(CONTENT_TYPE_FIELD, esTypeName);
     return indexedFields;
   }

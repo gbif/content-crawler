@@ -78,7 +78,7 @@ public class ContentfulCrawler {
    */
   private VocabularyTerms getVocabularyTerms(Collection<CMAContentType> vocabularies) {
     VocabularyTerms vocabularyTerms =  new VocabularyTerms();
-    vocabularies.stream()
+    vocabularies
       .forEach(contentType -> {
         //Keeps the country vocabulary ID for future use
         if (contentType.getName().equals(configuration.countryVocabulary)) {
@@ -141,10 +141,9 @@ public class ContentfulCrawler {
    * @return a partition of ContentTypes split into sets:  TRUE: vocabularies and FALSE: non-vocabularies/web content.
    */
   private Map<Boolean,List<CMAContentType>> getContentTypes() {
-    Collection<String> allContentTypes = new LinkedHashSet<>();
-    allContentTypes.addAll(configuration.vocabularies);
-    allContentTypes.add(configuration.newsContentType);
+    Collection<String> allContentTypes = new LinkedHashSet<>(configuration.vocabularies);
     allContentTypes.addAll(configuration.contentTypes);
+    allContentTypes.add(configuration.newsContentType);
     return cmaClient.contentTypes().fetchAll(configuration.spaceId)
             .getItems().stream().filter(contentType -> allContentTypes.contains(contentType.getName()))
             .collect(Collectors.partitioningBy(contentType -> configuration.vocabularies
