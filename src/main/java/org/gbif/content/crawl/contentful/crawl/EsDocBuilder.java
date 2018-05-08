@@ -14,11 +14,15 @@ import com.contentful.java.cda.CDAContentType;
 import com.contentful.java.cda.CDAEntry;
 import com.contentful.java.cda.LocalizedResource;
 import com.contentful.java.cma.Constants;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Translates a CDAEntry into Map object indexable in ElasticSearch.
  */
 public class EsDocBuilder {
+
+  private static final Logger LOG = LoggerFactory.getLogger(EsDocBuilder.class);
 
   private static final String REGION_FIELD = "gbifRegion";
 
@@ -143,8 +147,8 @@ public class EsDocBuilder {
 
   private static Object getValue(Map.Entry<String,Object> entry, CDAEntry cdaEntry) {
       Object value = cdaEntry.getField(entry.getKey());
-      if(value instanceof  CDAEntry) {
-          return getAssociatedEntryFields((CDAEntry)value);
+      if (value instanceof CDAEntry) {
+        return getAssociatedEntryFields((CDAEntry)value);
       }
       return isLocalized(entry.getKey(), cdaEntry.contentType())
               ? entry.getValue()
