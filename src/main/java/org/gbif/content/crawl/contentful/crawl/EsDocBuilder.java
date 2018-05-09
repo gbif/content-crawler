@@ -14,15 +14,11 @@ import com.contentful.java.cda.CDAContentType;
 import com.contentful.java.cda.CDAEntry;
 import com.contentful.java.cda.LocalizedResource;
 import com.contentful.java.cma.Constants;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Translates a CDAEntry into Map object indexable in ElasticSearch.
  */
 public class EsDocBuilder {
-
-  private static final Logger LOG = LoggerFactory.getLogger(EsDocBuilder.class);
 
   private static final String REGION_FIELD = "gbifRegion";
 
@@ -113,7 +109,7 @@ public class EsDocBuilder {
   /**
    * Extract the values as maps of the list of resources.
    */
-  private static List<?> toListValues(List<?> resources) {
+  private List<?> toListValues(List<?> resources) {
     return resources.stream()
       .flatMap(resource -> {
         if (CDAEntry.class.isInstance(resource)) {
@@ -134,7 +130,7 @@ public class EsDocBuilder {
   /**
    * Associated entities are indexed using title, summary and id.
    */
-  private static Map<String, Object> getAssociatedEntryFields(CDAEntry cdaEntry) {
+  private Map<String, Object> getAssociatedEntryFields(CDAEntry cdaEntry) {
     Map<String, Object> fields = new LinkedHashMap<>();
     fields.put(ID_FIELD, cdaEntry.id());
     fields.putAll(cdaEntry.rawFields().entrySet().stream()
@@ -145,9 +141,14 @@ public class EsDocBuilder {
     return fields;
   }
 
-  private static Object getValue(Map.Entry<String,Object> entry, CDAEntry cdaEntry) {
+  private Object getValue(Map.Entry<String,Object> entry, CDAEntry cdaEntry) {
       Object value = cdaEntry.getField(entry.getKey());
       if (value instanceof CDAEntry) {
+        //if the nested value is country only the isoCode is extracted
+        Optional<String> countryField = vocabularyTerms.countryCodeFieldOf((CDAEntry)value);
+        if (countryField.isPresent()) {
+            return ((CDAEntry)value).getField(countryField.get());
+        }
         return getAssociatedEntryFields((CDAEntry)value);
       }
       return isLocalized(entry.getKey(), cdaEntry.contentType())

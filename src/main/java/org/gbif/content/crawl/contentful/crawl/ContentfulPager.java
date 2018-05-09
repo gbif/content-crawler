@@ -17,7 +17,7 @@ public class ContentfulPager implements Iterable<CDAArray> {
   private static final Logger LOG = LoggerFactory.getLogger(ContentfulPager.class);
 
   //how many nested elements should retrieved on each call
-  private static final int LEVEL = 1;
+  private static final int LEVEL = 2;
 
   private static final String LOCALE_PARAM = "locale";
 

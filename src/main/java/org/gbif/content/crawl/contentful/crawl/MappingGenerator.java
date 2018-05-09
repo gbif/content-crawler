@@ -215,7 +215,7 @@ public class  MappingGenerator {
   private static void addNestedMapping(XContentBuilder mapping, String fieldName, String esType) throws IOException {
     mapping.startObject();
       mapping.startObject("nested_" + fieldName);
-        mapping.field("path_match", "*." + fieldName + ".*");
+        mapping.field("path_match",  "*." + fieldName + ".*");
         mapping.startObject("mapping");
           mapping.field("type", esType);
         mapping.endObject();
@@ -223,6 +223,28 @@ public class  MappingGenerator {
     mapping.endObject();
   }
 
+    /**
+     * Default nested mapping.
+     * Produces the following JSON structure:
+     * {
+     *  "asset_fieldName": {
+     *    "path_match": "*.fieldName.*",
+     *    "mapping": {
+     *      "type": esType
+     *    }
+     *  }
+     * }
+     */
+    private static void addMatchMapping(XContentBuilder mapping, String fieldName, String esType) throws IOException {
+       mapping.startObject();
+          mapping.startObject("nested_" + fieldName);
+            mapping.field("match",  fieldName);
+            mapping.startObject("mapping");
+              mapping.field("type", esType);
+            mapping.endObject();
+          mapping.endObject();
+        mapping.endObject();
+    }
   /**
    * Template for dynamic field mapping.
    * Produces a Json object like:
@@ -246,6 +268,9 @@ public class  MappingGenerator {
             mapping.field("type", esType);
             if (BOOSTED_FIELDS.matcher(fieldName).matches()) {
               mapping.field("boost", HIGH_BOOST);
+            }
+            if (NESTED.equals(esType)) {
+                mapping.field("dynamic", true);
             }
           mapping.endObject();
         mapping.endObject();
@@ -330,6 +355,10 @@ public class  MappingGenerator {
         addGenericTagsMapping(mapping);
         addNestedMapping(mapping, TITLE_FIELD, TEXT);
         addNestedMapping(mapping, "description", TEXT);
+        addMatchMapping(mapping, "id", KEYWORD);
+        addMatchMapping(mapping, "isoCode", KEYWORD);
+        addNestedMapping(mapping, "label", KEYWORD);
+        addNestedMapping(mapping, "url", KEYWORD);
         contentType.getFields().stream()
           .filter(cmaField -> !cmaField.isDisabled()).forEach(cmaField ->
           esType(cmaField).ifPresent(esType -> {

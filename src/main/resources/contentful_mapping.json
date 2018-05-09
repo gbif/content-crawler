@@ -24,6 +24,30 @@
     },
     {
       "locale": {
+        "match": "id",
+        "mapping": {
+          "type": "keyword"
+        }
+      }
+    },
+    {
+      "locale": {
+        "match": "label",
+        "mapping": {
+          "type": "keyword"
+        }
+      }
+    },
+    {
+      "locale": {
+        "match": "isoCode",
+        "mapping": {
+          "type": "keyword"
+        }
+      }
+    },
+    {
+      "locale": {
         "match": "locale",
         "mapping": {
           "type": "keyword"
