@@ -127,6 +127,7 @@ public class ContentTypeCrawler {
    */
   private void executeBulkRequest(BulkRequestBuilder bulkRequest) {
     if (bulkRequest.numberOfActions() > 0) {
+      LOG.info("Indexing {} documents into ElasticSearch", bulkRequest.numberOfActions());
       BulkResponse bulkResponse = bulkRequest.get();
       if (bulkResponse.hasFailures()) {
         LOG.error("Error indexing.  First error message: {}", bulkResponse.getItems()[0].getFailureMessage());
