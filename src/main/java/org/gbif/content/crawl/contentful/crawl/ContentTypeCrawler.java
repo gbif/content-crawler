@@ -97,7 +97,10 @@ public class ContentTypeCrawler {
                           throw new RuntimeException(err);
                         })
       .buffer(CRAWL_BUFFER)
-      .doOnComplete(() -> executeBulkRequest(bulkRequest))
+      .doOnComplete(() -> {
+          executeBulkRequest(bulkRequest);
+          swapIndexToAlias(esClient, esIdxAlias, esIdxName);
+      })
       .subscribe( results -> results.forEach(
                               cdaArray -> cdaArray.items()
                               .forEach(cdaResource ->
@@ -106,7 +109,6 @@ public class ContentTypeCrawler {
                                                                                cdaResource.id())
                                                            .setSource(getESDoc((CDAEntry)cdaResource)))))
       );
-    swapIndexToAlias(esClient, esIdxAlias, esIdxName);
   }
 
   /**
