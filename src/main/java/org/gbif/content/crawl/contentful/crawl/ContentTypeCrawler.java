@@ -1,5 +1,6 @@
 package org.gbif.content.crawl.contentful.crawl;
 
+import org.elasticsearch.common.unit.TimeValue;
 import org.gbif.content.crawl.conf.ContentCrawlConfiguration;
 
 import java.util.HashMap;
@@ -34,6 +35,8 @@ public class ContentTypeCrawler {
   private static final String CONTENT_TYPE_FIELD = "contentType";
 
   private static final int PAGE_SIZE = 20;
+
+  private static final TimeValue BULK_REQUEST_TO = TimeValue.timeValueMinutes(5);
 
   private final CMAContentType contentType;
 
@@ -129,6 +132,7 @@ public class ContentTypeCrawler {
    */
   private void executeBulkRequest(BulkRequestBuilder bulkRequest) {
     if (bulkRequest.numberOfActions() > 0) {
+      bulkRequest.setTimeout(BULK_REQUEST_TO);
       LOG.info("Indexing {} documents into ElasticSearch", bulkRequest.numberOfActions());
       BulkResponse bulkResponse = bulkRequest.get();
       if (bulkResponse.hasFailures()) {
