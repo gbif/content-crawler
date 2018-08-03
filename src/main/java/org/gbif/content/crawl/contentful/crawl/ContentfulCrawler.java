@@ -132,8 +132,8 @@ public class ContentfulCrawler {
   private CDAClient buildCdaClient() {
      CDAClient.Builder builder = CDAClient.builder();
     return builder
-            .setCallFactory(builder.defaultCallFactoryBuilder().readTimeout(CONNECTION_TO, TimeUnit.MINUTES).retryOnConnectionFailure(true).build())
-            .setSpace(configuration.spaceId).setToken(configuration.cdaToken).build();
+            .setSpace(configuration.spaceId).setToken(configuration.cdaToken)
+            .setCallFactory(builder.defaultCallFactoryBuilder().readTimeout(CONNECTION_TO, TimeUnit.MINUTES).retryOnConnectionFailure(true).build()).build();
   }
 
   /**
