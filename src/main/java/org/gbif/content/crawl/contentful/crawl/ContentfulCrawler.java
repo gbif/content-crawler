@@ -140,9 +140,7 @@ public class ContentfulCrawler {
    * @return a new instance of a Contentful CDAClient.
    */
   private CMAClient buildCmaClient() {
-     CMAClient.Builder builder = new CMAClient.Builder();
-     return builder.setCallFactory(CDAClient.builder().defaultCallFactoryBuilder().readTimeout(CONNECTION_TO, TimeUnit.MINUTES).retryOnConnectionFailure(true).build())
-             .setAccessToken(configuration.cmaToken).build();
+    return new CMAClient.Builder().setAccessToken(configuration.cmaToken).build();
   }
 
 
