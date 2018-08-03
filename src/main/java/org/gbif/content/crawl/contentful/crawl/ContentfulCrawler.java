@@ -130,17 +130,22 @@ public class ContentfulCrawler {
    * @return a new instance of a Contentful CDAClient.
    */
   private CDAClient buildCdaClient() {
-     CDAClient.Builder builder = CDAClient.builder();
+    CDAClient.Builder builder = CDAClient.builder();
     return builder
             .setSpace(configuration.spaceId).setToken(configuration.cdaToken)
-            .setCallFactory(builder.defaultCallFactoryBuilder().readTimeout(CONNECTION_TO, TimeUnit.MINUTES).retryOnConnectionFailure(true).build()).build();
+            .setCallFactory(builder.defaultCallFactoryBuilder().readTimeout(CONNECTION_TO, TimeUnit.MINUTES).retryOnConnectionFailure(true).build())
+            .build();
   }
 
   /**
    * @return a new instance of a Contentful CDAClient.
    */
   private CMAClient buildCmaClient() {
-    return new CMAClient.Builder().setAccessToken(configuration.cmaToken).build();
+      CMAClient.Builder builder = new CMAClient.Builder();
+      return builder
+              .setAccessToken(configuration.cmaToken)
+              .setCallFactory(CDAClient.builder().defaultCallFactoryBuilder().readTimeout(CONNECTION_TO, TimeUnit.MINUTES).retryOnConnectionFailure(true).build())
+              .build();
   }
 
 
