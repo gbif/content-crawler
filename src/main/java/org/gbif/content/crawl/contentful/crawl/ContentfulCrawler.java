@@ -6,6 +6,7 @@ import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 
@@ -26,6 +27,9 @@ import static org.gbif.content.crawl.es.ElasticSearchUtils.buildEsClient;
 public class ContentfulCrawler {
 
   private static final Logger LOG = LoggerFactory.getLogger(ContentfulCrawler.class);
+
+  //3 Minutes
+  private static final int CONNECTION_TO =  3;
 
   private final ContentCrawlConfiguration.Contentful configuration;
   private final CDAClient cdaClient;
@@ -126,14 +130,19 @@ public class ContentfulCrawler {
    * @return a new instance of a Contentful CDAClient.
    */
   private CDAClient buildCdaClient() {
-    return CDAClient.builder().setSpace(configuration.spaceId).setToken(configuration.cdaToken).build();
+     CDAClient.Builder builder = CDAClient.builder();
+    return builder
+            .setCallFactory(builder.defaultCallFactoryBuilder().readTimeout(CONNECTION_TO, TimeUnit.MINUTES).retryOnConnectionFailure(true).build())
+            .setSpace(configuration.spaceId).setToken(configuration.cdaToken).build();
   }
 
   /**
    * @return a new instance of a Contentful CDAClient.
    */
   private CMAClient buildCmaClient() {
-    return new CMAClient.Builder().setAccessToken(configuration.cmaToken).build();
+     CMAClient.Builder builder = new CMAClient.Builder();
+     return builder.setCallFactory(CDAClient.builder().defaultCallFactoryBuilder().readTimeout(CONNECTION_TO, TimeUnit.MINUTES).retryOnConnectionFailure(true).build())
+             .setAccessToken(configuration.cmaToken).build();
   }
 
 
