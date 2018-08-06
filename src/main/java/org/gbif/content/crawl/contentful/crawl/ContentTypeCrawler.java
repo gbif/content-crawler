@@ -56,13 +56,13 @@ public class ContentTypeCrawler {
   private final VocabularyTerms vocabularyTerms;
 
 
-  public ContentTypeCrawler(CMAContentType contentType,
-                            MappingGenerator mappingGenerator,
-                            Client esClient,
-                            ContentCrawlConfiguration.Contentful configuration,
-                            CDAClient cdaClient,
-                            VocabularyTerms vocabularyTerms,
-                            String newsContentTypeId) {
+  ContentTypeCrawler(CMAContentType contentType,
+                     MappingGenerator mappingGenerator,
+                     Client esClient,
+                     ContentCrawlConfiguration.Contentful configuration,
+                     CDAClient cdaClient,
+                     VocabularyTerms vocabularyTerms,
+                     String newsContentTypeId) {
     this.contentType = contentType;
     //index name has to be in lowercase
     esIdxName = getEsIndexingIdxName(contentType.getName());
