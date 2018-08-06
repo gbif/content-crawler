@@ -101,8 +101,9 @@ public class ContentTypeCrawler {
                         })
       .buffer(CRAWL_BUFFER)
       .doOnComplete(() -> {
-          executeBulkRequest(bulkRequest);
-          swapIndexToAlias(esClient, esIdxAlias, esIdxName);
+         if(executeBulkRequest(bulkRequest)) {
+           swapIndexToAlias(esClient, esIdxAlias, esIdxName);
+         }
       })
       .subscribe( results -> results.forEach(
                               cdaArray -> cdaArray.items()
@@ -130,19 +131,21 @@ public class ContentTypeCrawler {
   /**
    * Performs the execution of a ElasticSearch BulkRequest and logs the correspondent results.
    */
-  private void executeBulkRequest(BulkRequestBuilder bulkRequest) {
+  private boolean executeBulkRequest(BulkRequestBuilder bulkRequest) {
     if (bulkRequest.numberOfActions() > 0) {
       bulkRequest.setTimeout(BULK_REQUEST_TO);
       LOG.info("Indexing {} documents into ElasticSearch", bulkRequest.numberOfActions());
       BulkResponse bulkResponse = bulkRequest.get();
       if (bulkResponse.hasFailures()) {
         LOG.error("Error indexing.  First error message: {}", bulkResponse.getItems()[0].getFailureMessage());
+        return false;
       } else {
         LOG.info("Indexed [{}] documents of content type [{}]", bulkResponse.getItems().length, esIdxName);
       }
     } else  {
       LOG.info("Nothing to index for content type [{}]", esIdxName);
     }
+    return true;
   }
 
 }
