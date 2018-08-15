@@ -11,3 +11,4 @@ buildNumber.properties
 content-crawler.iml
 /configuration-backup.yml
 /configuration-restore.yml
+.idea
