@@ -67,8 +67,7 @@ function getArtifactUrl {
   if [[ ${VERSION} == "LATEST" || ${VERSION} == *SNAPSHOT* ]] ; then
 
     if [[ "${VERSION}" == "LATEST" ]] ; then
-      META_URL=${SONAR_REDIRECT_URL}/maven-metadata.xml
-      VERSION=$(xmllint --xpath "string(//latest)" <(curl -s "${META_URL}"))
+      VERSION=$(xmllint --xpath "//metadata/versioning/versions/version[last()]/text()" <(curl -s "${SONAR_REDIRECT_URL}/maven-metadata.xml"))
     fi
 
     if [[ "${VERSION}" == *SNAPSHOT* ]] ; then
@@ -84,8 +83,7 @@ function getArtifactUrl {
   else
 
     if [[ ${VERSION} == "RELEASE" ]] ; then
-      META_URL=${SONAR_REDIRECT_URL}/maven-metadata.xml
-      VERSION=$(xmllint --xpath "string(//release)" <(curl -s "${META_URL}"))
+      VERSION=$(xmllint --xpath "string(//release)" <(curl -s "${SONAR_REDIRECT_URL}/maven-metadata.xml"))
     fi
 
     FILENAME=${ARTIFACT_ID}-${VERSION}${CLASSIFIER}.${PACKAGING}
