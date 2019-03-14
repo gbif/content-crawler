@@ -407,7 +407,10 @@ public class  MappingGenerator {
        cmaField.getValidations().stream().filter(validation -> validation.containsKey(LINK_CONTENT_TYPE))
          .map(validation -> ((List<String>)validation.get(LINK_CONTENT_TYPE)).get(0)).findFirst()
       : ((List<Map<String,Object>>)cmaField.getArrayItems().get(VALIDATIONS)).stream()
-        .map(validation -> ((List<String>)validation.get(LINK_CONTENT_TYPE)).get(0)).findFirst();
+        .map(validation ->
+                //if the validation context is not a link return an empty response
+                Optional.ofNullable((List<String>)validation.get(LINK_CONTENT_TYPE))
+                        .map(validations -> validations.get(0))).findFirst().orElse(Optional.empty());
 
     return linkContentType.map(fLinkType -> vocabularies.contains(fLinkType)? VOCABULARY : NESTED).orElse(NESTED);
   }
