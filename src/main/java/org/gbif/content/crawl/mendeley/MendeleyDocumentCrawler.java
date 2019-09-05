@@ -26,7 +26,7 @@ import org.slf4j.LoggerFactory;
 public class MendeleyDocumentCrawler {
 
   //Buffer to use in Observables to accumulate results before handle them
-  private static final int CRAWL_BUFFER = 10;
+  private static final int CRAWL_BUFFER = 2;
 
   private static final Logger LOG = LoggerFactory.getLogger(MendeleyDocumentCrawler.class);
   private final RequestConfig requestConfig;
@@ -40,7 +40,7 @@ public class MendeleyDocumentCrawler {
     int timeOut = config.mendeley.httpTimeout;
     requestConfig = RequestConfig.custom().setSocketTimeout(timeOut).setConnectTimeout(timeOut)
                       .setConnectionRequestTimeout(timeOut).build();
-    handler = new ComposeHandler(config);
+    handler = new ElasticSearchIndexHandler(config);
   }
 
   public void run() throws IOException {
