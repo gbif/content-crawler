@@ -57,7 +57,7 @@ public class MendeleyDocumentCrawler {
         .doOnTerminate(handler::finish)
         .subscribe(
           responses ->
-            responses.parallelStream().forEach(response -> {
+            responses.forEach(response -> {
                 try {
                   handler.handleResponse(response);
                 } catch (Exception e) {
