@@ -18,7 +18,12 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
+import java.util.Spliterator;
+import java.util.Spliterators;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -132,27 +137,42 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
    */
   @Override
   public void handleResponse(String responseAsJson) throws IOException {
-    BulkRequestBuilder bulkRequest = esClient.prepareBulk();
-    //process each Json node
-    MAPPER.readTree(responseAsJson).elements().forEachRemaining(document -> {
-      try {
-        toCamelCasedFields(document);
-        manageReplacements((ObjectNode) document);
-        if (document.has(ML_TAGS_FL)) {
-          handleTags(document);
-        }
-        bulkRequest.add(esClient.prepareIndex(esIdxName, conf.mendeley.indexBuild.esIndexType, document.get(ML_ID_FL).asText()).setSource(document.toString()));
-      } catch (Exception ex) {
-        LOG.error("Error processing document [{}]", document, ex);
-      }
-    });
 
-    BulkResponse bulkResponse = bulkRequest.get();
-    if (bulkResponse.hasFailures()) {
-      LOG.error("Error indexing.  First error message: {}", bulkResponse.getItems()[0].getFailureMessage());
-    } else {
-      LOG.info("Indexed [{}] documents", bulkResponse.getItems().length);
-    }
+    final int chunkSize = 50;
+    final AtomicInteger counter = new AtomicInteger();
+    //process each Json node
+    Iterable<JsonNode> iterable = () -> {
+      try {
+        return MAPPER.readTree(responseAsJson).elements();
+      } catch (IOException ex) {
+        throw new RuntimeException(ex);
+      }
+    };
+    StreamSupport.stream(iterable.spliterator(), false)
+      .collect(Collectors.groupingBy(it -> counter.getAndIncrement() / chunkSize))
+      .values().forEach(nodes ->
+                        {
+                          BulkRequestBuilder bulkRequest = esClient.prepareBulk();
+                          nodes.forEach( document -> {
+                                                      try {
+                                                        toCamelCasedFields(document);
+                                                        manageReplacements((ObjectNode) document);
+                                                        if (document.has(ML_TAGS_FL)) {
+                                                          handleTags(document);
+                                                        }
+                                                        bulkRequest.add(esClient.prepareIndex(esIdxName, conf.mendeley.indexBuild.esIndexType, document.get(ML_ID_FL).asText()).setSource(document.toString()));
+                                                      } catch (Exception ex) {
+                                                        LOG.error("Error processing document [{}]", document, ex);
+                                                      }
+                                                    });
+                          BulkResponse bulkResponse = bulkRequest.get();
+                          if (bulkResponse.hasFailures()) {
+                            LOG.error("Error indexing.  First error message: {}", bulkResponse.getItems()[0].getFailureMessage());
+                          } else {
+                            LOG.info("Indexed [{}] documents", bulkResponse.getItems().length);
+                          }
+
+                        });
   }
 
   /**
