@@ -6,7 +6,6 @@ import org.gbif.api.service.registry.OccurrenceDownloadService;
 import org.gbif.api.vocabulary.Country;
 import org.gbif.api.vocabulary.Language;
 import org.gbif.content.crawl.conf.ContentCrawlConfiguration;
-import org.gbif.content.crawl.es.ElasticSearchUtils;
 import org.gbif.registry.ws.client.guice.RegistryWsClientModule;
 import org.gbif.ws.client.guice.AnonymousAuthModule;
 
@@ -27,7 +26,6 @@ import com.fasterxml.jackson.databind.node.BooleanNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
 import com.google.common.base.CaseFormat;
-import com.google.common.base.Equivalence;
 import com.google.common.collect.Maps;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
@@ -113,6 +111,8 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
   private final OccurrenceDownloadService downloadService;
   private final DatasetService datasetService;
 
+
+
   public ElasticSearchIndexHandler(ContentCrawlConfiguration conf) {
     this.conf = conf;
     LOG.info("Connecting to ES cluster {}:{}", conf.elasticSearch.host, conf.elasticSearch.port);
@@ -135,13 +135,16 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
     BulkRequestBuilder bulkRequest = esClient.prepareBulk();
     //process each Json node
     MAPPER.readTree(responseAsJson).elements().forEachRemaining(document -> {
-      toCamelCasedFields(document);
-      manageReplacements((ObjectNode)document);
-      if (document.has(ML_TAGS_FL)) {
-        handleTags(document);
+      try {
+        toCamelCasedFields(document);
+        manageReplacements((ObjectNode) document);
+        if (document.has(ML_TAGS_FL)) {
+          handleTags(document);
+        }
+        bulkRequest.add(esClient.prepareIndex(esIdxName, conf.mendeley.indexBuild.esIndexType, document.get(ML_ID_FL).asText()).setSource(document.toString()));
+      } catch (Exception ex) {
+        LOG.error("Error processing document [{}]", document, ex);
       }
-      bulkRequest.add(esClient.prepareIndex(esIdxName, conf.mendeley.indexBuild.esIndexType,
-                                            document.get(ML_ID_FL).asText()).setSource(document.toString()));
     });
 
     BulkResponse bulkResponse = bulkRequest.get();
@@ -165,82 +168,87 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
    * Process tags. Adds publishers countries and biodiversity countries from tag values.
    */
   private void handleTags(JsonNode document) {
-    Set<TextNode> countriesOfResearches = new HashSet<>();
-    Set<TextNode> countriesOfCoverage = new HashSet<>();
-    Set<TextNode> regions = new HashSet<>();
-    Set<TextNode> gbifDatasets = new HashSet<>();
-    Set<TextNode> publishingOrganizations = new HashSet<>();
-    Set<TextNode> gbifDownloads = new HashSet<>();
-    Set<TextNode> topics = new HashSet<>();
-    Set<TextNode> relevance = new HashSet<>();
-    final MutableBoolean peerReviewValue = new MutableBoolean(Boolean.FALSE);
-    final MutableBoolean openAccessValue = new MutableBoolean(Boolean.FALSE);
-    document.get(ML_TAGS_FL).elements().forEachRemaining(node -> {
-      String value = node.textValue();
-      if (value.startsWith(GBIF_DOI_TAG.pattern())) {
-        String keyValue  = BACK_SLASH.matcher(GBIF_DOI_TAG.matcher(value).replaceFirst("")).replaceAll(URL_BACK_SLASH);
-        Optional<Download> downloadOpt = Optional.ofNullable(downloadService.get(keyValue));
-        downloadOpt.ifPresent(download -> {
-                                gbifDownloads.add(TextNode.valueOf(download.getKey()));
-                                RegistryIterables.ofDatasetUsages(downloadService, download.getKey())
-                                  .forEach(response -> response.getResults().forEach(usage -> {
-                                    gbifDatasets.add(TextNode.valueOf(usage.getDatasetKey().toString()));
-                                    Optional.ofNullable(datasetService.get(usage.getDatasetKey()))
-                                      .ifPresent(dataset -> Optional.ofNullable(dataset.getPublishingOrganizationKey())
-                                        .ifPresent(publishingOrganizationKey -> publishingOrganizations.add(TextNode.valueOf(
-                                          publishingOrganizationKey.toString()))));
-                                  }));
-                              }
-        );
-        if(!downloadOpt.isPresent()) {
-          RegistryIterables.ofListByDoi(datasetService, keyValue)
-            .forEach(response -> response.getResults()
-              .forEach(dataset -> {
-                gbifDatasets.add(TextNode.valueOf(dataset.getKey().toString()));
-                Optional.ofNullable(dataset.getPublishingOrganizationKey())
-                  .ifPresent(publishingOrganizationKey -> publishingOrganizations
-                                                            .add(TextNode.valueOf(publishingOrganizationKey.toString()))
-                  );
-              }));
-        }
-      } else if (value.startsWith(PEER_REVIEW_TAG.pattern())) {
-        peerReviewValue.setValue(Boolean.parseBoolean(PEER_REVIEW_TAG.matcher(value).replaceFirst("")));
-      } else if (value.startsWith(OPEN_ACCESS_TAG.pattern())) {
-        openAccessValue.setValue(Boolean.parseBoolean(OPEN_ACCESS_TAG.matcher(value).replaceFirst("")));
-      } else { //try country parser
-        //VocabularyUtils uses Guava optionals
-        String lowerCaseValue = value.toLowerCase();
-        if (lowerCaseValue.endsWith(BIO_COUNTRY_POSTFIX)) {
-          Optional.ofNullable(Country.fromIsoCode(BIO_COUNTRY_POSTFIX_PAT.matcher(lowerCaseValue).replaceAll("")))
-            .ifPresent(bioCountry -> {
-              countriesOfCoverage.add(TextNode.valueOf(bioCountry.getIso2LetterCode()));
-              Optional.ofNullable(bioCountry.getGbifRegion())
-                .ifPresent(region -> regions.add(TextNode.valueOf(region.name())));
-            });
-        } else {
-          Optional<Country> researcherCountry = Optional.ofNullable(Country.fromIsoCode(value));
-          if (researcherCountry.isPresent()) {
-            countriesOfResearches.add(TextNode.valueOf(researcherCountry.get().getIso2LetterCode()));
-          } else { // try controlled terms
-            if(!addIfIsControlledTerm(ES_TOPICS_FL, value, topics)) {
-              addIfIsControlledTerm(ES_RELEVANCE_FL, value, relevance);
+    try {
+      Set<TextNode> countriesOfResearches = new HashSet<>();
+      Set<TextNode> countriesOfCoverage = new HashSet<>();
+      Set<TextNode> regions = new HashSet<>();
+      Set<TextNode> gbifDatasets = new HashSet<>();
+      Set<TextNode> publishingOrganizations = new HashSet<>();
+      Set<TextNode> gbifDownloads = new HashSet<>();
+      Set<TextNode> topics = new HashSet<>();
+      Set<TextNode> relevance = new HashSet<>();
+      final MutableBoolean peerReviewValue = new MutableBoolean(Boolean.FALSE);
+      final MutableBoolean openAccessValue = new MutableBoolean(Boolean.FALSE);
+      document.get(ML_TAGS_FL).elements().forEachRemaining(node -> {
+        String value = node.textValue();
+        if (value.startsWith(GBIF_DOI_TAG.pattern())) {
+          String keyValue  = BACK_SLASH.matcher(GBIF_DOI_TAG.matcher(value).replaceFirst("")).replaceAll(URL_BACK_SLASH);
+          LOG.info("GBIF DOI {}", keyValue);
+          Optional<Download> downloadOpt = Optional.ofNullable(downloadService.get(keyValue));
+          downloadOpt.ifPresent(download -> {
+                                  gbifDownloads.add(TextNode.valueOf(download.getKey()));
+                                  RegistryIterables.ofDatasetUsages(downloadService, download.getKey())
+                                    .forEach(response -> response.getResults().forEach(usage -> {
+                                      gbifDatasets.add(TextNode.valueOf(usage.getDatasetKey().toString()));
+                                      Optional.ofNullable(datasetService.get(usage.getDatasetKey()))
+                                        .ifPresent(dataset -> Optional.ofNullable(dataset.getPublishingOrganizationKey())
+                                          .ifPresent(publishingOrganizationKey -> publishingOrganizations.add(TextNode.valueOf(
+                                            publishingOrganizationKey.toString()))));
+                                    }));
+                                }
+          );
+          if(!downloadOpt.isPresent()) {
+            RegistryIterables.ofListByDoi(datasetService, keyValue)
+              .forEach(response -> response.getResults()
+                .forEach(dataset -> {
+                  gbifDatasets.add(TextNode.valueOf(dataset.getKey().toString()));
+                  Optional.ofNullable(dataset.getPublishingOrganizationKey())
+                    .ifPresent(publishingOrganizationKey -> publishingOrganizations
+                                                              .add(TextNode.valueOf(publishingOrganizationKey.toString()))
+                    );
+                }));
+          }
+        } else if (value.startsWith(PEER_REVIEW_TAG.pattern())) {
+          peerReviewValue.setValue(Boolean.parseBoolean(PEER_REVIEW_TAG.matcher(value).replaceFirst("")));
+        } else if (value.startsWith(OPEN_ACCESS_TAG.pattern())) {
+          openAccessValue.setValue(Boolean.parseBoolean(OPEN_ACCESS_TAG.matcher(value).replaceFirst("")));
+        } else { //try country parser
+          //VocabularyUtils uses Guava optionals
+          String lowerCaseValue = value.toLowerCase();
+          if (lowerCaseValue.endsWith(BIO_COUNTRY_POSTFIX)) {
+            Optional.ofNullable(Country.fromIsoCode(BIO_COUNTRY_POSTFIX_PAT.matcher(lowerCaseValue).replaceAll("")))
+              .ifPresent(bioCountry -> {
+                countriesOfCoverage.add(TextNode.valueOf(bioCountry.getIso2LetterCode()));
+                Optional.ofNullable(bioCountry.getGbifRegion())
+                  .ifPresent(region -> regions.add(TextNode.valueOf(region.name())));
+              });
+          } else {
+            Optional<Country> researcherCountry = Optional.ofNullable(Country.fromIsoCode(value));
+            if (researcherCountry.isPresent()) {
+              countriesOfResearches.add(TextNode.valueOf(researcherCountry.get().getIso2LetterCode()));
+            } else { // try controlled terms
+              if(!addIfIsControlledTerm(ES_TOPICS_FL, value, topics)) {
+                addIfIsControlledTerm(ES_RELEVANCE_FL, value, relevance);
+              }
             }
           }
         }
-      }
-    });
-    ObjectNode docNode  = (ObjectNode)document;
-    docNode.putArray(ES_COUNTRY_RESEARCHER_FL).addAll(countriesOfResearches);
-    docNode.putArray(ES_COUNTRY_COVERAGE_FL).addAll(countriesOfCoverage);
-    docNode.putArray(ES_GBIF_REGION_FL).addAll(regions);
-    docNode.putArray(ES_GBIF_DATASET_FL).addAll(gbifDatasets);
-    docNode.putArray(ES_PUBLISHING_ORG_FL).addAll(publishingOrganizations);
-    docNode.putArray(ES_RELEVANCE_FL).addAll(relevance);
-    docNode.putArray(ES_TOPICS_FL).addAll(topics);
-    docNode.putArray(ES_DOWNLOAD_FL).addAll(gbifDownloads);
-    docNode.put(ES_PEER_REVIEW_FIELD, peerReviewValue.getValue());
-    docNode.put(OPEN_ACCESS_FIELD, openAccessValue.getValue());
-    docNode.put(CONTENT_TYPE_FIELD, CONTENT_TYPE_FIELD_VALUE);
+      });
+      ObjectNode docNode  = (ObjectNode)document;
+      docNode.putArray(ES_COUNTRY_RESEARCHER_FL).addAll(countriesOfResearches);
+      docNode.putArray(ES_COUNTRY_COVERAGE_FL).addAll(countriesOfCoverage);
+      docNode.putArray(ES_GBIF_REGION_FL).addAll(regions);
+      docNode.putArray(ES_GBIF_DATASET_FL).addAll(gbifDatasets);
+      docNode.putArray(ES_PUBLISHING_ORG_FL).addAll(publishingOrganizations);
+      docNode.putArray(ES_RELEVANCE_FL).addAll(relevance);
+      docNode.putArray(ES_TOPICS_FL).addAll(topics);
+      docNode.putArray(ES_DOWNLOAD_FL).addAll(gbifDownloads);
+      docNode.put(ES_PEER_REVIEW_FIELD, peerReviewValue.getValue());
+      docNode.put(OPEN_ACCESS_FIELD, openAccessValue.getValue());
+      docNode.put(CONTENT_TYPE_FIELD, CONTENT_TYPE_FIELD_VALUE);
+    } catch (Exception ex) {
+      LOG.error("Error processing document [{}]", document, ex);
+    }
   }
 
   /**
