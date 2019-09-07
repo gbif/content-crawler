@@ -126,6 +126,10 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
     createIndex(esClient, conf.mendeley.indexBuild.esIndexType, esIdxName, indexMappings(ES_MAPPING_FILE));
   }
 
+  public static ObjectMapper getMAPPER() {
+    return MAPPER;
+  }
+
   /**
    * Bulk loads the response as JSON into ES.
    * @param responseAsJson To load.
