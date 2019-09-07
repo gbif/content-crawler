@@ -1,5 +1,6 @@
 package org.gbif.content.crawl.mendeley;
 
+import org.gbif.api.model.common.DOI;
 import org.gbif.api.model.occurrence.Download;
 import org.gbif.api.service.registry.DatasetService;
 import org.gbif.api.service.registry.OccurrenceDownloadService;
@@ -168,6 +169,39 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
     esClient.admin().indices().prepareDelete(esIdxName).get();
   }
 
+  private void setDownloadData(String downloadKey, Set<TextNode> gbifDatasets, Set<TextNode> gbifDownloads,
+                               Set<TextNode> publishingOrganizations) {
+    try {
+      Optional<Download> downloadOpt = Optional.ofNullable(downloadService.get(downloadKey));
+      downloadOpt.ifPresent(download -> {
+        gbifDownloads.add(TextNode.valueOf(download.getKey()));
+        RegistryIterables.ofDatasetUsages(downloadService, download.getKey()).forEach(response -> response.getResults().forEach(usage -> {
+          gbifDatasets.add(TextNode.valueOf(usage.getDatasetKey().toString()));
+          Optional.ofNullable(datasetService.get(usage.getDatasetKey()))
+            .ifPresent(dataset -> Optional.ofNullable(dataset.getPublishingOrganizationKey())
+              .ifPresent(publishingOrganizationKey -> publishingOrganizations.add(TextNode.valueOf(
+                publishingOrganizationKey.toString()))));
+        }));
+      });
+    } catch (Exception ex) {
+      LOG.error("Error getting download data {}", downloadKey,  ex);
+    }
+  }
+
+  private void setDatasetData(String datasetKey, Set<TextNode> gbifDatasets,
+                              Set<TextNode> publishingOrganizations) {
+    try {
+      RegistryIterables.ofListByDoi(datasetService, datasetKey).forEach(response -> response.getResults().forEach(dataset -> {
+          gbifDatasets.add(TextNode.valueOf(dataset.getKey().toString()));
+          Optional.ofNullable(dataset.getPublishingOrganizationKey())
+            .ifPresent(publishingOrganizationKey -> publishingOrganizations.add(TextNode.valueOf(
+              publishingOrganizationKey.toString())));
+        }));
+    } catch (Exception ex) {
+      LOG.error("Error getting dataset data {}", datasetKey, ex);
+    }
+  }
+
   /**
    * Process tags. Adds publishers countries and biodiversity countries from tag values.
    */
@@ -186,31 +220,13 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
       document.get(ML_TAGS_FL).elements().forEachRemaining(node -> {
         String value = node.textValue();
         if (value.startsWith(GBIF_DOI_TAG.pattern())) {
+          DOI doi = new DOI(GBIF_DOI_TAG.matcher(value).replaceFirst(""));
           String keyValue  = BACK_SLASH.matcher(GBIF_DOI_TAG.matcher(value).replaceFirst("")).replaceAll(URL_BACK_SLASH);
           LOG.info("GBIF DOI {}", keyValue);
-          Optional<Download> downloadOpt = Optional.ofNullable(downloadService.get(keyValue));
-          downloadOpt.ifPresent(download -> {
-                                  gbifDownloads.add(TextNode.valueOf(download.getKey()));
-                                  RegistryIterables.ofDatasetUsages(downloadService, download.getKey())
-                                    .forEach(response -> response.getResults().forEach(usage -> {
-                                      gbifDatasets.add(TextNode.valueOf(usage.getDatasetKey().toString()));
-                                      Optional.ofNullable(datasetService.get(usage.getDatasetKey()))
-                                        .ifPresent(dataset -> Optional.ofNullable(dataset.getPublishingOrganizationKey())
-                                          .ifPresent(publishingOrganizationKey -> publishingOrganizations.add(TextNode.valueOf(
-                                            publishingOrganizationKey.toString()))));
-                                    }));
-                                }
-          );
-          if(!downloadOpt.isPresent()) {
-            RegistryIterables.ofListByDoi(datasetService, keyValue)
-              .forEach(response -> response.getResults()
-                .forEach(dataset -> {
-                  gbifDatasets.add(TextNode.valueOf(dataset.getKey().toString()));
-                  Optional.ofNullable(dataset.getPublishingOrganizationKey())
-                    .ifPresent(publishingOrganizationKey -> publishingOrganizations
-                                                              .add(TextNode.valueOf(publishingOrganizationKey.toString()))
-                    );
-                }));
+          if (doi.getSuffix().startsWith("dl.")) {
+            setDownloadData(keyValue, gbifDatasets, gbifDownloads, publishingOrganizations);
+          } else {
+            setDatasetData(keyValue, gbifDatasets, publishingOrganizations);
           }
         } else if (value.startsWith(PEER_REVIEW_TAG.pattern())) {
           peerReviewValue.setValue(Boolean.parseBoolean(PEER_REVIEW_TAG.matcher(value).replaceFirst("")));
