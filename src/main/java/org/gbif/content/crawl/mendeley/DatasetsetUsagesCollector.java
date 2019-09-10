@@ -133,7 +133,7 @@ class DatasetsetUsagesCollector {
         if (resultCount == 0) {
           LOG.warn("DOI {} does not have datasets or downloads ", doi);
         } else {
-          LOG.info("DOI {} has {} datasets/dowloads", doi, resultCount);
+          LOG.info("DOI {} has {} datasets/downloads", doi, resultCount);
         }
       }
       return citations;
