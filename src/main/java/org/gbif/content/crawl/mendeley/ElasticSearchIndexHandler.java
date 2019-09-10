@@ -1,13 +1,8 @@
 package org.gbif.content.crawl.mendeley;
 
-import org.gbif.api.model.occurrence.Download;
-import org.gbif.api.service.registry.DatasetService;
-import org.gbif.api.service.registry.OccurrenceDownloadService;
 import org.gbif.api.vocabulary.Country;
 import org.gbif.api.vocabulary.Language;
 import org.gbif.content.crawl.conf.ContentCrawlConfiguration;
-import org.gbif.registry.ws.client.guice.RegistryWsClientModule;
-import org.gbif.ws.client.guice.AnonymousAuthModule;
 
 import java.io.IOException;
 import java.time.LocalDate;
@@ -18,8 +13,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
-import java.util.Spliterator;
-import java.util.Spliterators;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -32,8 +25,6 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
 import com.google.common.base.CaseFormat;
 import com.google.common.collect.Maps;
-import com.google.inject.Guice;
-import com.google.inject.Injector;
 import org.apache.commons.lang3.mutable.MutableBoolean;
 import org.elasticsearch.action.bulk.BulkRequestBuilder;
 import org.elasticsearch.action.bulk.BulkResponse;
@@ -52,9 +43,6 @@ import static org.gbif.content.crawl.es.ElasticSearchUtils.swapIndexToAlias;
  * Parses the documents from the response and adds them to the index.
  */
 public class ElasticSearchIndexHandler implements ResponseHandler {
-
-  private static final String URL_BACK_SLASH = "%2F";
-  private static final Pattern BACK_SLASH = Pattern.compile("/", Pattern.LITERAL);
 
   //Mendeley fields used by this handler
   private static final String ML_ID_FL = "id";
@@ -113,7 +101,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
   private final Client esClient;
   private final ContentCrawlConfiguration conf;
   private final String esIdxName;
-  private final DatasetsetUsagesExport datasetsetUsagesExport;
+  private final DatasetsetUsagesCollector datasetsetUsagesCollector;
 
 
 
@@ -126,7 +114,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
     registryConf.put("registry.ws.url",conf.mendeley.gbifApiUrl);
     Properties dbConfig = new Properties();
     dbConfig.putAll(conf.mendeley.dbConfig);
-    datasetsetUsagesExport = new DatasetsetUsagesExport(dbConfig);
+    datasetsetUsagesCollector = new DatasetsetUsagesCollector(dbConfig);
     createIndex(esClient, conf.mendeley.indexBuild.esIndexType, esIdxName, indexMappings(ES_MAPPING_FILE));
   }
 
@@ -203,7 +191,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
         if (value.startsWith(GBIF_DOI_TAG.pattern())) {
           String keyValue  = GBIF_DOI_TAG.matcher(value).replaceFirst("");
           LOG.info("GBIF DOI {}", keyValue);
-          datasetsetUsagesExport.getCitations(keyValue).forEach(citation -> {
+          datasetsetUsagesCollector.getCitations(keyValue).forEach(citation -> {
             Optional.ofNullable(citation.getDownloadKey()).ifPresent(k -> gbifDownloads.add(new TextNode(k)));
             Optional.ofNullable(citation.getDatasetKey()).ifPresent(k -> gbifDatasets.add(new TextNode(k)));
             Optional.ofNullable(citation.getPublishinOrganizationKey()).ifPresent(k -> publishingOrganizations.add(new TextNode(k)));
