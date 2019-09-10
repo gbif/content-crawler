@@ -57,6 +57,10 @@
     <findbugs.version>3.0.1</findbugs.version>
     <guice.version>4.0</guice.version>
 
+    <apache.beam.version>2.15.0</apache.beam.version>
+    <postgresql.version>9.4.1208.jre7</postgresql.version>
+    <hikari.version>3.2.0</hikari.version>
+
     <!-- Caching -->
     <cache2k.version>1.2.0.Final</cache2k.version>
 
@@ -280,6 +284,7 @@
       <artifactId>guice</artifactId>
       <version>${guice.version}</version>
     </dependency>
+
     <!-- Caching -->
     <dependency>
       <groupId>org.cache2k</groupId>
@@ -291,5 +296,21 @@
       <artifactId>cache2k-api</artifactId>
       <version>${cache2k.version}</version>
     </dependency>
+
+
+    <!-- Database -->
+    <dependency>
+      <groupId>org.postgresql</groupId>
+      <artifactId>postgresql</artifactId>
+      <version>${postgresql.version}</version>
+      <scope>runtime</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>com.zaxxer</groupId>
+      <artifactId>HikariCP</artifactId>
+      <version>${hikari.version}</version>
+    </dependency>
+
   </dependencies>
 </project>

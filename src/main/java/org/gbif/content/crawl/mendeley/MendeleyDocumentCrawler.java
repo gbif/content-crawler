@@ -40,7 +40,7 @@ public class MendeleyDocumentCrawler {
     int timeOut = config.mendeley.httpTimeout;
     requestConfig = RequestConfig.custom().setSocketTimeout(timeOut).setConnectTimeout(timeOut)
                       .setConnectionRequestTimeout(timeOut).build();
-    handler = new ElasticSearchIndexHandler(config);
+    handler = new ResponseToFileHandler(config.mendeley.targetDir);
   }
 
   public void run() throws IOException {

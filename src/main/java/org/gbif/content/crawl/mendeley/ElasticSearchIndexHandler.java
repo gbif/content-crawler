@@ -113,8 +113,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
   private final Client esClient;
   private final ContentCrawlConfiguration conf;
   private final String esIdxName;
-  private final OccurrenceDownloadService downloadService;
-  private final DatasetService datasetService;
+  private final DatasetsetUsagesExport datasetsetUsagesExport;
 
 
 
@@ -125,9 +124,9 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
     esIdxName = getEsIndexingIdxName(conf.mendeley.indexBuild.esIndexName);
     Properties registryConf = new Properties();
     registryConf.put("registry.ws.url",conf.mendeley.gbifApiUrl);
-    Injector injector = Guice.createInjector(new RegistryWsClientModule(registryConf), new AnonymousAuthModule());
-    downloadService = injector.getInstance(OccurrenceDownloadService.class);
-    datasetService = injector.getInstance(DatasetService.class);
+    Properties dbConfig = new Properties();
+    dbConfig.putAll(conf.mendeley.dbConfig);
+    datasetsetUsagesExport = new DatasetsetUsagesExport(dbConfig);
     createIndex(esClient, conf.mendeley.indexBuild.esIndexType, esIdxName, indexMappings(ES_MAPPING_FILE));
   }
 
@@ -202,32 +201,13 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
       document.get(ML_TAGS_FL).elements().forEachRemaining(node -> {
         String value = node.textValue();
         if (value.startsWith(GBIF_DOI_TAG.pattern())) {
-          String keyValue  = BACK_SLASH.matcher(GBIF_DOI_TAG.matcher(value).replaceFirst("")).replaceAll(URL_BACK_SLASH);
+          String keyValue  = GBIF_DOI_TAG.matcher(value).replaceFirst("");
           LOG.info("GBIF DOI {}", keyValue);
-          Optional<Download> downloadOpt = Optional.ofNullable(downloadService.get(keyValue));
-          downloadOpt.ifPresent(download -> {
-                                  gbifDownloads.add(TextNode.valueOf(download.getKey()));
-                                  RegistryIterables.ofDatasetUsages(downloadService, download.getKey())
-                                    .forEach(response -> response.getResults().forEach(usage -> {
-                                      gbifDatasets.add(TextNode.valueOf(usage.getDatasetKey().toString()));
-                                      Optional.ofNullable(datasetService.get(usage.getDatasetKey()))
-                                        .ifPresent(dataset -> Optional.ofNullable(dataset.getPublishingOrganizationKey())
-                                          .ifPresent(publishingOrganizationKey -> publishingOrganizations.add(TextNode.valueOf(
-                                            publishingOrganizationKey.toString()))));
-                                    }));
-                                }
-          );
-          if(!downloadOpt.isPresent()) {
-            RegistryIterables.ofListByDoi(datasetService, keyValue)
-              .forEach(response -> response.getResults()
-                .forEach(dataset -> {
-                  gbifDatasets.add(TextNode.valueOf(dataset.getKey().toString()));
-                  Optional.ofNullable(dataset.getPublishingOrganizationKey())
-                    .ifPresent(publishingOrganizationKey -> publishingOrganizations
-                                                              .add(TextNode.valueOf(publishingOrganizationKey.toString()))
-                    );
-                }));
-          }
+          datasetsetUsagesExport.getCitations(keyValue).forEach(citation -> {
+            Optional.ofNullable(citation.getDownloadKey()).ifPresent(k -> gbifDownloads.add(new TextNode(k)));
+            Optional.ofNullable(citation.getDatasetKey()).ifPresent(k -> gbifDatasets.add(new TextNode(k)));
+            Optional.ofNullable(citation.getPublishinOrganizationKey()).ifPresent(k -> publishingOrganizations.add(new TextNode(k)));
+          });
         } else if (value.startsWith(PEER_REVIEW_TAG.pattern())) {
           peerReviewValue.setValue(Boolean.parseBoolean(PEER_REVIEW_TAG.matcher(value).replaceFirst("")));
         } else if (value.startsWith(OPEN_ACCESS_TAG.pattern())) {
