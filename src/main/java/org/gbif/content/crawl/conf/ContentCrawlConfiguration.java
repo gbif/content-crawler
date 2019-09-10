@@ -180,6 +180,11 @@ public class ContentCrawlConfiguration {
       names = "-esIndexName",
       description = "ElasticSearch index name")
     public String esIndexName;
+
+    @Parameter(
+      names = "-batchSize",
+      description = "Batch size for bulk indexing")
+    public int batchSize = 50;
   }
 
   /**

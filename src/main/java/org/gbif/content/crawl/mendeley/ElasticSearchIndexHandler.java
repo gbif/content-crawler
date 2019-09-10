@@ -96,11 +96,12 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
 
   private static final Logger LOG = LoggerFactory.getLogger(ElasticSearchIndexHandler.class);
   private static final ObjectMapper MAPPER = new ObjectMapper();
-  public static final String LAST_MODIFIED = "last_modified";
+  private static final String LAST_MODIFIED = "last_modified";
 
   private final Client esClient;
   private final ContentCrawlConfiguration conf;
   private final String esIdxName;
+  private final int batchSize;
   private final DatasetsetUsagesCollector datasetsetUsagesCollector;
 
 
@@ -110,8 +111,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
     LOG.info("Connecting to ES cluster {}:{}", conf.elasticSearch.host, conf.elasticSearch.port);
     esClient = buildEsClient(conf.elasticSearch);
     esIdxName = getEsIndexingIdxName(conf.mendeley.indexBuild.esIndexName);
-    Properties registryConf = new Properties();
-    registryConf.put("registry.ws.url",conf.mendeley.gbifApiUrl);
+    batchSize = conf.mendeley.indexBuild.batchSize;
     Properties dbConfig = new Properties();
     dbConfig.putAll(conf.mendeley.dbConfig);
     datasetsetUsagesCollector = new DatasetsetUsagesCollector(dbConfig);
@@ -125,7 +125,6 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
   @Override
   public void handleResponse(String responseAsJson) throws IOException {
 
-    final int chunkSize = 50;
     final AtomicInteger counter = new AtomicInteger();
     //process each Json node
     Iterable<JsonNode> iterable = () -> {
@@ -135,8 +134,8 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
         throw new RuntimeException(ex);
       }
     };
-    StreamSupport.stream(iterable.spliterator(), false)
-      .collect(Collectors.groupingBy(it -> counter.getAndIncrement() / chunkSize))
+    StreamSupport.stream(iterable.spliterator(), true)
+      .collect(Collectors.groupingBy(it -> counter.getAndIncrement() / batchSize))
       .values().forEach(nodes ->
                         {
                           BulkRequestBuilder bulkRequest = esClient.prepareBulk();
@@ -190,7 +189,6 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
         String value = node.textValue();
         if (value.startsWith(GBIF_DOI_TAG.pattern())) {
           String keyValue  = GBIF_DOI_TAG.matcher(value).replaceFirst("");
-          LOG.info("GBIF DOI {}", keyValue);
           datasetsetUsagesCollector.getCitations(keyValue).forEach(citation -> {
             Optional.ofNullable(citation.getDownloadKey()).ifPresent(k -> gbifDownloads.add(new TextNode(k)));
             Optional.ofNullable(citation.getDatasetKey()).ifPresent(k -> gbifDatasets.add(new TextNode(k)));

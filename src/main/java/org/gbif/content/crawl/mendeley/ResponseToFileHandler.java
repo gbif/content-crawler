@@ -3,9 +3,14 @@ package org.gbif.content.crawl.mendeley;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Date;
 
 /**
  * Writes each response as a file.
@@ -17,8 +22,11 @@ public class ResponseToFileHandler implements ResponseHandler {
   private final File targetDir;
 
   public ResponseToFileHandler(File targetDir) {
-    this.targetDir = targetDir;
-    targetDir.mkdirs();
+    try {
+      this.targetDir = Files.createDirectories(Paths.get(targetDir.getPath(),  Long.toString(new Date().getTime()))).toFile();
+    } catch (IOException ex) {
+      throw new IllegalStateException(ex);
+    }
   }
 
   @Override
@@ -29,6 +37,10 @@ public class ResponseToFileHandler implements ResponseHandler {
       out.write(responseAsJson);
     }
     pageNumber += 1;
+  }
+
+  public File getTargetDir() {
+    return targetDir;
   }
 
   @Override

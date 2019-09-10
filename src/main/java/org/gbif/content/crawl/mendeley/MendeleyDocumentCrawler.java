@@ -2,8 +2,13 @@ package org.gbif.content.crawl.mendeley;
 
 import org.gbif.content.crawl.conf.ContentCrawlConfiguration;
 
+import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.util.concurrent.TimeUnit;
 
+import com.google.common.base.Stopwatch;
 import io.reactivex.Observable;
 
 import org.apache.http.client.config.RequestConfig;
@@ -16,6 +21,7 @@ import org.apache.oltu.oauth2.client.response.OAuthJSONAccessTokenResponse;
 import org.apache.oltu.oauth2.common.exception.OAuthProblemException;
 import org.apache.oltu.oauth2.common.exception.OAuthSystemException;
 import org.apache.oltu.oauth2.common.message.types.GrantType;
+import org.elasticsearch.common.StopWatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,18 +38,21 @@ public class MendeleyDocumentCrawler {
   private final RequestConfig requestConfig;
 
   private final ContentCrawlConfiguration config;
-  private final ResponseHandler handler;
+  private final ResponseToFileHandler handler;
 
 
   public MendeleyDocumentCrawler(ContentCrawlConfiguration config) {
+
     this.config = config;
     int timeOut = config.mendeley.httpTimeout;
     requestConfig = RequestConfig.custom().setSocketTimeout(timeOut).setConnectTimeout(timeOut)
                       .setConnectionRequestTimeout(timeOut).build();
     handler = new ResponseToFileHandler(config.mendeley.targetDir);
+
   }
 
   public void run() throws IOException {
+    Stopwatch stopwatch = Stopwatch.createStarted();
     String targetUrl = String.format(config.mendeley.crawlURL, config.mendeley.groupId);
     LOG.info("Initiating paging crawl of {} to {}", targetUrl, config.mendeley.targetDir);
     try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
@@ -54,7 +63,12 @@ public class MendeleyDocumentCrawler {
           LOG.error("Error crawling Mendeley", err);
           throw new RuntimeException(err); })
         .buffer(CRAWL_BUFFER)
-        .doOnTerminate(handler::finish)
+        .doOnTerminate(() -> {
+         handler.finish();
+         indexFiles();
+          stopwatch.stop();
+          LOG.info("Time elapsed indexing Mendeley {} minutes ", stopwatch.elapsed(TimeUnit.MINUTES));
+        })
         .subscribe(
           responses ->
             responses.forEach(response -> {
@@ -69,6 +83,18 @@ public class MendeleyDocumentCrawler {
         );
     } catch (OAuthSystemException | OAuthProblemException e) {
       LOG.error("Unable ot authenticate with Mendeley", e);
+    }
+  }
+
+  private void indexFiles() throws Exception {
+    ElasticSearchIndexHandler elasticSearchIndexHandler = new ElasticSearchIndexHandler(config);
+    try {
+      for (File file : handler.getTargetDir().listFiles()) {
+        elasticSearchIndexHandler.handleResponse(new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8));
+      }
+      elasticSearchIndexHandler.finish();
+    } catch (Exception ex) {
+      elasticSearchIndexHandler.rollback();
     }
   }
 
