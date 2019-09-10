@@ -192,7 +192,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
           String keyValue  = GBIF_DOI_TAG.matcher(value).replaceFirst("");
           Collection<DatasetsetUsagesCollector.DatasetCitation> citations = datasetsetUsagesCollector.getCitations(keyValue);
           if (citations.isEmpty()) {
-            LOG.warn("DOIs {} not found in document {}", keyValue, document.get(ML_ID_FL));
+            LOG.warn("Document ID {} has a not-found DOI {}", keyValue, document.get(ML_ID_FL));
           } else {
             citations.forEach(citation -> {
               Optional.ofNullable(citation.getDownloadKey()).ifPresent(k -> gbifDownloads.add(new TextNode(k)));
