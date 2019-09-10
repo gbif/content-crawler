@@ -130,7 +130,11 @@ class DatasetsetUsagesCollector {
                                             resultSet.getString("download_key")));
           resultCount += 1;
         }
-        LOG.info("DOI {} contains {} associated datasets", doi, resultCount);
+        if (resultCount == 0) {
+          LOG.warn("DOI {} does not have datasets or downloads ", doi);
+        } else {
+          LOG.info("DOI {} has {} datasets/dowloads", doi, resultCount);
+        }
       }
       return citations;
     } catch (SQLException ex) {
