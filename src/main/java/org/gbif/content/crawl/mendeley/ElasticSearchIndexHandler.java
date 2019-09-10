@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
@@ -189,11 +190,16 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
         String value = node.textValue();
         if (value.startsWith(GBIF_DOI_TAG.pattern())) {
           String keyValue  = GBIF_DOI_TAG.matcher(value).replaceFirst("");
-          datasetsetUsagesCollector.getCitations(keyValue).forEach(citation -> {
-            Optional.ofNullable(citation.getDownloadKey()).ifPresent(k -> gbifDownloads.add(new TextNode(k)));
-            Optional.ofNullable(citation.getDatasetKey()).ifPresent(k -> gbifDatasets.add(new TextNode(k)));
-            Optional.ofNullable(citation.getPublishinOrganizationKey()).ifPresent(k -> publishingOrganizations.add(new TextNode(k)));
-          });
+          Collection<DatasetsetUsagesCollector.DatasetCitation> citations = datasetsetUsagesCollector.getCitations(keyValue);
+          if (citations.isEmpty()) {
+            LOG.warn("DOIs {} not found in document {}", keyValue, document.get(ML_ID_FL));
+          } else {
+            citations.forEach(citation -> {
+              Optional.ofNullable(citation.getDownloadKey()).ifPresent(k -> gbifDownloads.add(new TextNode(k)));
+              Optional.ofNullable(citation.getDatasetKey()).ifPresent(k -> gbifDatasets.add(new TextNode(k)));
+              Optional.ofNullable(citation.getPublishinOrganizationKey()).ifPresent(k -> publishingOrganizations.add(new TextNode(k)));
+            });
+          }
         } else if (value.startsWith(PEER_REVIEW_TAG.pattern())) {
           peerReviewValue.setValue(Boolean.parseBoolean(PEER_REVIEW_TAG.matcher(value).replaceFirst("")));
         } else if (value.startsWith(OPEN_ACCESS_TAG.pattern())) {
