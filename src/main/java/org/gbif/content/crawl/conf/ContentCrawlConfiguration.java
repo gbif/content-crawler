@@ -94,6 +94,11 @@ public class ContentCrawlConfiguration {
       description = "Tags values that must be handled as separate fields in the resulting index")
     public Map<String,List<String>> controlledTags = new HashMap<>();
 
+    @Parameter(
+      names = "-dbConfig",
+      description = "Configuration to establish a connection to the Registry DB to get data of downloads and datasets")
+    public Map<String,String> dbConfig = new HashMap<>();
+
     public IndexBuild indexBuild;
   }
 
@@ -175,6 +180,11 @@ public class ContentCrawlConfiguration {
       names = "-esIndexName",
       description = "ElasticSearch index name")
     public String esIndexName;
+
+    @Parameter(
+      names = "-batchSize",
+      description = "Batch size for bulk indexing")
+    public int batchSize = 50;
   }
 
   /**

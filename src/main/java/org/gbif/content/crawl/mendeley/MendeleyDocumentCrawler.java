@@ -6,7 +6,9 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.util.concurrent.TimeUnit;
 
+import com.google.common.base.Stopwatch;
 import io.reactivex.Observable;
 
 import org.apache.http.client.config.RequestConfig;
@@ -39,14 +41,17 @@ public class MendeleyDocumentCrawler {
 
 
   public MendeleyDocumentCrawler(ContentCrawlConfiguration config) {
+
     this.config = config;
     int timeOut = config.mendeley.httpTimeout;
     requestConfig = RequestConfig.custom().setSocketTimeout(timeOut).setConnectTimeout(timeOut)
                       .setConnectionRequestTimeout(timeOut).build();
     handler = new ResponseToFileHandler(config.mendeley.targetDir);
+
   }
 
   public void run() throws IOException {
+    Stopwatch stopwatch = Stopwatch.createStarted();
     String targetUrl = String.format(config.mendeley.crawlURL, config.mendeley.groupId);
     LOG.info("Initiating paging crawl of {} to {}", targetUrl, config.mendeley.targetDir);
     try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
@@ -58,8 +63,10 @@ public class MendeleyDocumentCrawler {
           throw new RuntimeException(err); })
         .buffer(CRAWL_BUFFER)
         .doOnTerminate(() -> {
-         handler.finish();
-         indexFiles();
+          handler.finish();
+          indexFiles();
+          stopwatch.stop();
+          LOG.info("Time elapsed indexing Mendeley {} minutes ", stopwatch.elapsed(TimeUnit.MINUTES));
         })
         .subscribe(
           responses ->

@@ -18,11 +18,15 @@ import org.elasticsearch.client.Client;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.transport.InetSocketTransportAddress;
 import org.elasticsearch.transport.client.PreBuiltTransportClient;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Common ElasticSearch utility methods.
  */
 public class ElasticSearchUtils {
+
+  private static final Logger LOG = LoggerFactory.getLogger(ElasticSearchUtils.class);
 
   private static final Pattern REPLACEMENTS = Pattern.compile(":\\s+|\\s+");
 
@@ -70,6 +74,7 @@ public class ElasticSearchUtils {
    */
   public static void createIndex(Client esClient, String typeName,
                                  String idxName, String source) {
+    LOG.info("Index into Elasticsearch Index {} ", idxName);
     //create ES idx if it doesn't exists
     if (esClient.admin().indices().prepareExists(idxName).get().isExists()) {
       esClient.admin().indices().prepareDelete(idxName).get();

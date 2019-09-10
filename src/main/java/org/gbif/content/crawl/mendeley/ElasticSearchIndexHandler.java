@@ -1,14 +1,8 @@
 package org.gbif.content.crawl.mendeley;
 
-import org.gbif.api.model.common.DOI;
-import org.gbif.api.model.occurrence.Download;
-import org.gbif.api.service.registry.DatasetService;
-import org.gbif.api.service.registry.OccurrenceDownloadService;
 import org.gbif.api.vocabulary.Country;
 import org.gbif.api.vocabulary.Language;
 import org.gbif.content.crawl.conf.ContentCrawlConfiguration;
-import org.gbif.registry.ws.client.guice.RegistryWsClientModule;
-import org.gbif.ws.client.guice.AnonymousAuthModule;
 
 import java.io.IOException;
 import java.time.LocalDate;
@@ -19,7 +13,10 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -28,8 +25,6 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
 import com.google.common.base.CaseFormat;
 import com.google.common.collect.Maps;
-import com.google.inject.Guice;
-import com.google.inject.Injector;
 import org.apache.commons.lang3.mutable.MutableBoolean;
 import org.elasticsearch.action.bulk.BulkRequestBuilder;
 import org.elasticsearch.action.bulk.BulkResponse;
@@ -48,9 +43,6 @@ import static org.gbif.content.crawl.es.ElasticSearchUtils.swapIndexToAlias;
  * Parses the documents from the response and adds them to the index.
  */
 public class ElasticSearchIndexHandler implements ResponseHandler {
-
-  private static final String URL_BACK_SLASH = "%2F";
-  private static final Pattern BACK_SLASH = Pattern.compile("/", Pattern.LITERAL);
 
   //Mendeley fields used by this handler
   private static final String ML_ID_FL = "id";
@@ -104,13 +96,13 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
 
   private static final Logger LOG = LoggerFactory.getLogger(ElasticSearchIndexHandler.class);
   private static final ObjectMapper MAPPER = new ObjectMapper();
-  public static final String LAST_MODIFIED = "last_modified";
+  private static final String LAST_MODIFIED = "last_modified";
 
   private final Client esClient;
   private final ContentCrawlConfiguration conf;
   private final String esIdxName;
-  private final OccurrenceDownloadService downloadService;
-  private final DatasetService datasetService;
+  private final int batchSize;
+  private final DatasetsetUsagesCollector datasetsetUsagesCollector;
 
 
 
@@ -119,16 +111,11 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
     LOG.info("Connecting to ES cluster {}:{}", conf.elasticSearch.host, conf.elasticSearch.port);
     esClient = buildEsClient(conf.elasticSearch);
     esIdxName = getEsIndexingIdxName(conf.mendeley.indexBuild.esIndexName);
-    Properties registryConf = new Properties();
-    registryConf.put("registry.ws.url",conf.mendeley.gbifApiUrl);
-    Injector injector = Guice.createInjector(new RegistryWsClientModule(registryConf), new AnonymousAuthModule());
-    downloadService = injector.getInstance(OccurrenceDownloadService.class);
-    datasetService = injector.getInstance(DatasetService.class);
+    batchSize = conf.mendeley.indexBuild.batchSize;
+    Properties dbConfig = new Properties();
+    dbConfig.putAll(conf.mendeley.dbConfig);
+    datasetsetUsagesCollector = new DatasetsetUsagesCollector(dbConfig);
     createIndex(esClient, conf.mendeley.indexBuild.esIndexType, esIdxName, indexMappings(ES_MAPPING_FILE));
-  }
-
-  public static ObjectMapper getMAPPER() {
-    return MAPPER;
   }
 
   /**
@@ -137,27 +124,41 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
    */
   @Override
   public void handleResponse(String responseAsJson) throws IOException {
-    BulkRequestBuilder bulkRequest = esClient.prepareBulk();
-    //process each Json node
-    MAPPER.readTree(responseAsJson).elements().forEachRemaining(document -> {
-      try {
-        toCamelCasedFields(document);
-        manageReplacements((ObjectNode) document);
-        if (document.has(ML_TAGS_FL)) {
-          handleTags(document);
-        }
-        bulkRequest.add(esClient.prepareIndex(esIdxName, conf.mendeley.indexBuild.esIndexType, document.get(ML_ID_FL).asText()).setSource(document.toString()));
-      } catch (Exception ex) {
-        LOG.error("Error processing document [{}]", document, ex);
-      }
-    });
 
-    BulkResponse bulkResponse = bulkRequest.get();
-    if (bulkResponse.hasFailures()) {
-      LOG.error("Error indexing.  First error message: {}", bulkResponse.getItems()[0].getFailureMessage());
-    } else {
-      LOG.info("Indexed [{}] documents", bulkResponse.getItems().length);
-    }
+    final AtomicInteger counter = new AtomicInteger();
+    //process each Json node
+    Iterable<JsonNode> iterable = () -> {
+      try {
+        return MAPPER.readTree(responseAsJson).elements();
+      } catch (IOException ex) {
+        throw new RuntimeException(ex);
+      }
+    };
+    StreamSupport.stream(iterable.spliterator(), true)
+      .collect(Collectors.groupingBy(it -> counter.getAndIncrement() / batchSize))
+      .values().forEach(nodes ->
+                        {
+                          BulkRequestBuilder bulkRequest = esClient.prepareBulk();
+                          nodes.forEach( document -> {
+                                                      try {
+                                                        toCamelCasedFields(document);
+                                                        manageReplacements((ObjectNode) document);
+                                                        if (document.has(ML_TAGS_FL)) {
+                                                          handleTags(document);
+                                                        }
+                                                        bulkRequest.add(esClient.prepareIndex(esIdxName, conf.mendeley.indexBuild.esIndexType, document.get(ML_ID_FL).asText()).setSource(document.toString()));
+                                                      } catch (Exception ex) {
+                                                        LOG.error("Error processing document [{}]", document, ex);
+                                                      }
+                                                    });
+                          BulkResponse bulkResponse = bulkRequest.get();
+                          if (bulkResponse.hasFailures()) {
+                            LOG.error("Error indexing.  First error message: {}", bulkResponse.getItems()[0].getFailureMessage());
+                          } else {
+                            LOG.info("Indexed [{}] documents", bulkResponse.getItems().length);
+                          }
+
+                        });
   }
 
   /**
@@ -167,39 +168,6 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
   @Override
   public void rollback() throws Exception {
     esClient.admin().indices().prepareDelete(esIdxName).get();
-  }
-
-  private void setDownloadData(String downloadKey, Set<TextNode> gbifDatasets, Set<TextNode> gbifDownloads,
-                               Set<TextNode> publishingOrganizations) {
-    try {
-      Optional<Download> downloadOpt = Optional.ofNullable(downloadService.get(downloadKey));
-      downloadOpt.ifPresent(download -> {
-        gbifDownloads.add(TextNode.valueOf(download.getKey()));
-        RegistryIterables.ofDatasetUsages(downloadService, download.getKey()).forEach(response -> response.getResults().forEach(usage -> {
-          gbifDatasets.add(TextNode.valueOf(usage.getDatasetKey().toString()));
-          Optional.ofNullable(datasetService.get(usage.getDatasetKey()))
-            .ifPresent(dataset -> Optional.ofNullable(dataset.getPublishingOrganizationKey())
-              .ifPresent(publishingOrganizationKey -> publishingOrganizations.add(TextNode.valueOf(
-                publishingOrganizationKey.toString()))));
-        }));
-      });
-    } catch (Exception ex) {
-      LOG.error("Error getting download data {}", downloadKey,  ex);
-    }
-  }
-
-  private void setDatasetData(String datasetKey, Set<TextNode> gbifDatasets,
-                              Set<TextNode> publishingOrganizations) {
-    try {
-      RegistryIterables.ofListByDoi(datasetService, datasetKey).forEach(response -> response.getResults().forEach(dataset -> {
-          gbifDatasets.add(TextNode.valueOf(dataset.getKey().toString()));
-          Optional.ofNullable(dataset.getPublishingOrganizationKey())
-            .ifPresent(publishingOrganizationKey -> publishingOrganizations.add(TextNode.valueOf(
-              publishingOrganizationKey.toString())));
-        }));
-    } catch (Exception ex) {
-      LOG.error("Error getting dataset data {}", datasetKey, ex);
-    }
   }
 
   /**
@@ -220,14 +188,12 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
       document.get(ML_TAGS_FL).elements().forEachRemaining(node -> {
         String value = node.textValue();
         if (value.startsWith(GBIF_DOI_TAG.pattern())) {
-          DOI doi = new DOI(GBIF_DOI_TAG.matcher(value).replaceFirst(""));
-          String keyValue  = BACK_SLASH.matcher(GBIF_DOI_TAG.matcher(value).replaceFirst("")).replaceAll(URL_BACK_SLASH);
-          LOG.info("GBIF DOI {}", keyValue);
-          if (doi.getSuffix().startsWith("dl.")) {
-            setDownloadData(keyValue, gbifDatasets, gbifDownloads, publishingOrganizations);
-          } else {
-            setDatasetData(keyValue, gbifDatasets, publishingOrganizations);
-          }
+          String keyValue  = GBIF_DOI_TAG.matcher(value).replaceFirst("");
+          datasetsetUsagesCollector.getCitations(keyValue).forEach(citation -> {
+            Optional.ofNullable(citation.getDownloadKey()).ifPresent(k -> gbifDownloads.add(new TextNode(k)));
+            Optional.ofNullable(citation.getDatasetKey()).ifPresent(k -> gbifDatasets.add(new TextNode(k)));
+            Optional.ofNullable(citation.getPublishinOrganizationKey()).ifPresent(k -> publishingOrganizations.add(new TextNode(k)));
+          });
         } else if (value.startsWith(PEER_REVIEW_TAG.pattern())) {
           peerReviewValue.setValue(Boolean.parseBoolean(PEER_REVIEW_TAG.matcher(value).replaceFirst("")));
         } else if (value.startsWith(OPEN_ACCESS_TAG.pattern())) {
