@@ -189,7 +189,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
       document.get(ML_TAGS_FL).elements().forEachRemaining(node -> {
         String value = node.textValue();
         if (value.startsWith(GBIF_DOI_TAG.pattern())) {
-          String keyValue  = GBIF_DOI_TAG.matcher(value).replaceFirst("");
+          String keyValue  = GBIF_DOI_TAG.matcher(value).replaceFirst("").toLowerCase();
           Collection<DatasetsetUsagesCollector.DatasetCitation> citations = datasetsetUsagesCollector.getCitations(keyValue);
           if (citations.isEmpty()) {
             LOG.warn("Document ID {} has a not-found DOI {}", document.get(ML_ID_FL), keyValue);
