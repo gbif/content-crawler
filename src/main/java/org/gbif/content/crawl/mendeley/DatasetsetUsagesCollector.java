@@ -80,7 +80,9 @@ class DatasetsetUsagesCollector {
                                                          + "UNION "
                                                          + "SELECT d.doi, d.key AS dataset_key, d.publishing_organization_key, NULL as download_key "
                                                          + "FROM dataset d "
-                                                         + "WHERE d.doi = ?";
+                                                         + "LEFT JOIN dataset_identifier di ON di.dataset_key = d.key "
+                                                         + "LEFT JOIN identifier i ON di.identifier_key = i.key AND i.type = 'DOI' "
+                                                         + "WHERE d.doi = ? OR i.identifier = ?";
 
   //Caches information by DOI
   private final Cache<String, Collection<DatasetCitation>> cache;
@@ -123,6 +125,7 @@ class DatasetsetUsagesCollector {
       preparedStatement.setFetchSize(FETCH_SIZE);
       preparedStatement.setString(1, doi);
       preparedStatement.setString(2, doi);
+      preparedStatement.setString(3, doi);
       try (ResultSet resultSet = preparedStatement.executeQuery()) {
         while (resultSet.next()) {
           citations.add(new DatasetCitation(resultSet.getString("dataset_key"),
