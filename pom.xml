@@ -43,7 +43,7 @@
     <oltu.version>1.0.2</oltu.version>
     <httpclient.version>4.5.3</httpclient.version>
     <httpcore.version>4.4.6</httpcore.version>
-    <jackson.version>2.8.7</jackson.version>
+    <jackson.version>2.10.3</jackson.version>
     <elastic-search.version>5.2.2</elastic-search.version>
     <rxjava.version>2.0.0</rxjava.version>
     <reactive-streams.version>1.0.0</reactive-streams.version>
