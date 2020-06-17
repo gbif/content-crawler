@@ -36,8 +36,8 @@ public class ContentfulCrawler {
   private final CMAClient cmaClient;
   private final Client esClient;
 
-  //News Content Type Id
   private String newsContentTypeId;
+  private String articleContentTypeId;
 
   /**
    * ElasticSearch and Contentful configuration are required to create an instance of this class.
@@ -69,8 +69,10 @@ public class ContentfulCrawler {
     //Mapping generator can be re-used for all content types
     MappingGenerator mappingGenerator = new MappingGenerator(vocContentTypes);
 
-    //Gets the News ContentType.resourceId
-    newsContentTypeId = getNewsContentTypeId(webContentTypes);
+    //Gets the ContentType.resourceId for news and articles, which vary by space
+    newsContentTypeId = getContentTypeId(webContentTypes, configuration.newsContentType);
+    articleContentTypeId = getContentTypeId(webContentTypes, configuration.articleContentType);
+
 
     //Crawl all Content Types, except for vocabularies
     crawlContentTypes(webContentTypes, mappingGenerator, vocabularyTerms);
@@ -96,13 +98,13 @@ public class ContentfulCrawler {
   }
 
   /**
-   * Gets the ID of the news content type.
+   * Gets the ID of the named content type.
    */
-  private String getNewsContentTypeId(Collection<CMAContentType> contentTypes) {
+  private String getContentTypeId(Collection<CMAContentType> contentTypes, String name) {
     return contentTypes.stream()
-      .filter(contentType -> contentType.getName().equals(configuration.newsContentType))
+      .filter(contentType -> contentType.getName().equals(name))
       .findFirst()
-      .orElseThrow(() -> new IllegalStateException("News ContentType not found")).getResourceId();
+      .orElseThrow(() -> new IllegalStateException("ContentType not found for [" + name + "]")).getResourceId();
   }
 
   /**
@@ -110,8 +112,8 @@ public class ContentfulCrawler {
    */
   private void crawlContentTypes(Collection<CMAContentType> contentTypes, MappingGenerator mappingGenerator,
                                  VocabularyTerms vocabularyTerms) {
-    //The stream is sorted to ensure that the News content type is crawled first, due that it might be updated
-    //to store reverse links into it
+    //The stream is sorted to ensure that the News and Article content types are crawled first, so they exist and may
+    // be updated to store reverse links into it
     contentTypes.stream()
       .filter(contentType -> configuration.contentTypes.contains(contentType.getName()))
       .sorted((ct1,ct2) -> Integer.compare(configuration.contentTypes.indexOf(ct1.getName()),
@@ -120,7 +122,8 @@ public class ContentfulCrawler {
         ContentTypeCrawler contentTypeCrawler = new ContentTypeCrawler(contentType, mappingGenerator, esClient,
                                                                        configuration, cdaClient,
                                                                        vocabularyTerms,
-                                                                       newsContentTypeId);
+                                                                       newsContentTypeId,
+                                                                       articleContentTypeId);
         contentTypeCrawler.crawl();
       });
   }
