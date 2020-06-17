@@ -29,12 +29,12 @@ public class ESDocumentLinker {
 
   private final Client esClient;
 
-  private final String esNewsIndexType;
+  private final String esTargetIndexType;
 
-  public ESDocumentLinker(String targetContentTypeId, Client esClient, String esNewsIndexType) {
+  public ESDocumentLinker(String targetContentTypeId, Client esClient, String esTargetIndexType) {
     this.esClient = esClient;
     this.targetContentTypeId =  targetContentTypeId;
-    this.esNewsIndexType = esNewsIndexType;
+    this.esTargetIndexType = esTargetIndexType;
   }
 
   /**
@@ -78,7 +78,7 @@ public class ESDocumentLinker {
                                  String.format(NEWS_UPDATE_SCRIPT, esTypeName + "Tag"),
                                  Collections.singletonMap("tag", tagValue));
       esClient.prepareUpdate(getEsIdxName(cdaEntry.contentType().name()),
-                             esNewsIndexType, cdaEntry.id()).setScript(script).get();
+                          esTargetIndexType, cdaEntry.id()).setScript(script).get();
     } catch (Exception ex) {
       LOG.error("Error updating news tag {} from entry {} ", tagValue, cdaEntry, ex);
     }
