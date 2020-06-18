@@ -46,8 +46,9 @@ public class ContentTypeCrawler {
 
   private final String esTypeName;
 
-  //News Content Type Id
-  private final NewsLinker newsLinker;
+  //Linkers decorate existing entries in the index with supplementary information (like tags)
+  private final ESDocumentLinker newsLinker;
+  private final ESDocumentLinker articleLinker;
 
   private final MappingGenerator mappingGenerator;
   private final Client esClient;
@@ -62,7 +63,8 @@ public class ContentTypeCrawler {
                      ContentCrawlConfiguration.Contentful configuration,
                      CDAClient cdaClient,
                      VocabularyTerms vocabularyTerms,
-                     String newsContentTypeId) {
+                     String newsContentTypeId,
+                     String articleContentTypeId) {
     this.contentType = contentType;
     //index name has to be in lowercase
     esIdxName = getEsIndexingIdxName(contentType.getName());
@@ -70,8 +72,9 @@ public class ContentTypeCrawler {
     esIdxAlias = getEsIdxName(contentType.getName());
     //ES type name for this content typ
     esTypeName = toFieldNameFormat(contentType.getName());
-    //Used to create links in the news index
-    newsLinker = new NewsLinker(newsContentTypeId, esClient, configuration.indexBuild.esIndexType);
+    //Used to create links in the indexes
+    newsLinker = new ESDocumentLinker(newsContentTypeId, esClient, configuration.indexBuild.esIndexType);
+    articleLinker = new ESDocumentLinker(articleContentTypeId, esClient, configuration.indexBuild.esIndexType);
 
     //Set the mapping generator
     this.mappingGenerator = mappingGenerator;
@@ -120,7 +123,11 @@ public class ContentTypeCrawler {
    */
   private Map<String,Object> getESDoc(CDAEntry cdaEntry) {
     EsDocBuilder esDocBuilder = new EsDocBuilder(cdaEntry, vocabularyTerms,
-            nestedCdaEntry -> newsLinker.processNewsTag(nestedCdaEntry, esTypeName, cdaEntry.id()));
+            nestedCdaEntry -> {
+              // decorate any entries, linkers are responsible for filtering suitable content types
+              newsLinker.processEntryTag(nestedCdaEntry, esTypeName, cdaEntry.id());
+              articleLinker.processEntryTag(nestedCdaEntry, esTypeName, cdaEntry.id());
+            });
     //Add all rawFields
     Map<String, Object> indexedFields =  new HashMap<>(esDocBuilder.toEsDoc());
     indexedFields.put(CONTENT_TYPE_FIELD, esTypeName);
