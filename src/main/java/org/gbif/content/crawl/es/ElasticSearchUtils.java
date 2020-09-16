@@ -3,21 +3,28 @@ package org.gbif.content.crawl.es;
 import org.gbif.content.crawl.conf.ContentCrawlConfiguration;
 
 import java.io.IOException;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.Date;
-import java.util.concurrent.ExecutionException;
 import java.util.regex.Pattern;
 
 import com.google.common.base.CaseFormat;
 import org.apache.commons.io.IOUtils;
-import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequestBuilder;
+import org.apache.http.HttpHost;
+import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest;
 import org.elasticsearch.action.admin.indices.alias.get.GetAliasesRequest;
-import org.elasticsearch.action.admin.indices.alias.get.GetAliasesResponse;
-import org.elasticsearch.client.Client;
+import org.elasticsearch.action.admin.indices.create.CreateIndexRequest;
+import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
+import org.elasticsearch.action.admin.indices.forcemerge.ForceMergeRequest;
+import org.elasticsearch.action.admin.indices.settings.put.UpdateSettingsRequest;
+import org.elasticsearch.client.GetAliasesResponse;
+import org.elasticsearch.client.NodeSelector;
+import org.elasticsearch.client.RequestOptions;
+import org.elasticsearch.client.RestClient;
+import org.elasticsearch.client.RestHighLevelClient;
+import org.elasticsearch.client.indices.GetIndexRequest;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.common.transport.InetSocketTransportAddress;
-import org.elasticsearch.transport.client.PreBuiltTransportClient;
+import org.elasticsearch.common.xcontent.XContentType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,39 +61,61 @@ public class ElasticSearchUtils {
     //NOP
   }
 
-  /**
-   * Creates a new instance of a ElasticSearch client.
-   */
-  public static Client buildEsClient(ContentCrawlConfiguration.ElasticSearch configuration) {
-    try {
-      Settings settings = Settings.builder().put("cluster.name", configuration.cluster).build();
-      return new PreBuiltTransportClient(settings).addTransportAddress(
-        new InetSocketTransportAddress(InetAddress.getByName(configuration.host),
-                                       configuration.port));
-    } catch (UnknownHostException ex) {
-      throw new IllegalStateException(ex);
+  /** Creates ElasticSearch client using default connection settings. */
+  public static RestHighLevelClient buildEsClient(ContentCrawlConfiguration.ElasticSearch esClientConfiguration) {
+    String[] hostsUrl = esClientConfiguration.host.split(",");
+    HttpHost[] hosts = new HttpHost[hostsUrl.length];
+    int i = 0;
+    for (String host : hostsUrl) {
+      try {
+        URL url = new URL(host);
+        hosts[i] = new HttpHost(url.getHost(), url.getPort(), url.getProtocol());
+        i++;
+      } catch (MalformedURLException e) {
+        throw new IllegalArgumentException(e.getMessage(), e);
+      }
     }
+
+    return new RestHighLevelClient(
+      RestClient.builder(hosts)
+        .setRequestConfigCallback(
+          requestConfigBuilder ->
+            requestConfigBuilder
+              .setConnectTimeout(esClientConfiguration.connectionTimeOut)
+              .setSocketTimeout(esClientConfiguration.socketTimeOut)
+              .setConnectionRequestTimeout(
+                esClientConfiguration.connectionRequestTimeOut))
+        .setNodeSelector(NodeSelector.SKIP_DEDICATED_MASTERS));
   }
+
 
   /**
    * Creates, if doesn't exists, an ElasticSearch index that matches the name of the contentType.
    * If the flag configuration.contentful.deleteIndex is ON and the index exist, it will be removed.
    */
-  public static void createIndex(Client esClient, String typeName,
+  public static void createIndex(RestHighLevelClient esClient, String typeName,
                                  String idxName, String source) {
-    LOG.info("Index into Elasticsearch Index {} ", idxName);
-    //create ES idx if it doesn't exists
-    if (esClient.admin().indices().prepareExists(idxName).get().isExists()) {
-      esClient.admin().indices().prepareDelete(idxName).get();
+    try {
+      LOG.info("Index into Elasticsearch Index {} ", idxName);
+      //create ES idx if it doesn't exists
+      if (esClient.indices().exists(new GetIndexRequest(idxName), RequestOptions.DEFAULT)) {
+        esClient.indices().delete(new DeleteIndexRequest(idxName), RequestOptions.DEFAULT);
+      }
+      CreateIndexRequest createIndexRequest = new CreateIndexRequest(idxName)
+                                                .mapping(typeName, source, XContentType.JSON)
+                                                .settings(INDEXING_SETTINGS);
+      esClient.indices().create(createIndexRequest, RequestOptions.DEFAULT);
+    } catch (IOException ex) {
+      LOG.error("Error creating index", ex);
+      throw new RuntimeException(ex);
     }
-    esClient.admin().indices().prepareCreate(idxName).addMapping(typeName, source).setSettings(INDEXING_SETTINGS).get();
   }
 
   /**
    * Creates, if doesn't exists, an ElasticSearch index that matches the name of the contentType.
    * If the flag configuration.contentful.deleteIndex is ON and the index exist, it will be removed.
    */
-  public static void createIndex(Client esClient, ContentCrawlConfiguration.IndexBuild configuration,
+  public static void createIndex(RestHighLevelClient esClient, ContentCrawlConfiguration.IndexBuild configuration,
                                  String source) {
     createIndex(esClient, configuration.esIndexType, getEsIndexingIdxName(configuration.esIndexName), source);
   }
@@ -94,29 +123,35 @@ public class ElasticSearchUtils {
   /**
    * This method delete all the indexes associated to the alias and associates the alias to toIdx.
    */
-  public static void swapIndexToAlias(Client esClient, String alias, String toIdx) {
+  public static void swapIndexToAlias(RestHighLevelClient esClient, String alias, String toIdx) {
     try {
       //Update setting to search production
-      esClient.admin().indices().prepareUpdateSettings(toIdx).setSettings(SEARCH_SETTINGS).get();
+      esClient.indices().putSettings(new UpdateSettingsRequest().indices(toIdx).settings(SEARCH_SETTINGS), RequestOptions.DEFAULT);
 
       //Keeping 1 segment per idx should be enough for small indexes
-      esClient.admin().indices().prepareForceMerge(toIdx).setMaxNumSegments(1).get();
+      esClient.indices().forcemerge(new ForceMergeRequest(toIdx).maxNumSegments(1), RequestOptions.DEFAULT);
 
       //Sets the idx alias
-      GetAliasesResponse aliasesGetResponse = esClient.admin().indices()
-                                            .getAliases(new GetAliasesRequest().aliases(alias)).get();
+      GetAliasesResponse aliasesGetResponse = esClient.indices()
+                                            .getAlias(new GetAliasesRequest().aliases(alias), RequestOptions.DEFAULT);
 
-      IndicesAliasesRequestBuilder aliasesRequestBuilder = esClient.admin().indices().prepareAliases();
-      //add the new alias and add it to content alias
-      aliasesRequestBuilder.addAlias(toIdx, alias).addAlias(toIdx, CONTENT_ALIAS);
+      IndicesAliasesRequest swapAliasesRequest = new IndicesAliasesRequest();
+      swapAliasesRequest.addAliasAction(new IndicesAliasesRequest.AliasActions(IndicesAliasesRequest.AliasActions.Type.ADD)
+                                          .index(toIdx)
+                                          .aliases(alias, CONTENT_ALIAS));
+
 
       //add the removal all existing indexes of that alias
-      aliasesGetResponse.getAliases().keysIt().forEachRemaining(aliasesRequestBuilder::removeIndex);
+      aliasesGetResponse.getAliases()
+        .keySet().forEach(idx -> swapAliasesRequest
+                                  .addAliasAction( new IndicesAliasesRequest
+                                                    .AliasActions(IndicesAliasesRequest.AliasActions.Type.REMOVE_INDEX)
+                                                    .index(idx)));
 
       //Execute all the alias operations in a single/atomic call
-      aliasesRequestBuilder.get();
+      esClient.indices().updateAliases(swapAliasesRequest, RequestOptions.DEFAULT);
 
-    } catch (InterruptedException | ExecutionException ex) {
+    } catch (IOException ex) {
       throw new IllegalStateException(ex);
     }
   }

@@ -14,7 +14,7 @@ import com.contentful.java.cda.CDAClient;
 import com.contentful.java.cma.CMAClient;
 import com.contentful.java.cma.model.CMAContentType;
 import com.google.common.base.Preconditions;
-import org.elasticsearch.client.Client;
+import org.elasticsearch.client.RestHighLevelClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,7 +34,7 @@ public class ContentfulCrawler {
   private final ContentCrawlConfiguration.Contentful configuration;
   private final CDAClient cdaClient;
   private final CMAClient cmaClient;
-  private final Client esClient;
+  private final RestHighLevelClient esClient;
 
   private String newsContentTypeId;
   private String articleContentTypeId;

@@ -6,7 +6,9 @@ import java.util.Collection;
 import java.util.Collections;
 
 import com.contentful.java.cda.CDAEntry;
-import org.elasticsearch.client.Client;
+import org.elasticsearch.action.update.UpdateRequest;
+import org.elasticsearch.client.RequestOptions;
+import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.script.Script;
 import org.elasticsearch.script.ScriptType;
 import org.slf4j.Logger;
@@ -27,11 +29,11 @@ public class ESDocumentLinker {
 
   private final String targetContentTypeId;
 
-  private final Client esClient;
+  private final RestHighLevelClient esClient;
 
   private final String esTargetIndexType;
 
-  public ESDocumentLinker(String targetContentTypeId, Client esClient, String esTargetIndexType) {
+  public ESDocumentLinker(String targetContentTypeId, RestHighLevelClient esClient, String esTargetIndexType) {
     this.esClient = esClient;
     this.targetContentTypeId =  targetContentTypeId;
     this.esTargetIndexType = esTargetIndexType;
@@ -77,8 +79,11 @@ public class ESDocumentLinker {
       Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG,
                                  String.format(NEWS_UPDATE_SCRIPT, esTypeName + "Tag"),
                                  Collections.singletonMap("tag", tagValue));
-      esClient.prepareUpdate(getEsIdxName(cdaEntry.contentType().name()),
-                          esTargetIndexType, cdaEntry.id()).setScript(script).get();
+      UpdateRequest updateRequest = new UpdateRequest()
+                                      .index(getEsIdxName(cdaEntry.contentType().name()))
+                                      .id(cdaEntry.id())
+                                      .script(script);
+      esClient.update(updateRequest, RequestOptions.DEFAULT);
     } catch (Exception ex) {
       LOG.error("Error updating news tag {} from entry {} ", tagValue, cdaEntry, ex);
     }

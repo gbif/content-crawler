@@ -1,8 +1,13 @@
 package org.gbif.content.crawl.contentful.crawl;
 
+import org.elasticsearch.action.bulk.BulkRequest;
+import org.elasticsearch.action.index.IndexRequest;
+import org.elasticsearch.client.RequestOptions;
+import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.common.unit.TimeValue;
 import org.gbif.content.crawl.conf.ContentCrawlConfiguration;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -10,9 +15,7 @@ import com.contentful.java.cda.CDAClient;
 import com.contentful.java.cda.CDAEntry;
 import com.contentful.java.cma.model.CMAContentType;
 import io.reactivex.Observable;
-import org.elasticsearch.action.bulk.BulkRequestBuilder;
 import org.elasticsearch.action.bulk.BulkResponse;
-import org.elasticsearch.client.Client;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,7 +54,7 @@ public class ContentTypeCrawler {
   private final ESDocumentLinker articleLinker;
 
   private final MappingGenerator mappingGenerator;
-  private final Client esClient;
+  private final RestHighLevelClient esClient;
   private final CDAClient cdaClient;
   private final ContentCrawlConfiguration.Contentful configuration;
   private final VocabularyTerms vocabularyTerms;
@@ -59,7 +62,7 @@ public class ContentTypeCrawler {
 
   ContentTypeCrawler(CMAContentType contentType,
                      MappingGenerator mappingGenerator,
-                     Client esClient,
+                     RestHighLevelClient esClient,
                      ContentCrawlConfiguration.Contentful configuration,
                      CDAClient cdaClient,
                      VocabularyTerms vocabularyTerms,
@@ -96,7 +99,7 @@ public class ContentTypeCrawler {
     createIndex(esClient, configuration.indexBuild.esIndexType, esIdxName, mappingGenerator.getEsMapping(contentType));
     LOG.info("Indexing ContentType [{}] into ES Index [{}]", contentType.getName(), esIdxName);
     //Prepares the bulk/batch request
-    BulkRequestBuilder bulkRequest = esClient.prepareBulk();
+    BulkRequest bulkRequest = new BulkRequest();
     //Retrieves resources in a CDAArray
     Observable.fromIterable(new ContentfulPager(cdaClient, PAGE_SIZE, contentType.getResourceId()))
       .doOnError(err -> { LOG.error("Error crawling content type", err);
@@ -111,10 +114,10 @@ public class ContentTypeCrawler {
       .subscribe( results -> results.forEach(
                               cdaArray -> cdaArray.items()
                               .forEach(cdaResource ->
-                                         bulkRequest.add(esClient.prepareIndex(esIdxName,
-                                                                               configuration.indexBuild.esIndexType,
-                                                                               cdaResource.id())
-                                                           .setSource(getESDoc((CDAEntry)cdaResource)))))
+                                         bulkRequest.add(new IndexRequest().index(esIdxName)
+                                                           .type(configuration.indexBuild.esIndexType)
+                                                           .id(cdaResource.id())
+                                                           .source(getESDoc((CDAEntry)cdaResource)))))
       );
   }
 
@@ -138,21 +141,25 @@ public class ContentTypeCrawler {
   /**
    * Performs the execution of a ElasticSearch BulkRequest and logs the correspondent results.
    */
-  private boolean executeBulkRequest(BulkRequestBuilder bulkRequest) {
-    if (bulkRequest.numberOfActions() > 0) {
-      bulkRequest.setTimeout(BULK_REQUEST_TO);
-      LOG.info("Indexing {} documents into ElasticSearch", bulkRequest.numberOfActions());
-      BulkResponse bulkResponse = bulkRequest.get();
-      if (bulkResponse.hasFailures()) {
-        LOG.error("Error indexing.  First error message: {}", bulkResponse.getItems()[0].getFailureMessage());
-        return false;
+  private boolean executeBulkRequest(BulkRequest bulkRequest) {
+    try {
+      if (bulkRequest.numberOfActions() > 0) {
+        bulkRequest.timeout(BULK_REQUEST_TO);
+        LOG.info("Indexing {} documents into ElasticSearch", bulkRequest.numberOfActions());
+        BulkResponse bulkResponse = esClient.bulk(bulkRequest, RequestOptions.DEFAULT);
+        if (bulkResponse.hasFailures()) {
+          LOG.error("Error indexing.  First error message: {}", bulkResponse.getItems()[0].getFailureMessage());
+          return false;
+        } else {
+          LOG.info("Indexed [{}] documents of content type [{}]", bulkResponse.getItems().length, esIdxName);
+        }
       } else {
-        LOG.info("Indexed [{}] documents of content type [{}]", bulkResponse.getItems().length, esIdxName);
+        LOG.info("Nothing to index for content type [{}]", esIdxName);
       }
-    } else  {
-      LOG.info("Nothing to index for content type [{}]", esIdxName);
+      return true;
+    } catch (IOException ex) {
+      throw new RuntimeException(ex);
     }
-    return true;
   }
 
 }

@@ -27,9 +27,13 @@ import com.fasterxml.jackson.databind.node.TextNode;
 import com.google.common.base.CaseFormat;
 import com.google.common.collect.Maps;
 import org.apache.commons.lang3.mutable.MutableBoolean;
-import org.elasticsearch.action.bulk.BulkRequestBuilder;
+import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
+import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkResponse;
-import org.elasticsearch.client.Client;
+import org.elasticsearch.action.index.IndexRequest;
+import org.elasticsearch.client.RequestOptions;
+import org.elasticsearch.client.RestHighLevelClient;
+import org.elasticsearch.common.xcontent.XContentType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -99,7 +103,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
   private static final ObjectMapper MAPPER = new ObjectMapper();
   private static final String LAST_MODIFIED = "last_modified";
 
-  private final Client esClient;
+  private final RestHighLevelClient esClient;
   private final ContentCrawlConfiguration conf;
   private final String esIdxName;
   private final int batchSize;
@@ -109,7 +113,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
 
   public ElasticSearchIndexHandler(ContentCrawlConfiguration conf) {
     this.conf = conf;
-    LOG.info("Connecting to ES cluster {}:{}", conf.elasticSearch.host, conf.elasticSearch.port);
+    LOG.info("Connecting to ES cluster {}", conf.elasticSearch.host);
     esClient = buildEsClient(conf.elasticSearch);
     esIdxName = getEsIndexingIdxName(conf.mendeley.indexBuild.esIndexName);
     batchSize = conf.mendeley.indexBuild.batchSize;
@@ -139,26 +143,35 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
       .collect(Collectors.groupingBy(it -> counter.getAndIncrement() / batchSize))
       .values().forEach(nodes ->
                         {
-                          BulkRequestBuilder bulkRequest = esClient.prepareBulk();
-                          nodes.forEach( document -> {
-                                                      try {
-                                                        toCamelCasedFields(document);
-                                                        manageReplacements((ObjectNode) document);
-                                                        if (document.has(ML_TAGS_FL)) {
-                                                          handleTags(document);
+                          try {
+                            BulkRequest bulkRequest = new BulkRequest();
+                            nodes.forEach( document -> {
+                                                        try {
+                                                          toCamelCasedFields(document);
+                                                          manageReplacements((ObjectNode) document);
+                                                          if (document.has(ML_TAGS_FL)) {
+                                                            handleTags(document);
+                                                          }
+                                                          IndexRequest indexRequest = new IndexRequest();
+                                                          indexRequest
+                                                            .index(esIdxName)
+                                                            .type(conf.mendeley.indexBuild.esIndexType)
+                                                            .id(document.get(ML_ID_FL).asText())
+                                                            .source(document.toString(), XContentType.JSON);
+                                                          bulkRequest.add(indexRequest);
+                                                        } catch (Exception ex) {
+                                                          LOG.error("Error processing document [{}]", document, ex);
                                                         }
-                                                        bulkRequest.add(esClient.prepareIndex(esIdxName, conf.mendeley.indexBuild.esIndexType, document.get(ML_ID_FL).asText()).setSource(document.toString()));
-                                                      } catch (Exception ex) {
-                                                        LOG.error("Error processing document [{}]", document, ex);
-                                                      }
-                                                    });
-                          BulkResponse bulkResponse = bulkRequest.get();
-                          if (bulkResponse.hasFailures()) {
-                            LOG.error("Error indexing.  First error message: {}", bulkResponse.getItems()[0].getFailureMessage());
-                          } else {
-                            LOG.info("Indexed [{}] documents", bulkResponse.getItems().length);
+                                                      });
+                            BulkResponse bulkResponse = esClient.bulk(bulkRequest, RequestOptions.DEFAULT);
+                            if (bulkResponse.hasFailures()) {
+                              LOG.error("Error indexing.  First error message: {}", bulkResponse.getItems()[0].getFailureMessage());
+                            } else {
+                              LOG.info("Indexed [{}] documents", bulkResponse.getItems().length);
+                            }
+                        } catch (IOException ex){
+                            throw new RuntimeException(ex);
                           }
-
                         });
   }
 
@@ -168,7 +181,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
    */
   @Override
   public void rollback() throws Exception {
-    esClient.admin().indices().prepareDelete(esIdxName).get();
+    esClient.indices().delete(new DeleteIndexRequest(esIdxName), RequestOptions.DEFAULT);
   }
 
   /**
@@ -347,7 +360,11 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
 
   @Override
   public void finish() {
-    swapIndexToAlias(esClient, getEsIdxName(conf.mendeley.indexBuild.esIndexName), esIdxName);
-    esClient.close();
+    try {
+      swapIndexToAlias(esClient, getEsIdxName(conf.mendeley.indexBuild.esIndexName), esIdxName);
+      esClient.close();
+    } catch (IOException ex) {
+      throw new RuntimeException(ex);
+    }
   }
 }

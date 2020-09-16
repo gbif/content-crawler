@@ -1,7 +1,4 @@
 {
-  "_all": {
-    "store": true
-  },
   "dynamic_templates": [
     {
       "vocabularies": {
@@ -13,24 +10,33 @@
     }
   ],
   "properties": {
+    "_all": {
+      "type": "text"
+    },
     "id": {
-      "type": "keyword"
+      "type": "keyword",
+      "copy_to": "_all"
     },
     "title": {
       "type": "text",
+      "copy_to": "_all",
       "boost": 10
     },
     "literatureType": {
-      "type": "keyword"
+      "type": "keyword",
+      "copy_to": "_all"
     },
     "contentType": {
-      "type": "keyword"
+      "type": "keyword",
+      "copy_to": "_all"
     },
     "profileId": {
-      "type": "keyword"
+      "type": "keyword",
+      "copy_to": "_all"
     },
     "groupId": {
-      "type": "keyword"
+      "type": "keyword",
+      "copy_to": "_all"
     },
     "createdAt": {
       "type": "date"
@@ -39,32 +45,38 @@
       "type": "date"
     },
     "abstract": {
-      "type": "text"
+      "type": "text",
+      "copy_to": "_all"
     },
     "source": {
-      "type": "keyword"
+      "type": "keyword",
+      "copy_to": "_all"
     },
     "year": {
-      "type": "integer"
+      "type": "integer",
+      "copy_to": "_all"
     },
     "authors": {
       "type": "nested",
       "properties": {
-        "firstName": { "type": "keyword" },
-        "lastName": { "type": "keyword" }
+        "firstName": { "type": "keyword", "copy_to": "_all" },
+        "lastName": { "type": "keyword", "copy_to": "_all" }
       }
     },
     "countriesOfResearcher": {
-      "type": "keyword"
+      "type": "keyword",
+      "copy_to": "_all"
     },
     "countriesOfCoverage": {
-      "type": "keyword"
+      "type": "keyword",
+      "copy_to": "_all"
     },
     "identifiers": {
       "type": "nested"
     },
     "keywords": {
-      "type": "keyword"
+      "type": "keyword",
+      "copy_to": "_all"
     },
     "month": {
       "type": "integer"
@@ -76,47 +88,58 @@
       "type": "keyword"
     },
     "pages": {
-      "type": "keyword"
+      "type": "keyword",
+      "copy_to": "_all"
     },
     "volume": {
-      "type": "keyword"
+      "type": "keyword",
+      "copy_to": "_all"
     },
     "issue": {
-      "type": "keyword"
+      "type": "keyword",
+      "copy_to": "_all"
     },
     "websites": {
-      "type": "keyword"
+      "type": "keyword",
+      "copy_to": "_all"
     },
     "publisher": {
-      "type": "keyword"
+      "type": "keyword",
+      "copy_to": "_all"
     },
     "city": {
-      "type": "keyword"
+      "type": "keyword",
+      "copy_to": "_all"
     },
     "edition": {
-      "type": "keyword"
+      "type": "keyword",
+      "copy_to": "_all"
     },
     "institution": {
-      "type": "keyword"
+      "type": "keyword",
+      "copy_to": "_all"
     },
     "series": {
-      "type": "keyword"
+      "type": "keyword",
+      "copy_to": "_all"
     },
     "chapter": {
-      "type": "keyword"
+      "type": "keyword",
+      "copy_to": "_all"
     },
     "editors": {
       "type": "nested",
       "properties": {
-        "firstName": { "type": "keyword"  },
-        "lastName": { "type": "keyword"  }
+        "firstName": { "type": "keyword", "copy_to": "_all" },
+        "lastName": { "type": "keyword", "copy_to": "_all" }
       }
     },
     "accessed": {
       "type": "date"
     },
     "tags": {
-      "type": "keyword"
+      "type": "keyword",
+      "copy_to": "_all"
     },
     "read": {
       "type": "boolean"
@@ -137,28 +160,36 @@
       "type": "boolean"
     },
     "citationKey": {
-      "type": "keyword"
+      "type": "keyword",
+      "copy_to": "_all"
     },
     "sourceType": {
-      "type": "keyword"
+      "type": "keyword",
+      "copy_to": "_all"
     },
     "language": {
-      "type": "keyword"
+      "type": "keyword",
+      "copy_to": "_all"
     },
     "shortTitle": {
-      "type": "keyword"
+      "type": "keyword",
+      "copy_to": "_all"
     },
     "reprintEdition": {
-      "type": "keyword"
+      "type": "keyword",
+      "copy_to": "_all"
     },
     "genre": {
-      "type": "keyword"
+      "type": "keyword",
+      "copy_to": "_all"
     },
     "country": {
-      "type": "keyword"
+      "type": "keyword",
+      "copy_to": "_all"
     },
     "gbifRegion": {
-      "type": "keyword"
+      "type": "keyword",
+      "copy_to": "_all"
     },
     "gbifDatasetKey": {
       "type": "keyword"
@@ -172,43 +203,53 @@
     "translators": {
       "type": "nested",
       "properties": {
-        "firstName": { "type": "keyword"  },
-        "lastName": { "type": "keyword"  }
+        "firstName": { "type": "keyword", "copy_to": "_all"},
+        "lastName": { "type": "keyword", "copy_to": "_all"}
       }
     },
     "seriesEditor": {
-      "type": "keyword"
+      "type": "keyword",
+      "copy_to": "_all"
     },
     "code": {
-      "type": "keyword"
+      "type": "keyword",
+      "copy_to": "_all"
     },
     "medium": {
-      "type": "keyword"
+      "type": "keyword",
+      "copy_to": "_all"
     },
     "userContext": {
-      "type": "keyword"
+      "type": "keyword",
+      "copy_to": "_all"
     },
     "department": {
-      "type": "keyword"
+      "type": "keyword",
+      "copy_to": "_all"
     },
     "patentOwner": {
-      "type": "keyword"
+      "type": "keyword",
+      "copy_to": "_all"
     },
     "patentApplicationNumber": {
-      "type": "keyword"
+      "type": "keyword",
+      "copy_to": "_all"
     },
     "patentLegalStatus": {
-      "type": "keyword"
+      "type": "keyword",
+      "copy_to": "_all"
     },
     "searchable": {
       "type": "boolean",
       "null_value": true
     },
     "topics": {
-      "type": "keyword"
+      "type": "keyword",
+      "copy_to": "_all"
     },
     "relevance": {
-      "type": "keyword"
+      "type": "keyword",
+      "copy_to": "_all"
     },
     "peerReview": {
       "type": "boolean",

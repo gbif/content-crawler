@@ -112,15 +112,19 @@ public class ContentCrawlConfiguration {
     public String host = "localhost";
 
     @Parameter(
-      names = "-port",
-      description = "The ES node port to connect to, defaulting to 9300")
-    public int port = 9300;
+      names = "-connectionTimeOut",
+      description = "Connection time out")
+    public int connectionTimeOut = 60000;
 
     @Parameter(
-      names = "-cluster",
-      description = "The ES cluster name, defaulting to elasticsearch if none given")
-    public String cluster = "elasticsearch";
+      names = "-socketTimeOut",
+      description = "SocketTimeOut")
+    public int socketTimeOut = 60000;
 
+    @Parameter(
+      names = "-connectionRequestTimeOut",
+      description = "ConnectionRequestTimeOut time out")
+    public int connectionRequestTimeOut = 120000;
   }
 
 

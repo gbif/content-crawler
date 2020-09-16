@@ -15,6 +15,7 @@ import com.contentful.java.cma.Constants.CMAFieldType;
 import com.contentful.java.cma.model.CMAContentType;
 import com.contentful.java.cma.model.CMAField;
 import com.google.common.collect.ImmutableMap;
+import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
 
@@ -59,7 +60,9 @@ public class  MappingGenerator {
   /**
    * Fields that are common to all contentful content types.
    */
-  private static final Map<String, String> KNOWN_FIELDS = new ImmutableMap.Builder().put("locale", KEYWORD )
+  private static final Map<String, String> KNOWN_FIELDS = new ImmutableMap.Builder<String, String>()
+    .put("_all",TEXT)
+    .put("locale", KEYWORD )
     .put("contentType", KEYWORD)
     .put("id", KEYWORD)
     .put("createdAt", "date")
@@ -71,7 +74,7 @@ public class  MappingGenerator {
   /**
    * Mapping of Contentful to ElasticSearch data types.
    */
-  private static final Map<CMAFieldType,String> CONTENTFUL_ES_TYPE_MAP = new ImmutableMap.Builder()
+  private static final Map<CMAFieldType,String> CONTENTFUL_ES_TYPE_MAP = new ImmutableMap.Builder<CMAFieldType, String>()
     .put(CMAFieldType.Symbol, KEYWORD)
     .put(CMAFieldType.Text, TEXT)
     .put(CMAFieldType.Boolean, "boolean")
@@ -110,6 +113,9 @@ public class  MappingGenerator {
         try {
           mapping.startObject(key);
             mapping.field("type", type);
+            if (KEYWORD.equals(type) || TEXT.equals(type)) {
+              mapping.field("copy_to", "_all");
+            }
           mapping.endObject();
         } catch (IOException ex) {
           throw new RuntimeException(ex);
@@ -126,8 +132,7 @@ public class  MappingGenerator {
    *    "match": "images|space|revision|type",
    *    "match_pattern": "regex",
    *    "mapping": {
-   *      "enabled": false,
-   *      "include_in_all": false
+   *      "enabled": false
    *    }
    *  }
    * }
@@ -139,7 +144,6 @@ public class  MappingGenerator {
         mapping.field("match_pattern", "regex");
         mapping.startObject("mapping");
           mapping.field("enabled", Boolean.FALSE);
-          mapping.field("include_in_all", Boolean.FALSE);
         mapping.endObject();
       mapping.endObject();
     mapping.endObject();
@@ -153,8 +157,7 @@ public class  MappingGenerator {
    *    "match": "*Tag",
    *    "match_pattern": "regex",
    *    "mapping": {
-   *      "type": "keyword",
-   *      "include_in_all": false
+   *      "type": "keyword"
    *    }
    *  }
    * }
@@ -168,7 +171,7 @@ public class  MappingGenerator {
         mapping.field("match_pattern", "regex");
         mapping.startObject("mapping");
           mapping.field("type", KEYWORD);
-          mapping.field("include_in_all", Boolean.FALSE);
+          mapping.field("copy_to", "_all");
         mapping.endObject();
       mapping.endObject();
     mapping.endObject();
@@ -182,8 +185,7 @@ public class  MappingGenerator {
    *  "asset_files": {
    *    "path_match": "*.file.*",
    *    "mapping": {
-   *      "enabled": false,
-   *      "include_in_all": false
+   *      "enabled": false
    *    }
    *  }
    * }
@@ -194,7 +196,6 @@ public class  MappingGenerator {
         mapping.field("path_match", "*.file.*");
         mapping.startObject("mapping");
           mapping.field("enabled", Boolean.FALSE);
-          mapping.field("include_in_all", Boolean.FALSE);
         mapping.endObject();
       mapping.endObject();
     mapping.endObject();
@@ -218,6 +219,9 @@ public class  MappingGenerator {
         mapping.field("path_match",  "*." + fieldName + ".*");
         mapping.startObject("mapping");
           mapping.field("type", esType);
+          if (KEYWORD.equals(esType) || TEXT.equals(esType)) {
+            mapping.field("copy_to", "_all");
+          }
         mapping.endObject();
       mapping.endObject();
     mapping.endObject();
@@ -309,17 +313,13 @@ public class  MappingGenerator {
    * Generates the mappings file for ElasticSearch index.
    * In general terms it will produce a structure like:
    * {
-   *   "_all": {
-   *     "store": true
-   *   },
    *   "dynamic_templates": [
    *   {
    *      "ignored_fields": {
    *        "match": "images|space|revision|type",
    *        "match_pattern": "regex",
    *        "mapping": {
-   *            "enabled": false,
-   *            "include_in_all": false
+   *            "enabled": false
    *          }
    *        }
    *      }
@@ -346,9 +346,6 @@ public class  MappingGenerator {
     Map<String, String> collapsedFields = new HashMap<>();
     try (XContentBuilder mapping = XContentFactory.jsonBuilder()) {
       mapping.startObject();
-        mapping.startObject("_all");
-          mapping.field("store", Boolean.TRUE);
-        mapping.endObject();
         mapping.startArray("dynamic_templates");
         addDefaultIgnoredFields(mapping);
         addFileAssetMapping(mapping);
@@ -376,7 +373,7 @@ public class  MappingGenerator {
         mapping.endArray();
         addProperties(mapping, collapsedFields);
       mapping.endObject();
-      return mapping.string();
+      return Strings.toString(mapping);
     } catch (IOException ex) {
       throw new RuntimeException(ex);
     }
