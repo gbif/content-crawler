@@ -62,7 +62,7 @@ public class MendeleyDocumentCrawler {
           LOG.error("Error crawling Mendeley", err);
           throw new RuntimeException(err); })
         .buffer(CRAWL_BUFFER)
-        .doOnTerminate(() -> {
+        .doOnComplete(() -> {
           handler.finish();
           indexFiles();
           stopwatch.stop();
