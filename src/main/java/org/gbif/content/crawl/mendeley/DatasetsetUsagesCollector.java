@@ -80,9 +80,13 @@ class DatasetsetUsagesCollector {
                                                          + "UNION "
                                                          + "SELECT d.doi, d.key AS dataset_key, d.publishing_organization_key, NULL as download_key "
                                                          + "FROM dataset d "
+                                                         + "WHERE d.doi = ? "
+                                                         + "UNION "
+                                                         + "SELECT d.doi, d.key AS dataset_key, d.publishing_organization_key, NULL as download_key "
+                                                         + "FROM dataset d "
                                                          + "LEFT JOIN dataset_identifier di ON di.dataset_key = d.key "
                                                          + "LEFT JOIN identifier i ON di.identifier_key = i.key AND i.type = 'DOI' "
-                                                         + "WHERE d.doi = ? OR i.identifier = ?";
+                                                         + "WHERE i.identifier = ?";
 
   //Caches information by DOI
   private final Cache<String, Collection<DatasetCitation>> cache;
