@@ -101,8 +101,10 @@ P=$1
 TOKEN=$2
 COMMAND=$3
 REPOSITORY=${4:-snapshots}
+MENDELEY_AUTH_TOKEN=${5:-""}
 
 downloadConfig $TOKEN $P
+sed -i "s|_mendeleyAuthToken|$MENDELEY_AUTH_TOKEN|g" $P.yml
 downloadJarSha1 $REPOSITORY
 if [ -f jar.sha1 ] && [ -f content-crawler.jar ]; then
   if ! cmp -s latest.sha1 jar.sha1; then
@@ -115,6 +117,5 @@ else
 fi
 rm -f latest.sha1
 echo "Running crawler"
-java -jar content-crawler.jar $COMMAND --conf $P.yml
-rm -f $P.yml
+
 echo "Crawl has finished"

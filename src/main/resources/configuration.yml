@@ -5,8 +5,7 @@ mendeley:
 
 #  timeout: 10
   tokenUrl: https://api.mendeley.com/oauth/token
-  trustedClientId: 4108
-  trustedClientSecret:
+  authToken: @mendeleyAuthToken
   groupId:
   indexBuild:
     esIndexName: content

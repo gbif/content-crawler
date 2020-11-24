@@ -12,7 +12,7 @@ The Mendeley API requires an application key and secret which can be created by:
   4. Generating the secret (note, you need to copy it at this point, you can't view it afterwards)
   5. Copying the secret and application ID (e.g. 4108 is an application ID) into you properties file
 
- The Mendeley API uses OAUTH2 which normally redirects the user to a page to confirm details.  We used anonomous access
+ The Mendeley API uses OAUTH2 which normally redirects the user to a page to confirm details.  We used anonymous access
  as described in [this stack overflow](http://stackoverflow.com/questions/23545198/oauth-2-in-mendeley-with-java) and 
  the Apache Oltu library.  This is why http://localhost/ignored was used as the application redirect (we don't use it).
  

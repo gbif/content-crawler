@@ -58,26 +58,21 @@ public class ContentCrawlConfiguration {
     public String tokenUrl = "https://api.mendeley.com/oauth/token";
 
     @Parameter(
-      names = "-trustedClientId",
-      description = "The client ID registered in http://dev.mendeley.com/")
+      names = "-authToken",
+      description = "The Mendeley Auth Token  generated from http://dev.mendeley.com/")
     @NotNull
-    public String trustedClientId;
+    public String authToken;
 
     @Parameter(
-      names = "-trustedClientSecret",
-      description = "The client secret registered in http://dev.mendeley.com/")
+      names = "-redirectURI",
+      description = "The redirect URL registered for trusted applicaiton http://dev.mendeley.com/")
     @NotNull
-    public String trustedClientSecret;
-
-    @Parameter(
-      names = "-groupId",
-      description = "The Mendeley public group id to crawl, defaulting to the GBIF Public Group")
-    public String groupId = "dcb8ff61-dbc0-3519-af76-2072f22bc22f"; // immutable
+    public String redirecURI;
 
     @Parameter(
       names = "-targetUrl",
-      description = "The templated target URL to crawl, defaulting to https://api.mendeley.com/documents?group_id=%s&limit=500")
-    public String crawlURL = "https://api.mendeley.com/documents?group_id=%s&limit=300&view=all";
+      description = "The templated target URL to crawl, defaulting to https://api.mendeley.com/documents?&limit=300")
+    public String crawlURL = "https://api.mendeley.com/search/documents?limit=100&query=*&view=all";
 
     @Parameter(
       names = "-timeout",

@@ -32,7 +32,7 @@ public class MendeleyPager implements Iterable<String> {
   private static final String NEXT_PATTERN = "rel=\"next\"";
 
   private final String targetUrl;
-  private final OAuthJSONAccessTokenResponse token;
+  private final String token;
   private final RequestConfig requestConfig;
   private final CloseableHttpClient httpClient;
 
@@ -43,7 +43,7 @@ public class MendeleyPager implements Iterable<String> {
    * @param requestConfig Http request configuration
    * @param httpClient closeable http client
    */
-  public MendeleyPager(String targetUrl, OAuthJSONAccessTokenResponse token,
+  public MendeleyPager(String targetUrl, String token,
                        RequestConfig requestConfig, CloseableHttpClient httpClient) {
     this.targetUrl = targetUrl;
     this.token = token;
@@ -73,8 +73,7 @@ public class MendeleyPager implements Iterable<String> {
     @Override
     public String next() {
       return nextUrl.map(targetUrl -> {
-              HttpGet httpGet = new HttpGet(targetUrl);
-              httpGet.setHeader(HttpHeaders.AUTHORIZATION, "Bearer " + token.getAccessToken());
+              HttpGet httpGet = new HttpGet(targetUrl + "&access_token=" + token);
               httpGet.setConfig(requestConfig);
               LOG.info("Requesting data from {}", httpGet.getURI());
               try (CloseableHttpResponse httpResponse = httpClient.execute(httpGet)) {

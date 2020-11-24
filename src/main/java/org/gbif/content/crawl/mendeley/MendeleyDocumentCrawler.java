@@ -52,12 +52,12 @@ public class MendeleyDocumentCrawler {
 
   public void run() throws IOException {
     Stopwatch stopwatch = Stopwatch.createStarted();
-    String targetUrl = String.format(config.mendeley.crawlURL, config.mendeley.groupId);
+    String targetUrl = config.mendeley.crawlURL;
     LOG.info("Initiating paging crawl of {} to {}", targetUrl, config.mendeley.targetDir);
     try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
-      OAuthJSONAccessTokenResponse token = getToken(config.mendeley);
+      //OAuthJSONAccessTokenResponse token = getToken(config.mendeley);
       Observable
-        .fromIterable(new MendeleyPager(targetUrl, token, requestConfig, httpClient))
+        .fromIterable(new MendeleyPager(targetUrl, config.mendeley.authToken, requestConfig, httpClient))
         .doOnError(err -> {
           LOG.error("Error crawling Mendeley", err);
           throw new RuntimeException(err); })
@@ -80,7 +80,7 @@ public class MendeleyDocumentCrawler {
                 }
               })
         );
-    } catch (OAuthSystemException | OAuthProblemException e) {
+    } catch (Exception e) {
       LOG.error("Unable ot authenticate with Mendeley", e);
     }
   }
@@ -122,9 +122,9 @@ public class MendeleyDocumentCrawler {
     throws OAuthSystemException, OAuthProblemException {
     OAuthClientRequest request = OAuthClientRequest
       .tokenLocation(conf.tokenUrl)
-      .setClientId(conf.trustedClientId)
-      .setClientSecret(conf.trustedClientSecret)
-      .setGrantType(GrantType.CLIENT_CREDENTIALS)
+      .setCode(conf.authToken)
+      .setRedirectURI(conf.redirecURI)
+      .setGrantType(GrantType.AUTHORIZATION_CODE)
       .setScope("all")
       .buildBodyMessage();
 
