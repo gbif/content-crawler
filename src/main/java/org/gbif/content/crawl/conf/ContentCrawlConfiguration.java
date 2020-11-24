@@ -71,8 +71,8 @@ public class ContentCrawlConfiguration {
 
     @Parameter(
       names = "-targetUrl",
-      description = "The templated target URL to crawl, defaulting to https://api.mendeley.com/documents?&limit=100")
-    public String crawlURL = "https://api.mendeley.com/documents?limit=100&view=all";
+      description = "The templated target URL to crawl, defaulting to https://api.mendeley.com/documents?&limit=500")
+    public String crawlURL = "https://api.mendeley.com/documents?limit=500&view=all";
 
     @Parameter(
       names = "-timeout",
