@@ -1,6 +1,7 @@
 package org.gbif.content.crawl.mendeley;
 
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Iterator;
@@ -8,15 +9,15 @@ import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.regex.Pattern;
 
-import org.apache.http.HttpHeaders;
 import org.apache.http.HttpResponse;
 import org.apache.http.HttpStatus;
+import org.apache.http.NameValuePair;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.util.EntityUtils;
-import org.apache.oltu.oauth2.client.response.OAuthJSONAccessTokenResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,6 +52,20 @@ public class MendeleyPager implements Iterable<String> {
     this.httpClient = httpClient;
   }
 
+  private static String getParamValue(String name, String url) {
+    try {
+      URIBuilder b = new URIBuilder(url);
+      return b.getQueryParams()
+        .stream()
+        .filter(p -> p.getName().equalsIgnoreCase(name))
+        .map(NameValuePair::getValue)
+        .findFirst()
+        .orElse("");
+    } catch (URISyntaxException ex) {
+      throw new RuntimeException(ex);
+    }
+  }
+
   /**
    * Iterates thought Mendeley responses.
    */
@@ -72,10 +87,11 @@ public class MendeleyPager implements Iterable<String> {
 
     @Override
     public String next() {
-      return nextUrl.map(targetUrl -> {
-              HttpGet httpGet = new HttpGet(targetUrl + "&access_token=" + token);
+
+      return nextUrl.map(nextTargetUrl -> {
+              HttpGet httpGet = new HttpGet(nextTargetUrl.contains("access_token")? nextTargetUrl : nextTargetUrl + "&access_token=" + token);
               httpGet.setConfig(requestConfig);
-              LOG.info("Requesting data from {}", httpGet.getURI());
+              LOG.info("Requesting data from {} using paging marker {}", targetUrl, getParamValue("marker", nextTargetUrl));
               try (CloseableHttpResponse httpResponse = httpClient.execute(httpGet)) {
                 if (HttpStatus.SC_OK != httpResponse.getStatusLine().getStatusCode()) {
                   LOG.warn("Mendeley returning HTTP[{}] with {}",
@@ -96,7 +112,6 @@ public class MendeleyPager implements Iterable<String> {
       }).orElseThrow(() -> new NoSuchElementException("No more elements to crawl"));
     }
   }
-
 
   @Override
   public Iterator<String> iterator() {
