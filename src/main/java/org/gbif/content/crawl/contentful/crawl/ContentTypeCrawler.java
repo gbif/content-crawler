@@ -115,7 +115,6 @@ public class ContentTypeCrawler {
                               cdaArray -> cdaArray.items()
                               .forEach(cdaResource ->
                                          bulkRequest.add(new IndexRequest().index(esIdxName)
-                                                           .type(configuration.indexBuild.esIndexType)
                                                            .id(cdaResource.id())
                                                            .source(getESDoc((CDAEntry)cdaResource)))))
       );
