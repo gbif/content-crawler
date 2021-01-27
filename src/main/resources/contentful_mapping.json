@@ -9,7 +9,7 @@
         "match": "images|space|revision|type",
         "mapping": {
           "include_in_all": false,
-          "enabled": false
+          "index": "no"
         }
       }
     },
