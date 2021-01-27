@@ -132,7 +132,7 @@ public class  MappingGenerator {
    *    "match": "images|space|revision|type",
    *    "match_pattern": "regex",
    *    "mapping": {
-   *      "index": "no"
+   *      "index": false
    *    }
    *  }
    * }
@@ -143,7 +143,7 @@ public class  MappingGenerator {
         mapping.field("match", IGNORED_FIELDS.pattern());
         mapping.field("match_pattern", "regex");
         mapping.startObject("mapping");
-          mapping.field("index","no");
+          mapping.field("index",false);
         mapping.endObject();
       mapping.endObject();
     mapping.endObject();
@@ -195,7 +195,7 @@ public class  MappingGenerator {
       mapping.startObject("asset_files");
         mapping.field("path_match", "*.file.*");
         mapping.startObject("mapping");
-          mapping.field("index", "no");
+          mapping.field("index", false);
         mapping.endObject();
       mapping.endObject();
     mapping.endObject();
@@ -319,7 +319,7 @@ public class  MappingGenerator {
    *        "match": "images|space|revision|type",
    *        "match_pattern": "regex",
    *        "mapping": {
-   *            "index": "no"
+   *            "index": false
    *          }
    *        }
    *      }
