@@ -193,6 +193,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
       Set<TextNode> countriesOfCoverage = new HashSet<>();
       Set<TextNode> regions = new HashSet<>();
       Set<TextNode> gbifDatasets = new HashSet<>();
+      Set<TextNode> gbifDerivedDatasets = new HashSet<>();
       Set<TextNode> publishingOrganizations = new HashSet<>();
       Set<TextNode> gbifDownloads = new HashSet<>();
       Set<TextNode> topics = new HashSet<>();
@@ -212,6 +213,10 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
               Optional.ofNullable(citation.getDatasetKey()).ifPresent(k -> gbifDatasets.add(new TextNode(k)));
               Optional.ofNullable(citation.getPublishinOrganizationKey()).ifPresent(k -> publishingOrganizations.add(new TextNode(k)));
             });
+          }
+
+          if(datasetsetUsagesCollector.isDerivedDataset(keyValue)) {
+            gbifDerivedDatasets.add(new TextNode(keyValue));
           }
         } else if (value.startsWith(PEER_REVIEW_TAG.pattern())) {
           peerReviewValue.setValue(Boolean.parseBoolean(PEER_REVIEW_TAG.matcher(value).replaceFirst("")));

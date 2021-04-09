@@ -86,7 +86,14 @@ class DatasetsetUsagesCollector {
                                                          + "FROM dataset d "
                                                          + "LEFT JOIN dataset_identifier di ON di.dataset_key = d.key "
                                                          + "LEFT JOIN identifier i ON di.identifier_key = i.key AND i.type = 'DOI' "
-                                                         + "WHERE i.identifier = ?";
+                                                         + "WHERE i.identifier = ? "
+                                                         + "UNION "
+                                                         + "SELECT ddd.derived_dataset_doi AS doi, dataset_key, d.publishing_organization_key, NULL AS download_key "
+                                                         + "FROM dataset_derived_dataset ddd "
+                                                         + "LEFT JOIN dataset d ON d.key = ddd.dataset_key "
+                                                         + "WHERE ddd.dataset_doi = ?";
+
+  private static final String IS_DERIVED_DATASET = "SELECT dd.doi FROM derived_dataset dd WHERE doi = ?";
 
   //Caches information by DOI
   private final Cache<String, Collection<DatasetCitation>> cache;
@@ -130,6 +137,7 @@ class DatasetsetUsagesCollector {
       preparedStatement.setString(1, doi);
       preparedStatement.setString(2, doi);
       preparedStatement.setString(3, doi);
+      preparedStatement.setString(4, doi);
       try (ResultSet resultSet = preparedStatement.executeQuery()) {
         while (resultSet.next()) {
           citations.add(new DatasetCitation(resultSet.getString("dataset_key"),
@@ -153,6 +161,23 @@ class DatasetsetUsagesCollector {
    */
   public Collection<DatasetCitation> getCitations(String doi) {
     return cache.get(doi);
+  }
+
+  public boolean isDerivedDataset(String doi) {
+    try (Connection connection = dataSource.getConnection();
+         PreparedStatement preparedStatement = connection.prepareStatement(IS_DERIVED_DATASET)) {
+      preparedStatement.setFetchSize(FETCH_SIZE);
+      preparedStatement.setString(1, doi);
+      preparedStatement.setString(2, doi);
+      preparedStatement.setString(3, doi);
+      preparedStatement.setString(4, doi);
+      try (ResultSet resultSet = preparedStatement.executeQuery()) {
+         return resultSet.next();
+      }
+    } catch (SQLException ex) {
+      LOG.error("Error querying database", ex);
+      throw new RuntimeException(ex);
+    }
   }
 
 }
