@@ -70,6 +70,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
   private static final String ES_GBIF_DATASET_FL = "gbifDatasetKey";
   private static final String ES_PUBLISHING_ORG_FL =  "publishingOrganizationKey";
   private static final String ES_DOWNLOAD_FL = "gbifDownloadKey";
+  private static final String ES_GBIF_DERIVED_DATASET_FL = "gbifDerivedDatasetDoi";
 
   private static final String ES_TOPICS_FL = "topics";
   private static final String ES_RELEVANCE_FL = "relevance";
@@ -253,6 +254,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
       docNode.putArray(ES_RELEVANCE_FL).addAll(relevance);
       docNode.putArray(ES_TOPICS_FL).addAll(topics);
       docNode.putArray(ES_DOWNLOAD_FL).addAll(gbifDownloads);
+      docNode.putArray(ES_GBIF_DERIVED_DATASET_FL).addAll(gbifDerivedDatasets);
       docNode.put(ES_PEER_REVIEW_FIELD, peerReviewValue.getValue());
       docNode.put(OPEN_ACCESS_FIELD, openAccessValue.getValue());
       docNode.put(CONTENT_TYPE_FIELD, CONTENT_TYPE_FIELD_VALUE);
