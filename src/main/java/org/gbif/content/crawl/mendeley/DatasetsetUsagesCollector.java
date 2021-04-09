@@ -166,11 +166,7 @@ class DatasetsetUsagesCollector {
   public boolean isDerivedDataset(String doi) {
     try (Connection connection = dataSource.getConnection();
          PreparedStatement preparedStatement = connection.prepareStatement(IS_DERIVED_DATASET)) {
-      preparedStatement.setFetchSize(FETCH_SIZE);
       preparedStatement.setString(1, doi);
-      preparedStatement.setString(2, doi);
-      preparedStatement.setString(3, doi);
-      preparedStatement.setString(4, doi);
       try (ResultSet resultSet = preparedStatement.executeQuery()) {
          return resultSet.next();
       }
