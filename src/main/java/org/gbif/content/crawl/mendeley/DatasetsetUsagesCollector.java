@@ -88,10 +88,10 @@ class DatasetsetUsagesCollector {
                                                          + "LEFT JOIN identifier i ON di.identifier_key = i.key AND i.type = 'DOI' "
                                                          + "WHERE i.identifier = ? "
                                                          + "UNION "
-                                                         + "SELECT ddd.derived_dataset_doi AS doi, dataset_key, d.publishing_organization_key, NULL AS download_key "
+                                                         + "SELECT d.doi, dataset_key, d.publishing_organization_key, NULL AS download_key "
                                                          + "FROM dataset_derived_dataset ddd "
                                                          + "LEFT JOIN dataset d ON d.key = ddd.dataset_key "
-                                                         + "WHERE ddd.dataset_doi = ?";
+                                                         + "WHERE ddd.derived_dataset_doi = ?";
 
   private static final String IS_DERIVED_DATASET = "SELECT dd.doi FROM derived_dataset dd WHERE doi = ?";
 
