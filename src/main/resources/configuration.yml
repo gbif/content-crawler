@@ -52,9 +52,9 @@ elasticSearch:
 
 #Contentful crawler configuration
 contentful:
-  cdaToken: cbe898627179356da24491ea99ded861c34b78459f0362064b11d377fd6ebd97
-  cmaToken: CFPAT-846cd78935cdd5faf81946c1b1f8f06ca902985e86e6ecf4f05c533b24fcadab
-  spaceId: uo17ejk9rkwj
+  cdaToken: @mendeleyCdaToken
+  cmaToken: @mendeleyCmaToken
+  spaceId: @mendeleySpaceId
   indexBuild:
     #contentTypes: [dataUse]
     esIndexType: content
