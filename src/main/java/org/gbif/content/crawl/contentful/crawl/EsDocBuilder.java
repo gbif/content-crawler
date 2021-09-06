@@ -134,7 +134,8 @@ public class EsDocBuilder {
     Map<String, Object> fields = new LinkedHashMap<>();
     fields.put(ID_FIELD, cdaEntry.id());
     fields.putAll(cdaEntry.rawFields().entrySet().stream()
-                    .filter(entry ->  LINKED_ENTRY_FIELDS.matcher(entry.getKey()).matches()  &&
+                    //Content types Header Block, Feature Block do not have to be handled as Links
+                    .filter(entry ->  (!cdaEntry.contentType().id().endsWith("Block") && LINKED_ENTRY_FIELDS.matcher(entry.getKey()).matches())  &&
                                       cdaEntry.getField(entry.getKey()) != null)  //a project had a null url value
                     .collect(Collectors.toMap(Map.Entry::getKey,
                                               entry -> getValue(entry, cdaEntry))));
