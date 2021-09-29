@@ -22,9 +22,9 @@ import org.slf4j.LoggerFactory;
 /**
  * Extracts and caches dataset usages of a GBIF DOI.
  */
-class DatasetsetUsagesCollector {
+class DatasetUsagesCollector {
 
-  private static final Logger LOG = LoggerFactory.getLogger(DatasetsetUsagesCollector.class);
+  private static final Logger LOG = LoggerFactory.getLogger(DatasetUsagesCollector.class);
 
   //jdbc fetch size
   private static final int FETCH_SIZE = 18000;
@@ -34,15 +34,13 @@ class DatasetsetUsagesCollector {
    */
   public static class DatasetCitation implements Serializable {
 
-
-
     private String datasetKey;
-    private String publishinOrganizationKey;
+    private String publishingOrganizationKey;
     private String downloadKey;
 
-    public DatasetCitation(String datasetKey, String publishinOrganizationKey, String downloadKey) {
+    public DatasetCitation(String datasetKey, String publishingOrganizationKey, String downloadKey) {
       this.datasetKey = datasetKey;
-      this.publishinOrganizationKey = publishinOrganizationKey;
+      this.publishingOrganizationKey = publishingOrganizationKey;
       this.downloadKey = downloadKey;
     }
 
@@ -54,12 +52,12 @@ class DatasetsetUsagesCollector {
       this.datasetKey = datasetKey;
     }
 
-    public String getPublishinOrganizationKey() {
-      return publishinOrganizationKey;
+    public String getPublishingOrganizationKey() {
+      return publishingOrganizationKey;
     }
 
-    public void setPublishinOrganizationKey(String publishinOrganizationKey) {
-      this.publishinOrganizationKey = publishinOrganizationKey;
+    public void setPublishingOrganizationKey(String publishingOrganizationKey) {
+      this.publishingOrganizationKey = publishingOrganizationKey;
     }
 
     public String getDownloadKey() {
@@ -105,7 +103,7 @@ class DatasetsetUsagesCollector {
    * Creates an instance using the required Hikari Database information.
    * @param configuration datasource configuration
    */
-  public DatasetsetUsagesCollector(Properties configuration) {
+  public DatasetUsagesCollector(Properties configuration) {
     dataSource = initDataSource(configuration);
     cache = new Cache2kBuilder<String,Collection<DatasetCitation>>(){}
               .loader(new CacheLoader<String, Collection<DatasetCitation>>() {

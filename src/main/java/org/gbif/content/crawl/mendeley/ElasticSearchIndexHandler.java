@@ -108,7 +108,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
   private final ContentCrawlConfiguration conf;
   private final String esIdxName;
   private final int batchSize;
-  private final DatasetsetUsagesCollector datasetsetUsagesCollector;
+  private final DatasetUsagesCollector datasetUsagesCollector;
 
 
 
@@ -120,7 +120,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
     batchSize = conf.mendeley.indexBuild.batchSize;
     Properties dbConfig = new Properties();
     dbConfig.putAll(conf.mendeley.dbConfig);
-    datasetsetUsagesCollector = new DatasetsetUsagesCollector(dbConfig);
+    datasetUsagesCollector = new DatasetUsagesCollector(dbConfig);
     createIndex(esClient, conf.mendeley.indexBuild.esIndexType, esIdxName, indexMappings(ES_MAPPING_FILE));
   }
 
@@ -205,18 +205,18 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
         String value = node.textValue();
         if (value.startsWith(GBIF_DOI_TAG.pattern())) {
           String keyValue  = GBIF_DOI_TAG.matcher(value).replaceFirst("").toLowerCase();
-          Collection<DatasetsetUsagesCollector.DatasetCitation> citations = datasetsetUsagesCollector.getCitations(keyValue);
+          Collection<DatasetUsagesCollector.DatasetCitation> citations = datasetUsagesCollector.getCitations(keyValue);
           if (citations.isEmpty()) {
             LOG.warn("Document ID {} has a not-found DOI {}", document.get(ML_ID_FL), keyValue);
           } else {
             citations.forEach(citation -> {
               Optional.ofNullable(citation.getDownloadKey()).ifPresent(k -> gbifDownloads.add(new TextNode(k)));
               Optional.ofNullable(citation.getDatasetKey()).ifPresent(k -> gbifDatasets.add(new TextNode(k)));
-              Optional.ofNullable(citation.getPublishinOrganizationKey()).ifPresent(k -> publishingOrganizations.add(new TextNode(k)));
+              Optional.ofNullable(citation.getPublishingOrganizationKey()).ifPresent(k -> publishingOrganizations.add(new TextNode(k)));
             });
           }
 
-          if(datasetsetUsagesCollector.isDerivedDataset(keyValue)) {
+          if(datasetUsagesCollector.isDerivedDataset(keyValue)) {
             gbifDerivedDatasets.add(new TextNode(keyValue));
           }
         } else if (value.startsWith(PEER_REVIEW_TAG.pattern())) {
