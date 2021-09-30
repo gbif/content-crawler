@@ -200,7 +200,7 @@ class DatasetUsagesCollector {
                                             resultSet.getDate("erase_after")));
           resultCount += 1;
         }
-        LOG.info("DOI {} has {} datasets/downloads", doi, resultCount);
+        LOG.debug("DOI {} has {} datasets/downloads", doi, resultCount);
       }
       return citations;
     } catch (SQLException ex) {
