@@ -24,7 +24,6 @@ import org.apache.oltu.oauth2.common.message.types.GrantType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
 /**
  * A crawler of Mendeley documents storing the results in JSON files, and optionally in an Elastic Search index.
  */
@@ -88,6 +87,7 @@ public class MendeleyDocumentCrawler {
         );
     } catch (Exception e) {
       LOG.error("Unable to authenticate with Mendeley", e);
+      throw new IOException("Unable to authenticate with Mendeley", e);
     }
   }
 
@@ -126,7 +126,6 @@ public class MendeleyDocumentCrawler {
       throw new RuntimeException(ex);
     }
   }
-
 
   /**
    * Authenticates against the Mendeley and provides a time bound token with which to sign subsequent requests.
