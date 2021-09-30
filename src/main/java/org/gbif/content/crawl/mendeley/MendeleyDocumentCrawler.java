@@ -66,9 +66,11 @@ public class MendeleyDocumentCrawler {
           handler.finish();
           LOG.info("Time elapsed retrieving Mendeley {} minutes ", stopwatch.elapsed(TimeUnit.MINUTES));
           stopwatch.reset();
+          stopwatch.start();
           indexFiles();
           LOG.info("Time elapsed indexing Mendeley {} minutes ", stopwatch.elapsed(TimeUnit.MINUTES));
           stopwatch.reset();
+          stopwatch.start();
           registryFiles();
           LOG.info("Time elapsed updating GBIF Registry {} minutes ", stopwatch.elapsed(TimeUnit.MINUTES));
           stopwatch.stop();

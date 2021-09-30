@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.Collection;
 import java.util.Locale;
 import java.util.Properties;
 import java.util.regex.Pattern;
@@ -32,6 +33,7 @@ public class UpdateRegistryHandler implements ResponseHandler {
   private static final ObjectMapper MAPPER = new ObjectMapper();
 
   private final OccurrenceDownloadService occurrenceDownloadService;
+  private final DatasetUsagesCollector datasetUsagesCollector;
 
   public UpdateRegistryHandler(ContentCrawlConfiguration conf) {
     LOG.info("Connecting to GBIF API {} as {}", conf.registry.gbifApiUrl, conf.registry.gbifApiUsername);
@@ -41,6 +43,7 @@ public class UpdateRegistryHandler implements ResponseHandler {
 
     Properties dbConfig = new Properties();
     dbConfig.putAll(conf.mendeley.dbConfig);
+    datasetUsagesCollector = new DatasetUsagesCollector(dbConfig);
   }
 
   /**
@@ -65,17 +68,21 @@ public class UpdateRegistryHandler implements ResponseHandler {
             String value = node.textValue();
             if (value.startsWith(GBIF_DOWNLOAD_DOI_TAG_PATTERN.pattern())) {
               String keyValue = value.replace(GBIF_DOWNLOAD_DOI_TAG, "").toLowerCase(Locale.ENGLISH);
-              Download download = occurrenceDownloadService.get(keyValue);
-              if (download != null) {
-                if (!(download.getEraseAfter() == null)) {
-                  LOG.info("Setting download {} ({}) to be retained due to citation by {}", download.getKey(), download.getDoi(), document.get(ML_ID_FL));
-                  download.setEraseAfter(null);
-                  occurrenceDownloadService.update(download);
-                } else {
-                  LOG.trace("Download {} already marked for retention", download.getKey());
-                }
+              Collection<DatasetUsagesCollector.DownloadCitation> citations = datasetUsagesCollector.getDownloadCitations(keyValue);
+              if (citations.isEmpty()) {
+                LOG.warn("Document ID {} has an unknown DOI {}", document.get(ML_ID_FL), keyValue);
               } else {
-                LOG.error("Unknown download DOI {}", keyValue);
+                for (DatasetUsagesCollector.DownloadCitation citation : citations) {
+                  if (!(citation.getEraseAfter() == null)) {
+                    Download download = occurrenceDownloadService.get(citation.getDownloadKey());
+                    LOG.info("Setting download {} ({}) to be retained due to citation by {}", download.getKey(), download.getDoi(), document.get(ML_ID_FL));
+                    download.setEraseAfter(null);
+                    occurrenceDownloadService.update(download);
+                    citation.setEraseAfter(null);
+                  } else {
+                    LOG.trace("Download {} already marked for retention", citation.getDownloadKey());
+                  }
+                }
               }
             }
           });

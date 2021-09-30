@@ -5,10 +5,9 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
+import java.util.*;
 
-import java.util.Collection;
-import java.util.Properties;
+import java.util.stream.Collectors;
 import javax.sql.DataSource;
 
 import com.zaxxer.hikari.HikariConfig;
@@ -37,11 +36,13 @@ class DatasetUsagesCollector {
     private String datasetKey;
     private String publishingOrganizationKey;
     private String downloadKey;
+    private Date eraseAfter;
 
-    public DatasetCitation(String datasetKey, String publishingOrganizationKey, String downloadKey) {
+    public DatasetCitation(String datasetKey, String publishingOrganizationKey, String downloadKey, Date eraseAfter) {
       this.datasetKey = datasetKey;
       this.publishingOrganizationKey = publishingOrganizationKey;
       this.downloadKey = downloadKey;
+      this.eraseAfter = eraseAfter;
     }
 
     public String getDatasetKey() {
@@ -67,29 +68,84 @@ class DatasetUsagesCollector {
     public void setDownloadKey(String downloadKey) {
       this.downloadKey = downloadKey;
     }
+
+    public Date getEraseAfter() {
+      return eraseAfter;
+    }
+
+    public void setEraseAfter(Date eraseAfter) {
+      this.eraseAfter = eraseAfter;
+    }
+  }
+
+  /**
+   * Utility class to store information about download citations (without datasets) of GBIF DOI.
+   */
+  public static class DownloadCitation implements Serializable {
+
+    private String downloadKey;
+    private Date eraseAfter;
+
+    public DownloadCitation(String downloadKey, Date eraseAfter) {
+      this.downloadKey = downloadKey;
+      this.eraseAfter = eraseAfter;
+    }
+
+    public String getDownloadKey() {
+      return downloadKey;
+    }
+
+    public void setDownloadKey(String downloadKey) {
+      this.downloadKey = downloadKey;
+    }
+
+    public Date getEraseAfter() {
+      return eraseAfter;
+    }
+
+    public void setEraseAfter(Date eraseAfter) {
+      this.eraseAfter = eraseAfter;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
+      DownloadCitation that = (DownloadCitation) o;
+      return Objects.equals(downloadKey, that.downloadKey) && Objects.equals(eraseAfter, that.eraseAfter);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(downloadKey, eraseAfter);
+    }
   }
 
   //Query to extract DOI related datasets
-  private static final String DATASETS_DOWNLOADS_QUERY = "SELECT od.doi, doc.dataset_key, d.publishing_organization_key, od.key AS download_key "
-                                                         + "FROM occurrence_download od "
-                                                         + "LEFT JOIN dataset_occurrence_download doc ON od.key = doc.download_key "
-                                                         + "LEFT JOIN dataset d ON d.key = doc.dataset_key "
-                                                         + "WHERE od.doi = ? "
-                                                         + "UNION "
-                                                         + "SELECT d.doi, d.key AS dataset_key, d.publishing_organization_key, NULL as download_key "
-                                                         + "FROM dataset d "
-                                                         + "WHERE d.doi = ? "
-                                                         + "UNION "
-                                                         + "SELECT d.doi, d.key AS dataset_key, d.publishing_organization_key, NULL as download_key "
-                                                         + "FROM dataset d "
-                                                         + "LEFT JOIN dataset_identifier di ON di.dataset_key = d.key "
-                                                         + "LEFT JOIN identifier i ON di.identifier_key = i.key AND i.type = 'DOI' "
-                                                         + "WHERE i.identifier = ? "
-                                                         + "UNION "
-                                                         + "SELECT d.doi, dataset_key, d.publishing_organization_key, NULL AS download_key "
-                                                         + "FROM dataset_derived_dataset ddd "
-                                                         + "LEFT JOIN dataset d ON d.key = ddd.dataset_key "
-                                                         + "WHERE ddd.derived_dataset_doi = ?";
+  private static final String DATASETS_DOWNLOADS_QUERY = ""
+    + "SELECT od.doi, doc.dataset_key, d.publishing_organization_key, od.key AS download_key, od.erase_after "
+    + "FROM occurrence_download od "
+    + "LEFT JOIN dataset_occurrence_download doc ON od.key = doc.download_key "
+    + "LEFT JOIN dataset d ON d.key = doc.dataset_key "
+    + "WHERE od.doi = ? "
+    + ""
+    + "UNION "
+    + "SELECT d.doi, d.key AS dataset_key, d.publishing_organization_key, NULL as download_key, NULL as erase_after "
+    + "FROM dataset d "
+    + "WHERE d.doi = ? "
+    + ""
+    + "UNION "
+    + "SELECT d.doi, d.key AS dataset_key, d.publishing_organization_key, NULL as download_key, NULL as erase_after "
+    + "FROM dataset d "
+    + "LEFT JOIN dataset_identifier di ON di.dataset_key = d.key "
+    + "LEFT JOIN identifier i ON di.identifier_key = i.key AND i.type = 'DOI' "
+    + "WHERE i.identifier = ? "
+    + ""
+    + "UNION "
+    + "SELECT d.doi, dataset_key, d.publishing_organization_key, NULL AS download_key, NULL as erase_after "
+    + "FROM dataset_derived_dataset ddd "
+    + "LEFT JOIN dataset d ON d.key = ddd.dataset_key "
+    + "WHERE ddd.derived_dataset_doi = ?";
 
   private static final String IS_DERIVED_DATASET = "SELECT dd.doi FROM derived_dataset dd WHERE doi = ?";
 
@@ -140,7 +196,8 @@ class DatasetUsagesCollector {
         while (resultSet.next()) {
           citations.add(new DatasetCitation(resultSet.getString("dataset_key"),
                                             resultSet.getString("publishing_organization_key"),
-                                            resultSet.getString("download_key")));
+                                            resultSet.getString("download_key"),
+                                            resultSet.getDate("erase_after")));
           resultCount += 1;
         }
         LOG.info("DOI {} has {} datasets/downloads", doi, resultCount);
@@ -159,6 +216,15 @@ class DatasetUsagesCollector {
    */
   public Collection<DatasetCitation> getCitations(String doi) {
     return cache.get(doi);
+  }
+
+  /**
+   * Gets the dataset information of GBIF registered DOI.
+   * @param doi to lookup
+   * @return dataset citations associated to a DOI
+   */
+  public Collection<DownloadCitation> getDownloadCitations(String doi) {
+    return cache.get(doi).stream().filter(c -> c.downloadKey != null).map(c -> new DownloadCitation(c.downloadKey, c.eraseAfter)).collect(Collectors.toSet());
   }
 
   public boolean isDerivedDataset(String doi) {
