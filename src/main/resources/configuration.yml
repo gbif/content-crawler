@@ -10,7 +10,6 @@ mendeley:
   indexBuild:
     esIndexName: content
     esIndexType: literature
-  gbifApiUrl: http://api.gbif-dev.org/
   controlledTags:
     "topics":
       - "Agriculture"
@@ -42,19 +41,23 @@ mendeley:
       - "GBIF_mentioned"
       - "GBIF_funded"
 
-
-
 # Optional: If included will push documents to the referenced Elastic Search index
 elasticSearch:
   host: cms-search.gbif-dev.org
 #  port: 9300
   cluster: content-cluster
 
+# Optional: If included will update the GBIF registry to mark cited downloads for retention
+registry:
+  gbifApiUrl: http://api.gbif-dev.org/
+  gbifApiUsername: @registryUsername
+  gbifApiPassword: @registryPassword
+
 #Contentful crawler configuration
 contentful:
   cdaToken: @contentfulCdaToken
-  cmaToken: @montentfulyCmaToken
-  spaceId: @ontentfulSpaceId
+  cmaToken: @contentfulCmaToken
+  spaceId: @contentfulSpaceId
   indexBuild:
     #contentTypes: [dataUse]
     esIndexType: content

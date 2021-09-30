@@ -3,7 +3,7 @@
 #Downloads latest snapshot.
 function download {
   echo "Downloading content crawler"
-  URL=`getArtifactUrl -s http://repository.gbif.org -g org.gbif.content -a content-crawler -v LATEST -r $1`
+  URL=`getArtifactUrl -s https://repository.gbif.org -g org.gbif.content -a content-crawler -v LATEST -r $1`
   echo Download ${URL}
   wget --progress=dot:mega -O content-crawler.jar "${URL}"
   mv latest.sha1 jar.sha1
@@ -11,7 +11,7 @@ function download {
 
 #Downloads latest sha1 checksum.
 function downloadJarSha1 {
-  URL=`getArtifactUrl -s http://repository.gbif.org -g org.gbif.content -a content-crawler -v LATEST -r $1`
+  URL=`getArtifactUrl -s https://repository.gbif.org -g org.gbif.content -a content-crawler -v LATEST -r $1`
   echo Download jar sha1 ${URL}.sha1
   curl -s -L "${URL}.sha1" | sed -n 's/<sha1>\(.*\)<\/sha1>/\1/p' > latest.sha1
 }
