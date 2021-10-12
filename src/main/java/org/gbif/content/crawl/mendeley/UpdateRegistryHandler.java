@@ -91,10 +91,15 @@ public class UpdateRegistryHandler implements ResponseHandler {
                 for (DatasetUsagesCollector.DownloadCitation citation : citations) {
                   if (!(citation.getEraseAfter() == null)) {
                     Download download = occurrenceDownloadService.get(citation.getDownloadKey());
-                    LOG.info("Setting download {} ({}) to be retained due to citation by {}", download.getKey(), download.getDoi(), document.get(ML_ID_FL));
-                    download.setEraseAfter(null);
-                    occurrenceDownloadService.update(download);
-                    citation.setEraseAfter(null);
+                    if (download != null) {
+                      LOG.info("Setting download {} ({}) to be retained due to citation by {}",
+                               download.getKey(),
+                               download.getDoi(),
+                               document.get(ML_ID_FL));
+                      download.setEraseAfter(null);
+                      occurrenceDownloadService.update(download);
+                      citation.setEraseAfter(null);
+                    }
                   } else {
                     LOG.trace("Download {} already marked for retention", citation.getDownloadKey());
                   }
