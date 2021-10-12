@@ -310,19 +310,21 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
   }
 
   /** Gets a list higher taxa keys of a list of species/name-usages.*/
-  private Set<IntNode> getHigherTaxonKeys(Set<IntNode> speciesKey) {
+  private Set<IntNode> getHigherTaxonKeys(Set<IntNode> gbifTaxonKeys) {
     Set<IntNode> highTaxaKeys = new HashSet<>();
-    speciesKey.forEach(node -> highTaxaKeys.addAll(getHigherTaxonKeys(node.textValue())));
+    gbifTaxonKeys.forEach(node ->  highTaxaKeys.addAll(getHigherTaxonKeys(node.intValue())));
     return highTaxaKeys;
   }
 
   /** Gets the higher taxa keys of a name-usage/species.*/
-  private Set<IntNode> getHigherTaxonKeys(String speciesKey) {
-    NameUsage nameUsage = speciesService.get(Integer.parseInt(speciesKey));
-    if (nameUsage != null) {
-      return Optional.ofNullable(nameUsage.getHigherClassificationMap())
-              .map(map -> map.keySet().stream().map(IntNode::new).collect(Collectors.toSet()))
-              .orElse(Collections.emptySet());
+  private Set<IntNode> getHigherTaxonKeys(Integer speciesKey) {
+    if (speciesKey != null) {
+      NameUsage nameUsage = speciesService.get(speciesKey);
+      if (nameUsage != null) {
+        return Optional.ofNullable(nameUsage.getHigherClassificationMap())
+          .map(map -> map.keySet().stream().map(IntNode::new).collect(Collectors.toSet()))
+          .orElse(Collections.emptySet());
+      }
     }
     return Collections.emptySet();
   }
