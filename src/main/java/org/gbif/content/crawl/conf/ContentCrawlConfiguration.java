@@ -47,6 +47,9 @@ public class ContentCrawlConfiguration {
   public ElasticSearch elasticSearch;
 
   @Nullable
+  public Registry registry;
+
+  @Nullable
   public Contentful contentful;
 
   @Nullable
@@ -92,11 +95,6 @@ public class ContentCrawlConfiguration {
       names = "-timeout",
       description = "Timeout for the HTTP calls in seconds, defaulting to 10 secs")
     public int httpTimeout = 10000;
-
-    @Parameter(
-      names = "-gbifApiUrl",
-      description = "URL to GBIF API")
-    public String gbifApiUrl;
 
     @Parameter(
       names = "-controlledTags",
@@ -203,6 +201,23 @@ public class ContentCrawlConfiguration {
       names = "-batchSize",
       description = "Batch size for bulk indexing")
     public int batchSize = 50;
+  }
+
+  public static class Registry {
+    @Parameter(
+      names = "-gbifApiUrl",
+      description = "URL to GBIF API")
+    public String gbifApiUrl;
+
+    @Parameter(
+      names = "-gbifApiUsername",
+      description = "Username to GBIF API")
+    public String gbifApiUsername;
+
+    @Parameter(
+      names = "-gbifApiPassword",
+      description = "Password for GBIF API")
+    public String gbifApiPassword;
   }
 
   /**

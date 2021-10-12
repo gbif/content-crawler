@@ -200,6 +200,21 @@
     "gbifDownloadKey": {
       "type": "keyword"
     },
+    "gbifTaxonKey": {
+      "type": "keyword"
+    },
+    "gbifHigherTaxonKey": {
+      "type": "keyword"
+    },
+    "gbifOccurrenceKey": {
+      "type": "keyword"
+    },
+    "gbifFeatureId": {
+      "type": "keyword"
+    },
+    "citationType": {
+      "type": "keyword"
+    },
     "translators": {
       "type": "nested",
       "properties": {

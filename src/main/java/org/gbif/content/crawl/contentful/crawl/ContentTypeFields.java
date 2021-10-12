@@ -65,7 +65,7 @@ public class ContentTypeFields {
       .collect(Collectors.toMap(CDAField::id, cdaField -> ContentfulLinkType.valueOf(cdaField.linkType())));
 
     collapsibleFields = cdaContentType.fields().stream()
-                          .filter(cdaField -> COLLAPSIBLE_TYPES.contains(cdaField.type())
+                          .filter(cdaField -> COLLAPSIBLE_TYPES.contains(CMAFieldType.valueOf(cdaField.type()))
                                               || COLLAPSIBLE_FIELDS.matcher(cdaField.id()).matches())
                           .map(CDAField::id).collect(Collectors.toSet());
 

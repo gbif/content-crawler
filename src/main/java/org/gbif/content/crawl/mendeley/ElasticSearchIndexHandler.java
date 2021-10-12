@@ -13,15 +13,18 @@
  */
 package org.gbif.content.crawl.mendeley;
 
+import org.gbif.api.model.checklistbank.NameUsage;
 import org.gbif.api.vocabulary.Country;
 import org.gbif.api.vocabulary.Language;
 import org.gbif.content.crawl.conf.ContentCrawlConfiguration;
+import org.gbif.content.crawl.mendeley.clients.SpeciesService;
 
 import java.io.IOException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
@@ -46,6 +49,8 @@ import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.BooleanNode;
+import com.fasterxml.jackson.databind.node.IntNode;
+import com.fasterxml.jackson.databind.node.LongNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
 import com.google.common.base.CaseFormat;
@@ -85,6 +90,11 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
   private static final String ES_PUBLISHING_ORG_FL =  "publishingOrganizationKey";
   private static final String ES_DOWNLOAD_FL = "gbifDownloadKey";
   private static final String ES_GBIF_DERIVED_DATASET_FL = "gbifDerivedDatasetDoi";
+  private static final String ES_GBIF_TAXON_KEY_FL = "gbifTaxonKey";
+  private static final String ES_GBIF_HIGHER_TAXON_KEY_FL = "gbifHigherTaxonKey";
+  private static final String ES_GBIF_OCCURRENCE_KEY_FL = "gbifOccurrenceKey";
+  private static final String ES_GBIF_FEATURED_ID_FL = "gbifFeatureId";
+  private static final String ES_CITATION_TYPE_FL = "citationType";
 
   private static final String ES_TOPICS_FL = "topics";
   private static final String ES_RELEVANCE_FL = "relevance";
@@ -113,6 +123,10 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
   private static final Pattern GBIF_DOI_TAG = Pattern.compile("gbifDOI:", Pattern.LITERAL);
   private static final Pattern PEER_REVIEW_TAG = Pattern.compile("peer_review:", Pattern.LITERAL);
   private static final Pattern OPEN_ACCESS_TAG = Pattern.compile("open_access:", Pattern.LITERAL);
+  private static final Pattern GBIF_TAXON_TAG = Pattern.compile("gbifTaxon:", Pattern.LITERAL);
+  private static final Pattern GBIF_OCCURRENCE_TAG = Pattern.compile("gbifOccurrence:", Pattern.LITERAL);
+  private static final Pattern GBIF_FEATURE_TAG = Pattern.compile("gbifFeature:", Pattern.LITERAL);
+  private static final Pattern CITATION_TYPE_TAG = Pattern.compile("citation_type:", Pattern.LITERAL);
 
   private static final Logger LOG = LoggerFactory.getLogger(ElasticSearchIndexHandler.class);
   private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -122,8 +136,8 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
   private final ContentCrawlConfiguration conf;
   private final String esIdxName;
   private final int batchSize;
-  private final DatasetsetUsagesCollector datasetsetUsagesCollector;
-
+  private final DatasetUsagesCollector datasetUsagesCollector;
+  private final SpeciesService speciesService;
 
 
   public ElasticSearchIndexHandler(ContentCrawlConfiguration conf) {
@@ -134,7 +148,8 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
     batchSize = conf.mendeley.indexBuild.batchSize;
     Properties dbConfig = new Properties();
     dbConfig.putAll(conf.mendeley.dbConfig);
-    datasetsetUsagesCollector = new DatasetsetUsagesCollector(dbConfig);
+    datasetUsagesCollector = new DatasetUsagesCollector(dbConfig);
+    speciesService = SpeciesService.wsClient(conf.registry.gbifApiUrl);
     createIndex(esClient, conf.mendeley.indexBuild.esIndexType, esIdxName, indexMappings(ES_MAPPING_FILE));
   }
 
@@ -211,6 +226,10 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
       Set<TextNode> gbifDerivedDatasets = new HashSet<>();
       Set<TextNode> publishingOrganizations = new HashSet<>();
       Set<TextNode> gbifDownloads = new HashSet<>();
+      Set<IntNode> gbifTaxonKeys = new HashSet<>();
+      Set<LongNode> gbifOccurrenceKeys = new HashSet<>();
+      Set<TextNode> gbifFeatureIds = new HashSet<>();
+      Set<TextNode> citationTypes = new HashSet<>();
       Set<TextNode> topics = new HashSet<>();
       Set<TextNode> relevance = new HashSet<>();
       final MutableBoolean peerReviewValue = new MutableBoolean(Boolean.FALSE);
@@ -219,24 +238,32 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
         String value = node.textValue();
         if (value.startsWith(GBIF_DOI_TAG.pattern())) {
           String keyValue  = GBIF_DOI_TAG.matcher(value).replaceFirst("").toLowerCase();
-          Collection<DatasetsetUsagesCollector.DatasetCitation> citations = datasetsetUsagesCollector.getCitations(keyValue);
+          Collection<DatasetUsagesCollector.DatasetCitation> citations = datasetUsagesCollector.getCitations(keyValue);
           if (citations.isEmpty()) {
             LOG.warn("Document ID {} has a not-found DOI {}", document.get(ML_ID_FL), keyValue);
           } else {
             citations.forEach(citation -> {
               Optional.ofNullable(citation.getDownloadKey()).ifPresent(k -> gbifDownloads.add(new TextNode(k)));
               Optional.ofNullable(citation.getDatasetKey()).ifPresent(k -> gbifDatasets.add(new TextNode(k)));
-              Optional.ofNullable(citation.getPublishinOrganizationKey()).ifPresent(k -> publishingOrganizations.add(new TextNode(k)));
+              Optional.ofNullable(citation.getPublishingOrganizationKey()).ifPresent(k -> publishingOrganizations.add(new TextNode(k)));
             });
           }
 
-          if(datasetsetUsagesCollector.isDerivedDataset(keyValue)) {
+          if(datasetUsagesCollector.isDerivedDataset(keyValue)) {
             gbifDerivedDatasets.add(new TextNode(keyValue));
           }
         } else if (value.startsWith(PEER_REVIEW_TAG.pattern())) {
           peerReviewValue.setValue(Boolean.parseBoolean(PEER_REVIEW_TAG.matcher(value).replaceFirst("")));
         } else if (value.startsWith(OPEN_ACCESS_TAG.pattern())) {
           openAccessValue.setValue(Boolean.parseBoolean(OPEN_ACCESS_TAG.matcher(value).replaceFirst("")));
+        } else if (value.startsWith(GBIF_TAXON_TAG.pattern())) {
+          gbifTaxonKeys.add(new IntNode(Integer.parseInt(GBIF_TAXON_TAG.matcher(value).replaceFirst(""))));
+        } else if (value.startsWith(GBIF_OCCURRENCE_TAG.pattern())) {
+          gbifOccurrenceKeys.add(new LongNode(Long.parseLong(GBIF_OCCURRENCE_TAG.matcher(value).replaceFirst(""))));
+        } else if (value.startsWith(GBIF_FEATURE_TAG.pattern())) {
+          gbifFeatureIds.add(new TextNode(GBIF_FEATURE_TAG.matcher(value).replaceFirst("")));
+        } else if (value.startsWith(CITATION_TYPE_TAG.pattern())) {
+          citationTypes.add(new TextNode(CITATION_TYPE_TAG.matcher(value).replaceFirst("")));
         } else { //try country parser
           //VocabularyUtils uses Guava optionals
           String lowerCaseValue = value.toLowerCase();
@@ -269,12 +296,35 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
       docNode.putArray(ES_TOPICS_FL).addAll(topics);
       docNode.putArray(ES_DOWNLOAD_FL).addAll(gbifDownloads);
       docNode.putArray(ES_GBIF_DERIVED_DATASET_FL).addAll(gbifDerivedDatasets);
+      docNode.putArray(ES_GBIF_TAXON_KEY_FL).addAll(gbifTaxonKeys);
+      docNode.putArray(ES_GBIF_HIGHER_TAXON_KEY_FL).addAll(getHigherTaxonKeys(gbifTaxonKeys));
+      docNode.putArray(ES_GBIF_OCCURRENCE_KEY_FL).addAll(gbifOccurrenceKeys);
+      docNode.putArray(ES_GBIF_FEATURED_ID_FL).addAll(gbifFeatureIds);
+      docNode.putArray(ES_CITATION_TYPE_FL).addAll(citationTypes);
       docNode.put(ES_PEER_REVIEW_FIELD, peerReviewValue.getValue());
       docNode.put(OPEN_ACCESS_FIELD, openAccessValue.getValue());
       docNode.put(CONTENT_TYPE_FIELD, CONTENT_TYPE_FIELD_VALUE);
     } catch (Exception ex) {
       LOG.error("Error processing document [{}]", document, ex);
     }
+  }
+
+  /** Gets a list higher taxa keys of a list of species/name-usages.*/
+  private Set<IntNode> getHigherTaxonKeys(Set<IntNode> speciesKey) {
+    Set<IntNode> highTaxaKeys = new HashSet<>();
+    speciesKey.forEach(node -> highTaxaKeys.addAll(getHigherTaxonKeys(node.textValue())));
+    return highTaxaKeys;
+  }
+
+  /** Gets the higher taxa keys of a name-usage/species.*/
+  private Set<IntNode> getHigherTaxonKeys(String speciesKey) {
+    NameUsage nameUsage = speciesService.get(Integer.parseInt(speciesKey));
+    if (nameUsage != null) {
+      return Optional.ofNullable(nameUsage.getHigherClassificationMap())
+              .map(map -> map.keySet().stream().map(IntNode::new).collect(Collectors.toSet()))
+              .orElse(Collections.emptySet());
+    }
+    return Collections.emptySet();
   }
 
   /**

@@ -38,7 +38,6 @@ import com.google.common.base.Stopwatch;
 
 import io.reactivex.Observable;
 
-
 /**
  * A crawler of Mendeley documents storing the results in JSON files, and optionally in an Elastic Search index.
  */
@@ -74,13 +73,21 @@ public class MendeleyDocumentCrawler {
         .fromIterable(new MendeleyPager(targetUrl, config.mendeley.authToken, requestConfig, httpClient))
         .doOnError(err -> {
           LOG.error("Error crawling Mendeley", err);
-          throw new RuntimeException(err); })
+          throw new RuntimeException(err);
+        })
         .buffer(CRAWL_BUFFER)
         .doOnComplete(() -> {
           handler.finish();
+          LOG.info("Time elapsed retrieving Mendeley {} minutes ", stopwatch.elapsed(TimeUnit.MINUTES));
+          stopwatch.reset();
+          stopwatch.start();
           indexFiles();
-          stopwatch.stop();
           LOG.info("Time elapsed indexing Mendeley {} minutes ", stopwatch.elapsed(TimeUnit.MINUTES));
+          stopwatch.reset();
+          stopwatch.start();
+          registryFiles();
+          LOG.info("Time elapsed updating GBIF Registry {} minutes ", stopwatch.elapsed(TimeUnit.MINUTES));
+          stopwatch.stop();
         })
         .subscribe(
           responses ->
@@ -95,7 +102,8 @@ public class MendeleyDocumentCrawler {
               })
         );
     } catch (Exception e) {
-      LOG.error("Unable ot authenticate with Mendeley", e);
+      LOG.error("Unable to authenticate with Mendeley", e);
+      throw new IOException("Unable to authenticate with Mendeley", e);
     }
   }
 
@@ -111,6 +119,18 @@ public class MendeleyDocumentCrawler {
     }
   }
 
+  private void registryFiles() throws Exception {
+    UpdateRegistryHandler updateRegistryHandler = new UpdateRegistryHandler(config);
+    try {
+      for (File file : handler.getTargetDir().listFiles()) {
+        updateRegistryHandler.handleResponse(new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8));
+      }
+      updateRegistryHandler.finish();
+    } catch (Exception ex) {
+      updateRegistryHandler.rollback();
+    }
+  }
+
   /**
    * Calls the rollback and throw a runtime error.
    * @param responseHandler
@@ -122,7 +142,6 @@ public class MendeleyDocumentCrawler {
       throw new RuntimeException(ex);
     }
   }
-
 
   /**
    * Authenticates against the Mendeley and provides a time bound token with which to sign subsequent requests.
