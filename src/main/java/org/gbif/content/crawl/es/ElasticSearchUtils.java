@@ -1,3 +1,16 @@
+/*
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.gbif.content.crawl.es;
 
 import org.gbif.content.crawl.conf.ContentCrawlConfiguration;
@@ -5,15 +18,14 @@ import org.gbif.content.crawl.conf.ContentCrawlConfiguration;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.regex.Pattern;
 
-import com.google.common.base.CaseFormat;
 import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpHost;
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest;
 import org.elasticsearch.action.admin.indices.alias.get.GetAliasesRequest;
-import org.elasticsearch.action.admin.indices.create.CreateIndexRequest;
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
 import org.elasticsearch.action.admin.indices.forcemerge.ForceMergeRequest;
 import org.elasticsearch.action.admin.indices.settings.put.UpdateSettingsRequest;
@@ -22,11 +34,14 @@ import org.elasticsearch.client.NodeSelector;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.RestHighLevelClient;
+import org.elasticsearch.client.indices.CreateIndexRequest;
 import org.elasticsearch.client.indices.GetIndexRequest;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.xcontent.XContentType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.google.common.base.CaseFormat;
 
 /**
  * Common ElasticSearch utility methods.
@@ -93,16 +108,16 @@ public class ElasticSearchUtils {
    * Creates, if doesn't exists, an ElasticSearch index that matches the name of the contentType.
    * If the flag configuration.contentful.deleteIndex is ON and the index exist, it will be removed.
    */
-  public static void createIndex(RestHighLevelClient esClient, String typeName,
+  public static void createIndex(RestHighLevelClient esClient,
                                  String idxName, String source) {
     try {
       LOG.info("Index into Elasticsearch Index {} ", idxName);
-      //create ES idx if it doesn't exists
+      //create ES idx if it doesn't exist
       if (esClient.indices().exists(new GetIndexRequest(idxName), RequestOptions.DEFAULT)) {
         esClient.indices().delete(new DeleteIndexRequest(idxName), RequestOptions.DEFAULT);
       }
       CreateIndexRequest createIndexRequest = new CreateIndexRequest(idxName)
-                                                .mapping(typeName, source, XContentType.JSON)
+                                                .mapping(source, XContentType.JSON)
                                                 .settings(INDEXING_SETTINGS);
       esClient.indices().create(createIndexRequest, RequestOptions.DEFAULT);
     } catch (IOException ex) {
@@ -117,7 +132,7 @@ public class ElasticSearchUtils {
    */
   public static void createIndex(RestHighLevelClient esClient, ContentCrawlConfiguration.IndexBuild configuration,
                                  String source) {
-    createIndex(esClient, configuration.esIndexType, getEsIndexingIdxName(configuration.esIndexName), source);
+    createIndex(esClient, getEsIndexingIdxName(configuration.esIndexName), source);
   }
 
   /**
@@ -162,7 +177,7 @@ public class ElasticSearchUtils {
   public static String indexMappings(String mappingsFileName) {
     try {
       return new String(IOUtils.toByteArray(Thread.currentThread().getContextClassLoader()
-                                              .getResourceAsStream(mappingsFileName)));
+                                              .getResourceAsStream(mappingsFileName)), StandardCharsets.UTF_8);
     } catch (IOException ex) {
       throw new IllegalStateException(ex);
     }

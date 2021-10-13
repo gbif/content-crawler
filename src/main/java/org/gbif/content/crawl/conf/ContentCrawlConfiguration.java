@@ -1,15 +1,29 @@
+/*
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.gbif.content.crawl.conf;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
 import javax.annotation.Nullable;
 import javax.validation.constraints.NotNull;
 
@@ -33,7 +47,7 @@ public class ContentCrawlConfiguration {
   public ElasticSearch elasticSearch;
 
   @Nullable
-  public Registry registry;
+  public GbifApi gbifApi;
 
   @Nullable
   public Contentful contentful;
@@ -144,7 +158,7 @@ public class ContentCrawlConfiguration {
     @Parameter(
       names = "-contentTypes",
       description = "Contentful content types to be crawled")
-    public List<String> contentTypes = new LinkedList<>();
+    public List<String> contentTypes = new ArrayList<>();
 
     @Parameter(
       names = "-vocabularies",
@@ -173,9 +187,9 @@ public class ContentCrawlConfiguration {
   public static class IndexBuild {
 
     @Parameter(
-      names = "-esIndexType",
-      description = "ElasticSearch index type")
-    public String esIndexType = "content";
+      names = "-esIndexAlias",
+      description = "ElasticSearch index alias")
+    public String esIndexAlias = "content";
 
 
     @Parameter(
@@ -189,21 +203,21 @@ public class ContentCrawlConfiguration {
     public int batchSize = 50;
   }
 
-  public static class Registry {
+  public static class GbifApi {
     @Parameter(
       names = "-gbifApiUrl",
       description = "URL to GBIF API")
-    public String gbifApiUrl;
+    public String url;
 
     @Parameter(
       names = "-gbifApiUsername",
       description = "Username to GBIF API")
-    public String gbifApiUsername;
+    public String username;
 
     @Parameter(
       names = "-gbifApiPassword",
       description = "Password for GBIF API")
-    public String gbifApiPassword;
+    public String password;
   }
 
   /**

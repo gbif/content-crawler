@@ -1,3 +1,16 @@
+/*
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.gbif.content.crawl.contentful.crawl;
 
 import java.util.HashMap;
@@ -18,8 +31,6 @@ public class VocabularyTerms {
 
   //The country vocabulary must
   public static final String ISO_CODE_FIELD = "isoCode";
-
-  private static final String ERROR_MSG = "ContentType %s is not a vocabulary";
 
   //Maps a vocabulary content id to its field that contains the term value
   private final Map<String,String> cache = new HashMap<>();
@@ -49,7 +60,7 @@ public class VocabularyTerms {
   private static String getVocabularyField(CMAContentType contentType, String fieldName) {
     return contentType.getFields().stream().filter(cdaField -> fieldName.equals(cdaField.getId()))
       .findFirst().map(CMAField::getId)
-      .orElseThrow(() -> new IllegalStateException(String.format(ERROR_MSG, contentType.getName())));
+      .orElseThrow(() -> new IllegalStateException(String.format("ContentType %s is not a vocabulary", contentType.getName())));
   }
 
   /**

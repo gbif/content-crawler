@@ -1,11 +1,28 @@
+/*
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.gbif.content.crawl.contentful.backup;
 
 import org.gbif.content.crawl.conf.ContentCrawlConfiguration;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.contentful.java.cma.CMAClient;
 import com.contentful.java.cma.model.CMAAsset;
@@ -16,8 +33,6 @@ import com.google.common.base.Throwables;
 import com.google.common.util.concurrent.RateLimiter;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Populates an empty space in Contentful with a previously exported backup.
@@ -73,7 +88,7 @@ public class ContentfulRestore {
     Files.list(configuration.sourceDir.resolve("./ContentType"))
          .forEach(path -> {
              try {
-               CMAContentType type = GSON.fromJson(new String(Files.readAllBytes(path)), CMAContentType.class);
+               CMAContentType type = GSON.fromJson(new String(Files.readAllBytes(path), StandardCharsets.UTF_8), CMAContentType.class);
                cleanSys(type.getSys());
 
                try {
@@ -105,7 +120,7 @@ public class ContentfulRestore {
     Files.list(configuration.sourceDir.resolve("./Asset"))
          .forEach(path -> {
                     try {
-                      String assetAsJSON = new String(Files.readAllBytes(path));
+                      String assetAsJSON = new String(Files.readAllBytes(path), StandardCharsets.UTF_8);
                       // In the backup the URL will have the likes of this:
                       //   "url": "//images.contentful.com/
                       // If we are to do disaster recovery, we actually need to make the backup directory visible on
@@ -117,7 +132,6 @@ public class ContentfulRestore {
                       cleanSys(assetMeta.getSys());
 
                       try {
-                        CMAAsset existing = cmaClient.assets().fetchOne(configuration.spaceId, assetMeta.getResourceId());
                         LOG.info("Asset exists: {}", assetMeta.getFields().get("title").get("en-GB"));
                         rateLimiter.acquire();
 
@@ -149,20 +163,16 @@ public class ContentfulRestore {
     Files.list(entryDirectory)
          .forEach(path -> {
                       try {
+
                         LOG.info("Restoring {}", path.getFileName());
-                        CMAEntry entry = GSON.fromJson(new String(Files.readAllBytes(path)), CMAEntry.class);
+                        CMAEntry entry = GSON.fromJson(new String(Files.readAllBytes(path), StandardCharsets.UTF_8), CMAEntry.class);
                         cleanSys(entry.getSys());
 
                         try {
-                          CMAEntry existing = cmaClient.entries().fetchOne(configuration.spaceId, entry.getResourceId());
                           LOG.info("Entry exists: {}", getContentTypeId(entry));
                           rateLimiter.acquire();
-
                         } catch (RuntimeException e) {
-                          CMAEntry created = cmaClient.entries().create(configuration.spaceId, getContentTypeId(entry), entry);
                           rateLimiter.acquire();
-                          // TODO:
-                          //cmaClient.entries().publish(created);
                         }
 
                       } catch (IOException e) {

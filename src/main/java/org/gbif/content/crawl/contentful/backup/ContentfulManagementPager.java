@@ -1,8 +1,24 @@
+/*
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.gbif.content.crawl.contentful.backup;
 
 import java.util.Iterator;
 import java.util.Map;
 import java.util.NoSuchElementException;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.contentful.java.cma.CMAClient;
 import com.contentful.java.cma.model.CMAArray;
@@ -12,8 +28,6 @@ import com.contentful.java.cma.model.CMAEntry;
 import com.contentful.java.cma.model.CMAResource;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Iterates over the entries or assets of a Contentful space from the Management API.
@@ -52,9 +66,9 @@ class ContentfulManagementPager<T extends CMAResource> implements Iterable<CMAAr
     return new ContentfulManagementPager<>(client, pageSize, spaceId, Mode.CONTENT_TYPES);
   }
 
-  private class ContentfulIterator<T extends CMAResource> implements Iterator<CMAArray<T>> {
+  private class ContentfulIterator<R extends CMAResource> implements Iterator<CMAArray<R>> {
     private int skip; // current page skip
-    private CMAArray<T> current;
+    private CMAArray<R> current;
 
     @Override
     public boolean hasNext() {
@@ -62,11 +76,11 @@ class ContentfulManagementPager<T extends CMAResource> implements Iterable<CMAAr
 
       // This is a nuisance, but the Contentful API doesn't share a common interface
       if (Mode.ENTRIES == mode) {
-        current = (CMAArray<T>) cmaClient.entries().fetchAll(spaceId, query);
+        current = (CMAArray<R>) cmaClient.entries().fetchAll(spaceId, query);
       } else if (Mode.ASSETS == mode) {
-        current = (CMAArray<T>) cmaClient.assets().fetchAll(spaceId, query);
+        current = (CMAArray<R>) cmaClient.assets().fetchAll(spaceId, query);
       } else if (Mode.CONTENT_TYPES == mode) {
-        current = (CMAArray<T>) cmaClient.contentTypes().fetchAll(spaceId, query);
+        current = (CMAArray<R>) cmaClient.contentTypes().fetchAll(spaceId, query);
       } else {
         throw new IllegalStateException("Unsupported mode of operation"); // should never happen
       }
@@ -76,7 +90,7 @@ class ContentfulManagementPager<T extends CMAResource> implements Iterable<CMAAr
     }
 
     @Override
-    public CMAArray<T> next() {
+    public CMAArray<R> next() {
       if (current.getTotal() == 0) {
         throw new NoSuchElementException("No more resources available");
       }

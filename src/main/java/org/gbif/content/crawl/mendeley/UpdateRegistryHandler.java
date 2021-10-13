@@ -1,20 +1,35 @@
+/*
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.gbif.content.crawl.mendeley;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.gbif.api.model.occurrence.Download;
 import org.gbif.api.service.registry.OccurrenceDownloadService;
 import org.gbif.content.crawl.conf.ContentCrawlConfiguration;
 import org.gbif.registry.ws.client.OccurrenceDownloadClient;
 import org.gbif.ws.client.ClientBuilder;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Locale;
 import java.util.Properties;
 import java.util.regex.Pattern;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * Parses the documents from the response and marks cited GBIF downloads for indefinite retention.
@@ -36,9 +51,10 @@ public class UpdateRegistryHandler implements ResponseHandler {
   private final DatasetUsagesCollector datasetUsagesCollector;
 
   public UpdateRegistryHandler(ContentCrawlConfiguration conf) {
-    LOG.info("Connecting to GBIF API {} as {}", conf.registry.gbifApiUrl, conf.registry.gbifApiUsername);
-    ClientBuilder clientBuilder = new ClientBuilder().withUrl(conf.registry.gbifApiUrl)
-      .withCredentials(conf.registry.gbifApiUsername, conf.registry.gbifApiPassword);
+    LOG.info("Connecting to GBIF API {} as {}", conf.gbifApi.url, conf.gbifApi.username);
+    ClientBuilder clientBuilder = new ClientBuilder()
+                                    .withUrl(conf.gbifApi.url)
+                                    .withCredentials(conf.gbifApi.username, conf.gbifApi.password);
     occurrenceDownloadService = clientBuilder.build(OccurrenceDownloadClient.class);
 
     Properties dbConfig = new Properties();
@@ -75,10 +91,15 @@ public class UpdateRegistryHandler implements ResponseHandler {
                 for (DatasetUsagesCollector.DownloadCitation citation : citations) {
                   if (!(citation.getEraseAfter() == null)) {
                     Download download = occurrenceDownloadService.get(citation.getDownloadKey());
-                    LOG.info("Setting download {} ({}) to be retained due to citation by {}", download.getKey(), download.getDoi(), document.get(ML_ID_FL));
-                    download.setEraseAfter(null);
-                    occurrenceDownloadService.update(download);
-                    citation.setEraseAfter(null);
+                    if (download != null) {
+                      LOG.info("Setting download {} ({}) to be retained due to citation by {}",
+                               download.getKey(),
+                               download.getDoi(),
+                               document.get(ML_ID_FL));
+                      download.setEraseAfter(null);
+                      occurrenceDownloadService.update(download);
+                      citation.setEraseAfter(null);
+                    }
                   } else {
                     LOG.trace("Download {} already marked for retention", citation.getDownloadKey());
                   }

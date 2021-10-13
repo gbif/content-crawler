@@ -1,17 +1,17 @@
 # The following represents an example of a configuration file to crawl mendeley and contentful
 mendeley:
   # Target directory to store JSON
-  targetDir: /tmp/mendeley-crawl
+  targetDir: "/tmp/mendeley-crawl"
 
 #  timeout: 10
-  tokenUrl: https://api.mendeley.com/oauth/token
+  tokenUrl: "https://api.mendeley.com/oauth/token"
   authToken: @mendeleyAuthToken
   groupId:
   indexBuild:
-    esIndexName: content
-    esIndexType: literature
+    esIndexName: "literature"
+    esIndexAlias: "literature"
   controlledTags:
-    "topics":
+    topics:
       - "Agriculture"
       - "Biodiversity_science"
       - "Biogeography"
@@ -30,7 +30,7 @@ mendeley:
       - "Phylogenetics"
       - "Species_distributions"
       - "Taxonomy"
-    "relevance":
+    relevance:
       - "GBIF_used"
       - "GBIF_cited"
       - "GBIF_discussed"
@@ -43,15 +43,15 @@ mendeley:
 
 # Optional: If included will push documents to the referenced Elastic Search index
 elasticSearch:
-  host: cms-search.gbif-dev.org
+  host: "cms-search.gbif-dev.org"
 #  port: 9300
-  cluster: content-cluster
+  cluster: "content-cluster"
 
 # Optional: If included will update the GBIF registry to mark cited downloads for retention
-registry:
-  gbifApiUrl: http://api.gbif-dev.org/
-  gbifApiUsername: @registryUsername
-  gbifApiPassword: @registryPassword
+gbifApi:
+  url: "http://api.gbif-dev.org/v1/"
+  username: @gbifApiUsername
+  password: @gbifApiPassword
 
 #Contentful crawler configuration
 contentful:
@@ -60,7 +60,7 @@ contentful:
   spaceId: @contentfulSpaceId
   indexBuild:
     #contentTypes: [dataUse]
-    esIndexType: content
+    esIndexAlias: "content"
   countryVocabulary: "Vocabulary: Countries"
   newsContentType: "News"
   vocabularies:
@@ -87,4 +87,4 @@ contentful:
 #Contentful backup configuration
 contentfulBackup:
   cmaToken:
-  targetDir: /tmp/mendeley-crawl
+  targetDir: "/tmp/mendeley-crawl"

@@ -1,22 +1,36 @@
+/*
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.gbif.content.crawl.contentful.crawl;
 
 import org.gbif.content.crawl.conf.ContentCrawlConfiguration;
 
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import org.elasticsearch.client.RestHighLevelClient;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.contentful.java.cda.CDAClient;
 import com.contentful.java.cma.CMAClient;
 import com.contentful.java.cma.model.CMAContentType;
 import com.google.common.base.Preconditions;
-import org.elasticsearch.client.RestHighLevelClient;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import static org.gbif.content.crawl.es.ElasticSearchUtils.buildEsClient;
 
@@ -116,11 +130,12 @@ public class ContentfulCrawler {
     // be updated to store reverse links into it
     contentTypes.stream()
       .filter(contentType -> configuration.contentTypes.contains(contentType.getName()))
-      .sorted((ct1,ct2) -> Integer.compare(configuration.contentTypes.indexOf(ct1.getName()),
-                                           configuration.contentTypes.indexOf(ct2.getName())))
+      .sorted(Comparator.comparingInt(ct -> configuration.contentTypes.indexOf(ct.getName())))
       .forEach(contentType -> {
-        ContentTypeCrawler contentTypeCrawler = new ContentTypeCrawler(contentType, mappingGenerator, esClient,
-                                                                       configuration, cdaClient,
+        ContentTypeCrawler contentTypeCrawler = new ContentTypeCrawler(contentType,
+                                                                       mappingGenerator,
+                                                                       esClient,
+                                                                       cdaClient,
                                                                        vocabularyTerms,
                                                                        newsContentTypeId,
                                                                        articleContentTypeId);

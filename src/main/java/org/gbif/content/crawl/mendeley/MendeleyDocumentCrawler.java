@@ -1,3 +1,16 @@
+/*
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.gbif.content.crawl.mendeley;
 
 import org.gbif.content.crawl.conf.ContentCrawlConfiguration;
@@ -8,21 +21,15 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.concurrent.TimeUnit;
 
-import com.google.common.base.Stopwatch;
-import io.reactivex.Observable;
-
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
-import org.apache.oltu.oauth2.client.OAuthClient;
-import org.apache.oltu.oauth2.client.URLConnectionClient;
-import org.apache.oltu.oauth2.client.request.OAuthClientRequest;
-import org.apache.oltu.oauth2.client.response.OAuthJSONAccessTokenResponse;
-import org.apache.oltu.oauth2.common.exception.OAuthProblemException;
-import org.apache.oltu.oauth2.common.exception.OAuthSystemException;
-import org.apache.oltu.oauth2.common.message.types.GrantType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.google.common.base.Stopwatch;
+
+import io.reactivex.Observable;
 
 /**
  * A crawler of Mendeley documents storing the results in JSON files, and optionally in an Elastic Search index.
@@ -119,7 +126,7 @@ public class MendeleyDocumentCrawler {
 
   /**
    * Calls the rollback and throw a runtime error.
-   * @param responseHandler
+   * @param responseHandler callback handler
    */
   private static void silentRollback(ResponseHandler responseHandler) {
     try {
@@ -129,27 +136,4 @@ public class MendeleyDocumentCrawler {
     }
   }
 
-  /**
-   * Authenticates against the Mendeley and provides a time bound token with which to sign subsequent requests.
-   *
-   * @param conf Holding the configuration for accessing Mendeley
-   * @return A token which will be limited in duration controlled by Mendeley.
-   * @throws OAuthSystemException On issue negotiating with Mendeley Auth servers
-   * @throws OAuthProblemException On configuration issue
-   */
-  private static OAuthJSONAccessTokenResponse getToken(ContentCrawlConfiguration.Mendeley conf)
-    throws OAuthSystemException, OAuthProblemException {
-    OAuthClientRequest request = OAuthClientRequest
-      .tokenLocation(conf.tokenUrl)
-      .setCode(conf.authToken)
-      .setRedirectURI(conf.redirecURI)
-      .setGrantType(GrantType.AUTHORIZATION_CODE)
-      .setScope("all")
-      .buildBodyMessage();
-
-    OAuthClient oAuthClient = new OAuthClient(new URLConnectionClient());
-    OAuthJSONAccessTokenResponse tokenResponse = oAuthClient.accessToken(request, OAuthJSONAccessTokenResponse.class);
-    oAuthClient.shutdown();
-    return  tokenResponse;
-  }
 }
