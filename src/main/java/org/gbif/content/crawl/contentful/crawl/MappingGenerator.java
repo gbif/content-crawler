@@ -260,8 +260,7 @@ public class  MappingGenerator {
    *   "fieldName": {
    *     "match": fieldPattern,
    *     "mapping": {
-   *       "type": esType,
-   *       "boost": HIGH_BOOST
+   *       "type": esType
    *     }
    *   }
    * }
@@ -329,7 +328,6 @@ public class  MappingGenerator {
    *          "match|path_match": fieldPattern, (in general match or path_match are used)
    *          "mapping": {
    *            "type": dataType
-   *            "boost": 10   <-- optional
    *          }
    *        }
    *      ...
