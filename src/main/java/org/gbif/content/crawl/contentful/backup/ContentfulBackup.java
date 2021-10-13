@@ -224,7 +224,7 @@ public class ContentfulBackup {
 
   /**
    *
-   * @See https://github.com/contentful/contentful-management.java/issues/71
+   * @see https://github.com/contentful/contentful-management.java/issues/71
    * @throws NullPointerException if you provide anything other than an object with a valid sys entry
    */
   private static String extractSysId(CMAResource resource) {

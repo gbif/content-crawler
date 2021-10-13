@@ -13,8 +13,6 @@
  */
 package org.gbif.content.crawl.contentful.crawl;
 
-import org.gbif.content.crawl.conf.ContentCrawlConfiguration;
-
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
@@ -71,14 +69,12 @@ public class ContentTypeCrawler {
   private final MappingGenerator mappingGenerator;
   private final RestHighLevelClient esClient;
   private final CDAClient cdaClient;
-  private final ContentCrawlConfiguration.Contentful configuration;
   private final VocabularyTerms vocabularyTerms;
 
 
   ContentTypeCrawler(CMAContentType contentType,
                      MappingGenerator mappingGenerator,
                      RestHighLevelClient esClient,
-                     ContentCrawlConfiguration.Contentful configuration,
                      CDAClient cdaClient,
                      VocabularyTerms vocabularyTerms,
                      String newsContentTypeId,
@@ -91,15 +87,13 @@ public class ContentTypeCrawler {
     //ES type name for this content typ
     esTypeName = toFieldNameFormat(contentType.getName());
     //Used to create links in the indexes
-    newsLinker = new ESDocumentLinker(newsContentTypeId, esClient, configuration.indexBuild.esIndexType);
-    articleLinker = new ESDocumentLinker(articleContentTypeId, esClient, configuration.indexBuild.esIndexType);
+    newsLinker = new ESDocumentLinker(newsContentTypeId, esClient);
+    articleLinker = new ESDocumentLinker(articleContentTypeId, esClient);
 
     //Set the mapping generator
     this.mappingGenerator = mappingGenerator;
 
     this.esClient = esClient;
-
-    this.configuration = configuration;
 
     this.cdaClient = cdaClient;
 
@@ -111,7 +105,7 @@ public class ContentTypeCrawler {
    */
   public void crawl() {
     //gets or (re)create the ES idx if doesn't exists
-    createIndex(esClient, configuration.indexBuild.esIndexType, esIdxName, mappingGenerator.getEsMapping(contentType));
+    createIndex(esClient, esIdxName, mappingGenerator.getEsMapping(contentType));
     LOG.info("Indexing ContentType [{}] into ES Index [{}]", contentType.getName(), esIdxName);
     //Prepares the bulk/batch request
     BulkRequest bulkRequest = new BulkRequest();

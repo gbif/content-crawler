@@ -62,16 +62,6 @@ public class  MappingGenerator {
   public static final Pattern COLLAPSIBLE_FIELDS = Pattern.compile("meta");
 
   /**
-   * Fields that are boosted by default.
-   */
-  private static final Pattern BOOSTED_FIELDS = Pattern.compile("title|description");
-
-  /**
-   * Boost value given to BOOSTED_FIELDS.
-   */
-  private static final int HIGH_BOOST = 10;
-
-  /**
    * Fields that are common to all contentful content types.
    */
   private static final Map<String, String> KNOWN_FIELDS = new ImmutableMap.Builder<String, String>()
@@ -284,9 +274,6 @@ public class  MappingGenerator {
           mapping.field(match, fieldPattern);
           mapping.startObject("mapping");
             mapping.field("type", esType);
-            if (BOOSTED_FIELDS.matcher(fieldName).matches()) {
-              mapping.field("boost", HIGH_BOOST);
-            }
             if (NESTED.equals(esType)) {
                 mapping.field("dynamic", true);
             }

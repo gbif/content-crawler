@@ -24,13 +24,6 @@ import java.util.concurrent.TimeUnit;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
-import org.apache.oltu.oauth2.client.OAuthClient;
-import org.apache.oltu.oauth2.client.URLConnectionClient;
-import org.apache.oltu.oauth2.client.request.OAuthClientRequest;
-import org.apache.oltu.oauth2.client.response.OAuthJSONAccessTokenResponse;
-import org.apache.oltu.oauth2.common.exception.OAuthProblemException;
-import org.apache.oltu.oauth2.common.exception.OAuthSystemException;
-import org.apache.oltu.oauth2.common.message.types.GrantType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -133,7 +126,7 @@ public class MendeleyDocumentCrawler {
 
   /**
    * Calls the rollback and throw a runtime error.
-   * @param responseHandler
+   * @param responseHandler callback handler
    */
   private static void silentRollback(ResponseHandler responseHandler) {
     try {
@@ -143,27 +136,4 @@ public class MendeleyDocumentCrawler {
     }
   }
 
-  /**
-   * Authenticates against the Mendeley and provides a time bound token with which to sign subsequent requests.
-   *
-   * @param conf Holding the configuration for accessing Mendeley
-   * @return A token which will be limited in duration controlled by Mendeley.
-   * @throws OAuthSystemException On issue negotiating with Mendeley Auth servers
-   * @throws OAuthProblemException On configuration issue
-   */
-  private static OAuthJSONAccessTokenResponse getToken(ContentCrawlConfiguration.Mendeley conf)
-    throws OAuthSystemException, OAuthProblemException {
-    OAuthClientRequest request = OAuthClientRequest
-      .tokenLocation(conf.tokenUrl)
-      .setCode(conf.authToken)
-      .setRedirectURI(conf.redirecURI)
-      .setGrantType(GrantType.AUTHORIZATION_CODE)
-      .setScope("all")
-      .buildBodyMessage();
-
-    OAuthClient oAuthClient = new OAuthClient(new URLConnectionClient());
-    OAuthJSONAccessTokenResponse tokenResponse = oAuthClient.accessToken(request, OAuthJSONAccessTokenResponse.class);
-    oAuthClient.shutdown();
-    return  tokenResponse;
-  }
 }

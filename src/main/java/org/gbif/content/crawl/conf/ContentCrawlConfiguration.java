@@ -17,9 +17,9 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -47,7 +47,7 @@ public class ContentCrawlConfiguration {
   public ElasticSearch elasticSearch;
 
   @Nullable
-  public Registry registry;
+  public GbifApi gbifApi;
 
   @Nullable
   public Contentful contentful;
@@ -158,7 +158,7 @@ public class ContentCrawlConfiguration {
     @Parameter(
       names = "-contentTypes",
       description = "Contentful content types to be crawled")
-    public List<String> contentTypes = new LinkedList<>();
+    public List<String> contentTypes = new ArrayList<>();
 
     @Parameter(
       names = "-vocabularies",
@@ -187,9 +187,9 @@ public class ContentCrawlConfiguration {
   public static class IndexBuild {
 
     @Parameter(
-      names = "-esIndexType",
-      description = "ElasticSearch index type")
-    public String esIndexType = "content";
+      names = "-esIndexAlias",
+      description = "ElasticSearch index alias")
+    public String esIndexAlias = "content";
 
 
     @Parameter(
@@ -203,21 +203,21 @@ public class ContentCrawlConfiguration {
     public int batchSize = 50;
   }
 
-  public static class Registry {
+  public static class GbifApi {
     @Parameter(
       names = "-gbifApiUrl",
       description = "URL to GBIF API")
-    public String gbifApiUrl;
+    public String url;
 
     @Parameter(
       names = "-gbifApiUsername",
       description = "Username to GBIF API")
-    public String gbifApiUsername;
+    public String username;
 
     @Parameter(
       names = "-gbifApiPassword",
       description = "Password for GBIF API")
-    public String gbifApiPassword;
+    public String password;
   }
 
   /**

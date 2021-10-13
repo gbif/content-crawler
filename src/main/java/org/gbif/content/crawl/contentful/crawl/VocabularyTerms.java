@@ -32,8 +32,6 @@ public class VocabularyTerms {
   //The country vocabulary must
   public static final String ISO_CODE_FIELD = "isoCode";
 
-  private static final String ERROR_MSG = "ContentType %s is not a vocabulary";
-
   //Maps a vocabulary content id to its field that contains the term value
   private final Map<String,String> cache = new HashMap<>();
 
@@ -62,7 +60,7 @@ public class VocabularyTerms {
   private static String getVocabularyField(CMAContentType contentType, String fieldName) {
     return contentType.getFields().stream().filter(cdaField -> fieldName.equals(cdaField.getId()))
       .findFirst().map(CMAField::getId)
-      .orElseThrow(() -> new IllegalStateException(String.format(ERROR_MSG, contentType.getName())));
+      .orElseThrow(() -> new IllegalStateException(String.format("ContentType %s is not a vocabulary", contentType.getName())));
   }
 
   /**

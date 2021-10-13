@@ -45,12 +45,9 @@ public class ESDocumentLinker {
 
   private final RestHighLevelClient esClient;
 
-  private final String esTargetIndexType;
-
-  public ESDocumentLinker(String targetContentTypeId, RestHighLevelClient esClient, String esTargetIndexType) {
+  public ESDocumentLinker(String targetContentTypeId, RestHighLevelClient esClient) {
     this.esClient = esClient;
     this.targetContentTypeId =  targetContentTypeId;
-    this.esTargetIndexType = esTargetIndexType;
   }
 
   /**

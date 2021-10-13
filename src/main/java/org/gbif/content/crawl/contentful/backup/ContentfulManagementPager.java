@@ -66,9 +66,9 @@ class ContentfulManagementPager<T extends CMAResource> implements Iterable<CMAAr
     return new ContentfulManagementPager<>(client, pageSize, spaceId, Mode.CONTENT_TYPES);
   }
 
-  private class ContentfulIterator<T extends CMAResource> implements Iterator<CMAArray<T>> {
+  private class ContentfulIterator<R extends CMAResource> implements Iterator<CMAArray<R>> {
     private int skip; // current page skip
-    private CMAArray<T> current;
+    private CMAArray<R> current;
 
     @Override
     public boolean hasNext() {
@@ -76,11 +76,11 @@ class ContentfulManagementPager<T extends CMAResource> implements Iterable<CMAAr
 
       // This is a nuisance, but the Contentful API doesn't share a common interface
       if (Mode.ENTRIES == mode) {
-        current = (CMAArray<T>) cmaClient.entries().fetchAll(spaceId, query);
+        current = (CMAArray<R>) cmaClient.entries().fetchAll(spaceId, query);
       } else if (Mode.ASSETS == mode) {
-        current = (CMAArray<T>) cmaClient.assets().fetchAll(spaceId, query);
+        current = (CMAArray<R>) cmaClient.assets().fetchAll(spaceId, query);
       } else if (Mode.CONTENT_TYPES == mode) {
-        current = (CMAArray<T>) cmaClient.contentTypes().fetchAll(spaceId, query);
+        current = (CMAArray<R>) cmaClient.contentTypes().fetchAll(spaceId, query);
       } else {
         throw new IllegalStateException("Unsupported mode of operation"); // should never happen
       }
@@ -90,7 +90,7 @@ class ContentfulManagementPager<T extends CMAResource> implements Iterable<CMAAr
     }
 
     @Override
-    public CMAArray<T> next() {
+    public CMAArray<R> next() {
       if (current.getTotal() == 0) {
         throw new NoSuchElementException("No more resources available");
       }

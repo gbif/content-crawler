@@ -9,7 +9,7 @@ mendeley:
   groupId:
   indexBuild:
     esIndexName: content
-    esIndexType: literature
+    esIndexAlias: literature
   controlledTags:
     "topics":
       - "Agriculture"
@@ -48,10 +48,10 @@ elasticSearch:
   cluster: content-cluster
 
 # Optional: If included will update the GBIF registry to mark cited downloads for retention
-registry:
-  gbifApiUrl: http://api.gbif-dev.org/v1/
-  gbifApiUsername: @registryUsername
-  gbifApiPassword: @registryPassword
+gbifApi:
+  url: http://api.gbif-dev.org/v1/
+  username: @gbifApiUsername
+  password: @gbifApiPassword
 
 #Contentful crawler configuration
 contentful:
@@ -60,7 +60,7 @@ contentful:
   spaceId: @contentfulSpaceId
   indexBuild:
     #contentTypes: [dataUse]
-    esIndexType: content
+    esIndexAlias: content
   countryVocabulary: "Vocabulary: Countries"
   newsContentType: "News"
   vocabularies:

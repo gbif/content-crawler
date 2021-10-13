@@ -16,6 +16,7 @@ package org.gbif.content.crawl.contentful.crawl;
 import org.gbif.content.crawl.conf.ContentCrawlConfiguration;
 
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -129,11 +130,12 @@ public class ContentfulCrawler {
     // be updated to store reverse links into it
     contentTypes.stream()
       .filter(contentType -> configuration.contentTypes.contains(contentType.getName()))
-      .sorted((ct1,ct2) -> Integer.compare(configuration.contentTypes.indexOf(ct1.getName()),
-                                           configuration.contentTypes.indexOf(ct2.getName())))
+      .sorted(Comparator.comparingInt(ct -> configuration.contentTypes.indexOf(ct.getName())))
       .forEach(contentType -> {
-        ContentTypeCrawler contentTypeCrawler = new ContentTypeCrawler(contentType, mappingGenerator, esClient,
-                                                                       configuration, cdaClient,
+        ContentTypeCrawler contentTypeCrawler = new ContentTypeCrawler(contentType,
+                                                                       mappingGenerator,
+                                                                       esClient,
+                                                                       cdaClient,
                                                                        vocabularyTerms,
                                                                        newsContentTypeId,
                                                                        articleContentTypeId);

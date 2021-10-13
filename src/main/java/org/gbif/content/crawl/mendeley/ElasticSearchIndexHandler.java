@@ -149,8 +149,8 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
     Properties dbConfig = new Properties();
     dbConfig.putAll(conf.mendeley.dbConfig);
     datasetUsagesCollector = new DatasetUsagesCollector(dbConfig);
-    speciesService = SpeciesService.wsClient(conf.registry.gbifApiUrl);
-    createIndex(esClient, conf.mendeley.indexBuild.esIndexType, esIdxName, indexMappings(ES_MAPPING_FILE));
+    speciesService = SpeciesService.wsClient(conf.gbifApi.url);
+    createIndex(esClient, esIdxName, indexMappings(ES_MAPPING_FILE));
   }
 
   /**
@@ -185,7 +185,6 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
                                                           IndexRequest indexRequest = new IndexRequest();
                                                           indexRequest
                                                             .index(esIdxName)
-                                                            .type(conf.mendeley.indexBuild.esIndexType)
                                                             .id(document.get(ML_ID_FL).asText())
                                                             .source(document.toString(), XContentType.JSON);
                                                           bulkRequest.add(indexRequest);
@@ -207,7 +206,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
 
   /**
    * Deletes de Index in case of error.
-   * @throws Exception
+   * @throws Exception in case of Elasticsearch errors
    */
   @Override
   public void rollback() throws Exception {

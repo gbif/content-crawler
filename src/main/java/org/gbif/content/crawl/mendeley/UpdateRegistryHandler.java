@@ -51,10 +51,10 @@ public class UpdateRegistryHandler implements ResponseHandler {
   private final DatasetUsagesCollector datasetUsagesCollector;
 
   public UpdateRegistryHandler(ContentCrawlConfiguration conf) {
-    LOG.info("Connecting to GBIF API {} as {}", conf.registry.gbifApiUrl, conf.registry.gbifApiUsername);
+    LOG.info("Connecting to GBIF API {} as {}", conf.gbifApi.url, conf.gbifApi.username);
     ClientBuilder clientBuilder = new ClientBuilder()
-                                    .withUrl(conf.registry.gbifApiUrl)
-                                    .withCredentials(conf.registry.gbifApiUsername, conf.registry.gbifApiPassword);
+                                    .withUrl(conf.gbifApi.url)
+                                    .withCredentials(conf.gbifApi.username, conf.gbifApi.password);
     occurrenceDownloadService = clientBuilder.build(OccurrenceDownloadClient.class);
 
     Properties dbConfig = new Properties();
