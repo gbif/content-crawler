@@ -36,6 +36,7 @@ import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 import org.apache.commons.lang3.mutable.MutableBoolean;
+import org.apache.commons.lang3.mutable.MutableObject;
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkResponse;
@@ -228,7 +229,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
       Set<IntNode> gbifTaxonKeys = new HashSet<>();
       Set<LongNode> gbifOccurrenceKeys = new HashSet<>();
       Set<TextNode> gbifFeatureIds = new HashSet<>();
-      Set<TextNode> citationTypes = new HashSet<>();
+      MutableObject<TextNode> citationType = new MutableObject<>();
       Set<TextNode> topics = new HashSet<>();
       Set<TextNode> relevance = new HashSet<>();
       final MutableBoolean peerReviewValue = new MutableBoolean(Boolean.FALSE);
@@ -262,7 +263,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
         } else if (value.startsWith(GBIF_FEATURE_TAG.pattern())) {
           gbifFeatureIds.add(new TextNode(GBIF_FEATURE_TAG.matcher(value).replaceFirst("")));
         } else if (value.startsWith(CITATION_TYPE_TAG.pattern())) {
-          citationTypes.add(new TextNode(CITATION_TYPE_TAG.matcher(value).replaceFirst("")));
+          citationType.setValue(new TextNode(CITATION_TYPE_TAG.matcher(value).replaceFirst("")));
         } else { //try country parser
           //VocabularyUtils uses Guava optionals
           String lowerCaseValue = value.toLowerCase();
@@ -299,7 +300,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
       docNode.putArray(ES_GBIF_HIGHER_TAXON_KEY_FL).addAll(getHigherTaxonKeys(gbifTaxonKeys));
       docNode.putArray(ES_GBIF_OCCURRENCE_KEY_FL).addAll(gbifOccurrenceKeys);
       docNode.putArray(ES_GBIF_FEATURED_ID_FL).addAll(gbifFeatureIds);
-      docNode.putArray(ES_CITATION_TYPE_FL).addAll(citationTypes);
+      Optional.ofNullable(citationType.getValue()).ifPresent(ct -> docNode.set(ES_CITATION_TYPE_FL, ct));
       docNode.put(ES_PEER_REVIEW_FIELD, peerReviewValue.getValue());
       docNode.put(OPEN_ACCESS_FIELD, openAccessValue.getValue());
       docNode.put(CONTENT_TYPE_FIELD, CONTENT_TYPE_FIELD_VALUE);
