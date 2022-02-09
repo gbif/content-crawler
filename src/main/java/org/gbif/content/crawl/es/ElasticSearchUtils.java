@@ -55,7 +55,7 @@ public class ElasticSearchUtils {
   //Index settings used at indexing time
   private static final Settings INDEXING_SETTINGS = Settings.builder()
                                                       .put("index.refresh_interval", "-1")
-                                                      .put("index.number_of_shards", "3")
+                                                      .put("index.number_of_shards", "1")
                                                       .put("index.number_of_replicas", "0")
                                                       .put("index.translog.durability","async")
                                                       .build();
@@ -63,7 +63,7 @@ public class ElasticSearchUtils {
   //Index settings used at production/searching time
   private static final Settings SEARCH_SETTINGS = Settings.builder()
                                                     .put("index.refresh_interval", "1s")
-                                                    .put("index.number_of_replicas", "1")
+                                                    .put("index.number_of_replicas", "0")
                                                     .build();
 
   //This an alias used for all active cms/content indices
