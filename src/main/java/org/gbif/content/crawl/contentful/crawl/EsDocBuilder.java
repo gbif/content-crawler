@@ -99,8 +99,6 @@ public class EsDocBuilder {
       if (vocabularyBuilder.isEmpty()) {
         nestedEntriesConsumer.accept(fieldCdaEntry);
         entries.put(field, getAssociatedEntryFields(fieldCdaEntry));
-      } else {
-        entries.put(field,  resource.rawFields());
       }
     }
   }
