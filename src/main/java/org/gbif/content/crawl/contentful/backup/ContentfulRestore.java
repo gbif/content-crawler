@@ -19,7 +19,6 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -89,16 +88,16 @@ public class ContentfulRestore {
          .forEach(path -> {
              try {
                CMAContentType type = GSON.fromJson(new String(Files.readAllBytes(path), StandardCharsets.UTF_8), CMAContentType.class);
-               cleanSys(type.getSys());
 
                try {
-                 CMAContentType existing = cmaClient.contentTypes().fetchOne(configuration.spaceId, type.getResourceId());
+                 CMAContentType existing = cmaClient.contentTypes().fetchOne(configuration.spaceId, configuration.environmentId,
+                                                                             type.getId());
                  LOG.info("Content type exists: {}", existing.getName());
                  rateLimiter.acquire();
 
                } catch (RuntimeException e) {
                  LOG.info("Restoring content type: {}", type.getName());
-                 CMAContentType created = cmaClient.contentTypes().create(configuration.spaceId, type);
+                 CMAContentType created = cmaClient.contentTypes().create(configuration.spaceId, configuration.environmentId, type);
 
                  rateLimiter.acquire();
                  cmaClient.contentTypes().publish(created);
@@ -129,23 +128,20 @@ public class ContentfulRestore {
                       // preprocessed, which is ideal for that purpose.  Full disaster recovery is not implemented, but
                       // this is the only know issue.
                       CMAAsset assetMeta = GSON.fromJson(assetAsJSON, CMAAsset.class);
-                      cleanSys(assetMeta.getSys());
-
                       try {
-                        LOG.info("Asset exists: {}", assetMeta.getFields().get("title").get("en-GB"));
+                        LOG.info("Asset exists: {}", assetMeta.getFields().getTitle("en-GB"));
                         rateLimiter.acquire();
 
                       } catch (RuntimeException e) {
-                        LOG.info("Restoring asset: {}", assetMeta.getFields().get("title").get("en-GB"));
+                        LOG.info("Restoring asset: {}", assetMeta.getFields().getTitle("en-GB"));
 
-                        CMAAsset created = cmaClient.assets().create(configuration.spaceId, assetMeta);
+                        CMAAsset created = cmaClient.assets().create(configuration.spaceId, configuration.environmentId, assetMeta);
                         // If you are developing a disaster recovery, here you would need to do something like this:
                         // cmaClient.assets().process(...);
 
                         // Assets which are not processed cannot be published
-                        if (created.getFields().get("file") != null &&
-                            created.getFields().get("file").get("en-GB") != null &&
-                            ((Map<String, String>)created.getFields().get("file").get("en-GB")).get("url") != null) {
+                        if (created.getFields().getFile("en-GB") != null &&
+                            created.getFields().getFile("en-GB").getUrl() != null) {
                           cmaClient.assets().publish(created);
                           rateLimiter.acquire();
                         }
@@ -166,8 +162,6 @@ public class ContentfulRestore {
 
                         LOG.info("Restoring {}", path.getFileName());
                         CMAEntry entry = GSON.fromJson(new String(Files.readAllBytes(path), StandardCharsets.UTF_8), CMAEntry.class);
-                        cleanSys(entry.getSys());
-
                         try {
                           LOG.info("Entry exists: {}", getContentTypeId(entry));
                           rateLimiter.acquire();
@@ -188,23 +182,12 @@ public class ContentfulRestore {
   private static String getContentTypeId(CMAEntry entry) {
     // there is no other way to extract this
     try {
-      return (String)((Map<String, Object>)((Map<String, Object>)entry.getSys().get("contentType"))
-        .get("sys")).get("id");
+      return entry.getSystem().getContentType().getId();
     } catch (Exception e) {
       // Note: this really would be exceptional
       throw new IllegalStateException("All entries MUST have contentType system metadata - corrupt backup?");
     }
 
-  }
-
-  /**
-   * Clean up the Contentful Sys metadata suitable for reposting into the new space.
-   */
-  private static void cleanSys(Map<String, Object> sys) {
-    sys.remove("space"); // will change by definition of this restore function
-    sys.remove("publishedBy"); // user might not exist
-    sys.remove("updatedBy"); // user might not exist
-    sys.remove("createdBy"); // user might not exist
   }
 
   /**

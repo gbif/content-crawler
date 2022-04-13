@@ -110,7 +110,7 @@ public class ContentTypeCrawler {
     //Prepares the bulk/batch request
     BulkRequest bulkRequest = new BulkRequest();
     //Retrieves resources in a CDAArray
-    Observable.fromIterable(new ContentfulPager(cdaClient, PAGE_SIZE, contentType.getResourceId()))
+    Observable.fromIterable(new ContentfulPager(cdaClient, PAGE_SIZE, contentType.getId()))
       .doOnError(err -> { LOG.error("Error crawling content type", err);
                           throw new RuntimeException(err);
                         })

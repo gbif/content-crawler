@@ -118,7 +118,7 @@ public class ContentfulCrawler {
     return contentTypes.stream()
       .filter(contentType -> contentType.getName().equals(name))
       .findFirst()
-      .orElseThrow(() -> new IllegalStateException("ContentType not found for [" + name + "]")).getResourceId();
+      .orElseThrow(() -> new IllegalStateException("ContentType not found for [" + name + "]")).getId();
   }
 
   /**
@@ -150,7 +150,9 @@ public class ContentfulCrawler {
   private CDAClient buildCdaClient() {
     CDAClient.Builder builder = CDAClient.builder();
     return builder
-            .setSpace(configuration.spaceId).setToken(configuration.cdaToken)
+            .setSpace(configuration.spaceId)
+            .setToken(configuration.cdaToken)
+            .setEnvironment(configuration.environmentId)
             .setCallFactory(builder.defaultCallFactoryBuilder().readTimeout(CONNECTION_TO, TimeUnit.MINUTES).retryOnConnectionFailure(true).build()).build();
   }
 
@@ -169,7 +171,7 @@ public class ContentfulCrawler {
     Collection<String> allContentTypes = new LinkedHashSet<>(configuration.vocabularies);
     allContentTypes.addAll(configuration.contentTypes);
     allContentTypes.add(configuration.newsContentType);
-    return cmaClient.contentTypes().fetchAll(configuration.spaceId)
+    return cmaClient.contentTypes().fetchAll(configuration.spaceId, configuration.environmentId)
             .getItems().stream().filter(contentType -> allContentTypes.contains(contentType.getName()))
             .collect(Collectors.partitioningBy(contentType -> configuration.vocabularies
                                                                 .contains(contentType.getName())));

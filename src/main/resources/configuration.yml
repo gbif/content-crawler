@@ -58,6 +58,7 @@ contentful:
   cdaToken: @contentfulCdaToken
   cmaToken: @contentfulCmaToken
   spaceId: @contentfulSpaceId
+  environmentId: @environmentId
   indexBuild:
     #contentTypes: [dataUse]
     esIndexAlias: "content"

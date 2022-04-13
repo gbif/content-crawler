@@ -156,6 +156,11 @@ public class ContentCrawlConfiguration {
     public String spaceId;
 
     @Parameter(
+      names = "-environmentId",
+      description = "Contentful space environment")
+    public String environmentId = "master";
+
+    @Parameter(
       names = "-contentTypes",
       description = "Contentful content types to be crawled")
     public List<String> contentTypes = new ArrayList<>();
@@ -253,6 +258,11 @@ public class ContentCrawlConfiguration {
       description = "Contentful spaceId to populate")
     @NotNull
     public String spaceId;
+
+    @Parameter(
+      names = "-environmentId",
+      description = "Contentful space environment")
+    public String environmentId = "master";
 
     @Parameter(
       names = "-sourceDir",

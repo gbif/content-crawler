@@ -24,6 +24,7 @@ import java.util.regex.Pattern;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpHost;
+import org.apache.http.impl.nio.conn.PoolingNHttpClientConnectionManager;
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest;
 import org.elasticsearch.action.admin.indices.alias.get.GetAliasesRequest;
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
@@ -90,6 +91,7 @@ public class ElasticSearchUtils {
         throw new IllegalArgumentException(e.getMessage(), e);
       }
     }
+    PoolingNHttpClientConnectionManager r;
 
     return new RestHighLevelClient(
       RestClient.builder(hosts)

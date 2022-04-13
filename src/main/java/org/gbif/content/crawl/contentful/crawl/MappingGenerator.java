@@ -306,7 +306,7 @@ public class  MappingGenerator {
    * Default constructor.
    */
   public MappingGenerator(Collection<CMAContentType> vocabularies) {
-    this.vocabularies = vocabularies.stream().map(CMAContentType::getResourceId).collect(Collectors.toSet());
+    this.vocabularies = vocabularies.stream().map(CMAContentType::getId).collect(Collectors.toSet());
   }
 
   /**

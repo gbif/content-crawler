@@ -16,6 +16,7 @@ package org.gbif.content.crawl.contentful.backup;
 import org.gbif.content.crawl.conf.ContentCrawlConfiguration;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -24,6 +25,7 @@ import java.util.Date;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+import com.contentful.java.cma.model.CMAAssetFile;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -102,12 +104,12 @@ public class ContentfulBackup {
               .subscribe(results -> {
                 results.getItems().forEach(contentType -> {
 
-                  LOG.info("Content type id[{}]", contentType.getResourceId());
+                  LOG.info("Content type id[{}]", contentType.getId());
                   // Save as e.g. ./spaceId/<timestamp>/ContentTypes/contentId.json
                   Path contentDir = spaceDir.resolve(Paths.get(startTime, "ContentType"));
                   try {
                     Files.createDirectories(contentDir);
-                    Files.write(contentDir.resolve(contentType.getResourceId() + ".json"), GSON.toJson(contentType).getBytes("UTF8"));
+                    Files.write(contentDir.resolve(contentType.getId() + ".json"), GSON.toJson(contentType).getBytes("UTF8"));
                   } catch (IOException e) {
                     Throwables.propagate(e);
                   }
@@ -124,9 +126,9 @@ public class ContentfulBackup {
               .subscribe(results -> {
                 results.getItems().forEach(entry -> {
 
-                  LOG.info("id[{}] of type[{}]", entry.getResourceId(), extractContentTypeId(entry));
+                  LOG.info("id[{}] of type[{}]", entry.getId(), extractContentTypeId(entry));
                   String contentTypeId = extractContentTypeId(entry);
-                  String contentId = entry.getResourceId();
+                  String contentId = entry.getId();
 
                   // Save as e.g. ./spaceId/<timestamp>/contentTypeId/contentId.json
                   Path contentDir = spaceDir.resolve(Paths.get(startTime, contentTypeId));
@@ -160,34 +162,31 @@ public class ContentfulBackup {
                   // Save the actual assets (files, PDFs etc) only if thet are not already saved, and always save the
                   // metadata about the asset
                   try {
-                    Map<String, Map> languages = (Map) asset.getFields().get("file");
-                    if (languages != null) {
-                      for (Map.Entry<String, Map> e : languages.entrySet()) {
+                    CMAAssetFile file = asset.getFields().getFile("en-GB");
+                    if (file != null) {
+                      // skip any asset that has no URL as it is meaningless and indicates bad content
+                      if (file.getUrl() != null) {
+                        String assetUrl = file.getUrl();
+                        LOG.info("File[{}] has URL[{}]", file.getFileName(), assetUrl);
 
-                        // skip any asset that has no URL as it is meaningless and indicates bad content
-                        if (e.getValue().get("url") != null) {
-                          String assetUrl = String.valueOf(e.getValue().get("url"));
-                          LOG.info("Language[{}] has URL[{}]", e.getKey(), assetUrl);
+                        // we map the local path to the URL path (wu1jj10r9bwp is the spaceID)
+                        // //assets.contentful.com/wu1jj10r9bwp/59Vy2G95H2EIE8yOIcgSSu/ae59118ae9989c26119972f1662aff3f/test.pdf
+                        //String path = assetUrl.substring(assetUrl.indexOf(spaceId) + spaceId.length() + 1);
+                        Path targetFile = assetsDir.resolve(extractAssetPath(assetUrl));
 
-                          // we map the local path to the URL path (wu1jj10r9bwp is the spaceID)
-                          // //assets.contentful.com/wu1jj10r9bwp/59Vy2G95H2EIE8yOIcgSSu/ae59118ae9989c26119972f1662aff3f/test.pdf
-                          //String path = assetUrl.substring(assetUrl.indexOf(spaceId) + spaceId.length() + 1);
-                          Path targetFile = assetsDir.resolve(extractAssetPath(assetUrl));
+                        if (Files.exists(targetFile)) {
+                          LOG.info("Skipping asset file which already exists: {}", targetFile.toAbsolutePath());
+                        } else {
+                          Files.createDirectories(targetFile.getParent()); // defensive coding
+                          Files.createFile(targetFile);
 
-                          if (Files.exists(targetFile)) {
-                            LOG.info("Skipping asset file which already exists: {}", targetFile.toAbsolutePath());
-                          } else {
-                            Files.createDirectories(targetFile.getParent()); // defensive coding
-                            Files.createFile(targetFile);
+                          try (BufferedSink sink = Okio.buffer(Okio.sink(targetFile))) {
+                            Request request = new Request.Builder()
+                              .url("http://" + assetUrl)
+                              .build();
 
-                            try (BufferedSink sink = Okio.buffer(Okio.sink(targetFile))) {
-                              Request request = new Request.Builder()
-                                .url("http://" + assetUrl)
-                                .build();
-
-                              Response response = client.newCall(request).execute();
-                              sink.writeAll(response.body().source());
-                            }
+                            Response response = client.newCall(request).execute();
+                            sink.writeAll(response.body().source());
                           }
                         }
                       }
@@ -197,7 +196,7 @@ public class ContentfulBackup {
                     // Save as e.g. ./spaceId/<timestamp>/Asset/contentId.json
                     Path contentDir = spaceDir.resolve(Paths.get(startTime, "Asset"));
                     Files.createDirectories(contentDir);
-                    Files.write(contentDir.resolve(asset.getResourceId() + ".json"), GSON.toJson(asset).getBytes("UTF8"));
+                    Files.write(contentDir.resolve(asset.getId() + ".json"), GSON.toJson(asset).getBytes(StandardCharsets.UTF_8));
 
                   } catch (Exception e) {
                     Throwables.propagate(e);
@@ -228,7 +227,7 @@ public class ContentfulBackup {
    * @throws NullPointerException if you provide anything other than an object with a valid sys entry
    */
   private static String extractSysId(CMAResource resource) {
-    return String.valueOf(resource.getSys().get("id"));
+    return String.valueOf(resource.getSystem().getId());
   }
 
   // Extracts the id from e.g.
@@ -236,7 +235,7 @@ public class ContentfulBackup {
   private static String extractContentTypeId(CMAEntry entry) {
     return (String)
       ((Map)(
-          (Map)entry.getSys().get("contentType")
+          (Map)entry.getSystem().getContentType()
         ).get("sys"))
         .get("id");
   }

@@ -76,11 +76,11 @@ class ContentfulManagementPager<T extends CMAResource> implements Iterable<CMAAr
 
       // This is a nuisance, but the Contentful API doesn't share a common interface
       if (Mode.ENTRIES == mode) {
-        current = (CMAArray<R>) cmaClient.entries().fetchAll(spaceId, query);
+        current = (CMAArray<R>) cmaClient.entries().fetchAll(query);
       } else if (Mode.ASSETS == mode) {
-        current = (CMAArray<R>) cmaClient.assets().fetchAll(spaceId, query);
+        current = (CMAArray<R>) cmaClient.assets().fetchAll(query);
       } else if (Mode.CONTENT_TYPES == mode) {
-        current = (CMAArray<R>) cmaClient.contentTypes().fetchAll(spaceId, query);
+        current = (CMAArray<R>) cmaClient.contentTypes().fetchAll(query);
       } else {
         throw new IllegalStateException("Unsupported mode of operation"); // should never happen
       }

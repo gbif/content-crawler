@@ -42,7 +42,7 @@ public class VocabularyTerms {
    */
   public void loadVocabulary(CMAContentType contentType) {
     String fieldName = getVocabularyField(contentType, TERM_FIELD);
-    cache.put(contentType.getResourceId(), fieldName);
+    cache.put(contentType.getId(), fieldName);
   }
 
   /**
@@ -50,7 +50,7 @@ public class VocabularyTerms {
    */
   public void loadCountryVocabulary(CMAContentType contentType) {
     String fieldName = getVocabularyField(contentType, ISO_CODE_FIELD);
-    countryContentTypeId = contentType.getResourceId();
+    countryContentTypeId = contentType.getId();
     cache.put(countryContentTypeId, fieldName);
   }
 
