@@ -25,13 +25,13 @@ import java.util.Date;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-import com.contentful.java.cma.model.CMAAssetFile;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.contentful.java.cma.CMAClient;
 import com.contentful.java.cma.model.CMAArray;
 import com.contentful.java.cma.model.CMAAsset;
+import com.contentful.java.cma.model.CMAAssetFile;
 import com.contentful.java.cma.model.CMAContentType;
 import com.contentful.java.cma.model.CMAEntry;
 import com.contentful.java.cma.model.CMAResource;
