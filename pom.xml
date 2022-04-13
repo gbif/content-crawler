@@ -4,7 +4,7 @@
 
   <groupId>org.gbif.content</groupId>
   <artifactId>content-crawler</artifactId>
-  <version>0.27-SNAPSHOT</version>
+  <version>0.28-SNAPSHOT</version>
 
   <parent>
     <groupId>org.gbif</groupId>
