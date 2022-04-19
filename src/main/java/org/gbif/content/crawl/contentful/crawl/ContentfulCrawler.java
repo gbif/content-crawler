@@ -160,7 +160,10 @@ public class ContentfulCrawler {
    * @return a new instance of a Contentful CDAClient.
    */
   private CMAClient buildCmaClient() {
-    return new CMAClient.Builder().setAccessToken(configuration.cmaToken).build();
+    return new CMAClient.Builder()
+                .setSpaceId(configuration.spaceId)
+                .setEnvironmentId(configuration.environmentId)
+                .setAccessToken(configuration.cmaToken).build();
   }
 
 
