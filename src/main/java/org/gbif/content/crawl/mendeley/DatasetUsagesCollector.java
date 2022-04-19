@@ -25,7 +25,6 @@ import javax.sql.DataSource;
 
 import org.cache2k.Cache;
 import org.cache2k.Cache2kBuilder;
-import org.cache2k.integration.CacheLoader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -176,12 +175,8 @@ class DatasetUsagesCollector {
   public DatasetUsagesCollector(Properties configuration) {
     dataSource = initDataSource(configuration);
     cache = new Cache2kBuilder<String,Collection<DatasetCitation>>(){}
-              .loader(new CacheLoader<String, Collection<DatasetCitation>>() {
-                @Override
-                public Collection<DatasetCitation> load(final String key) throws Exception {
-                  return loadCitations(key);
-                }
-              }).build();
+                  .loader(this::loadCitations)
+                  .build();
   }
 
   /**
