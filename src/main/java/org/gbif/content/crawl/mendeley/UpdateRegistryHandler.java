@@ -18,6 +18,7 @@ import org.gbif.api.service.registry.OccurrenceDownloadService;
 import org.gbif.content.crawl.conf.ContentCrawlConfiguration;
 import org.gbif.registry.ws.client.OccurrenceDownloadClient;
 import org.gbif.ws.client.ClientBuilder;
+import org.gbif.ws.json.JacksonJsonObjectMapperProvider;
 
 import java.io.IOException;
 import java.util.Collection;
@@ -54,6 +55,7 @@ public class UpdateRegistryHandler implements ResponseHandler {
     LOG.info("Connecting to GBIF API {} as {}", conf.gbifApi.url, conf.gbifApi.username);
     ClientBuilder clientBuilder = new ClientBuilder()
                                     .withUrl(conf.gbifApi.url)
+                                    .withObjectMapper(JacksonJsonObjectMapperProvider.getObjectMapperWithBuilderSupport())
                                     .withCredentials(conf.gbifApi.username, conf.gbifApi.password);
     occurrenceDownloadService = clientBuilder.build(OccurrenceDownloadClient.class);
 

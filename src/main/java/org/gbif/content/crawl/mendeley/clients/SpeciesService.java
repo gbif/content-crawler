@@ -15,6 +15,7 @@ package org.gbif.content.crawl.mendeley.clients;
 
 import org.gbif.api.model.checklistbank.NameUsage;
 import org.gbif.ws.client.ClientBuilder;
+import org.gbif.ws.json.JacksonJsonObjectMapperProvider;
 
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -30,6 +31,7 @@ public interface SpeciesService {
   static SpeciesService wsClient(String gbifApiUrl) {
     return new ClientBuilder()
             .withUrl(gbifApiUrl)
+            .withObjectMapper(JacksonJsonObjectMapperProvider.getObjectMapperWithBuilderSupport())
             .build(SpeciesService.class);
   }
 }
