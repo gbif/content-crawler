@@ -34,242 +34,258 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.deser.std.StdScalarDeserializer;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 /**
- * Command configuration class, contains configuration element to connect to Mendeley, ElastisSearch and Contentful.
+ * Command configuration class, contains configuration element to connect to Mendeley, ElasticSearch and Contentful.
  */
+@Data
+@NoArgsConstructor
 public class ContentCrawlConfiguration {
 
   @Nullable
-  public Mendeley mendeley;
+  private Mendeley mendeley;
 
   @Nullable
-  public ElasticSearch elasticSearch;
+  private ElasticSearch elasticSearch;
 
   @Nullable
-  public GbifApi gbifApi;
+  private GbifApi gbifApi;
 
   @Nullable
-  public Contentful contentful;
+  private Contentful contentful;
 
   @Nullable
-  public ContentfulBackup contentfulBackup;
+  private ContentfulBackup contentfulBackup;
 
   @Nullable
-  public ContentfulRestore contentfulRestore;
+  private ContentfulRestore contentfulRestore;
 
   /**
    * Configuration specific to interfacing to Mendeley.
    */
+  @Data
+  @NoArgsConstructor
   public static class Mendeley {
 
     @Parameter(
       names = "-targetDir", converter = FileConverter.class,
       description = "The target directory to store the crawl responses (JSON docs)")
     @NotNull
-    public File targetDir;
+    private File targetDir;
 
     @Parameter(
       names = "-tokenUrl",
       description = "The Mendeley url for the authentication, defaulting to https://api.mendeley.com/oauth/token")
-    public String tokenUrl = "https://api.mendeley.com/oauth/token";
+    private String tokenUrl = "https://api.mendeley.com/oauth/token";
 
     @Parameter(
       names = "-authToken",
       description = "The Mendeley Auth Token  generated from http://dev.mendeley.com/")
     @NotNull
-    public String authToken;
+    private String authToken;
 
     @Parameter(
       names = "-redirectURI",
       description = "The redirect URL registered for trusted applicaiton http://dev.mendeley.com/")
     @NotNull
-    public String redirecURI;
+    private String redirecURI;
 
     @Parameter(
       names = "-targetUrl",
       description = "The templated target URL to crawl, defaulting to https://api.mendeley.com/documents?&limit=500")
-    public String crawlURL = "https://api.mendeley.com/documents?limit=500&view=all";
+    private String crawlURL = "https://api.mendeley.com/documents?limit=500&view=all";
 
     @Parameter(
       names = "-timeout",
       description = "Timeout for the HTTP calls in seconds, defaulting to 10 secs")
-    public int httpTimeout = 10000;
+    private int httpTimeout = 10000;
 
     @Parameter(
       names = "-controlledTags",
       description = "Tags values that must be handled as separate fields in the resulting index")
-    public Map<String,List<String>> controlledTags = new HashMap<>();
+    private Map<String,List<String>> controlledTags = new HashMap<>();
 
     @Parameter(
       names = "-dbConfig",
       description = "Configuration to establish a connection to the Registry DB to get data of downloads and datasets")
-    public Map<String,String> dbConfig = new HashMap<>();
+    private Map<String,String> dbConfig = new HashMap<>();
 
-    public IndexBuild indexBuild;
+    private IndexBuild indexBuild;
   }
 
   /**
    * Configuration specific to interfacing with elastic search.
    */
+  @Data
+  @NoArgsConstructor
   public static class ElasticSearch {
     @Parameter(
       names = "-host",
       description = "The ES node host to connect to, defaulting to localhost")
-    public String host = "localhost";
+    private String host = "localhost";
 
     @Parameter(
       names = "-connectionTimeOut",
       description = "Connection time out")
-    public int connectionTimeOut = 60000;
+    private int connectionTimeOut = 60000;
 
     @Parameter(
       names = "-socketTimeOut",
       description = "SocketTimeOut")
-    public int socketTimeOut = 60000;
+    private int socketTimeOut = 60000;
 
     @Parameter(
       names = "-connectionRequestTimeOut",
       description = "ConnectionRequestTimeOut time out")
-    public int connectionRequestTimeOut = 120000;
+    private int connectionRequestTimeOut = 120000;
   }
 
 
   /**
    * Configuration specific to interfacing with Contentful content API.
    */
+  @Data
+  @NoArgsConstructor
   public static class Contentful {
     @Parameter(
       names = "-cdaToken",
       description = "Contentful authorization token")
-    public String cdaToken;
+    private String cdaToken;
 
     @Parameter(
       names = "-cmaToken",
       description = "Contentful management access token")
     @NotNull
-    public String cmaToken;
+    private String cmaToken;
 
     @Parameter(
       names = "-spaceId",
       description = "Contentful space Id")
-    public String spaceId;
+    private String spaceId;
 
     @Parameter(
       names = "-environmentId",
       description = "Contentful space environment")
-    public String environmentId = "master";
+    private String environmentId = "master";
 
     @Parameter(
       names = "-contentTypes",
       description = "Contentful content types to be crawled")
-    public List<String> contentTypes = new ArrayList<>();
+    private List<String> contentTypes = new ArrayList<>();
 
     @Parameter(
       names = "-vocabularies",
       description = "Contentful vocabularies to be crawled")
-    public Set<String> vocabularies = new HashSet<>();
+    private Set<String> vocabularies = new HashSet<>();
 
     @Parameter(
       names = "-countryVocabulary",
       description = "Named of the country vocabulary content, it's handled specially during indexing")
-    public String countryVocabulary;
+    private String countryVocabulary;
 
     @Parameter(
             names = "-newsContentType",
             description = "Name of the news content type, it's handled specially during indexing to tag related entities")
-    public String newsContentType;
+    private String newsContentType;
 
     @Parameter(
             names = "-articleContentType",
             description = "Name of the article content type, it's handled specially during indexing to tag related entities")
-    public String articleContentType = "Article";
+    private String articleContentType = "Article";
 
-    public IndexBuild indexBuild;
+    private IndexBuild indexBuild;
   }
 
-
+  @Data
+  @NoArgsConstructor
   public static class IndexBuild {
 
     @Parameter(
       names = "-esIndexAlias",
       description = "ElasticSearch index alias")
-    public String esIndexAlias = "content";
-
+    private String esIndexAlias = "content";
 
     @Parameter(
       names = "-esIndexName",
       description = "ElasticSearch index name")
-    public String esIndexName;
+    private String esIndexName;
 
     @Parameter(
       names = "-batchSize",
       description = "Batch size for bulk indexing")
-    public int batchSize = 50;
+    private int batchSize = 50;
   }
 
+  @Data
+  @NoArgsConstructor
   public static class GbifApi {
     @Parameter(
       names = "-gbifApiUrl",
       description = "URL to GBIF API")
-    public String url;
+    private String url;
 
     @Parameter(
       names = "-gbifApiUsername",
       description = "Username to GBIF API")
-    public String username;
+    private String username;
 
     @Parameter(
       names = "-gbifApiPassword",
       description = "Password for GBIF API")
-    public String password;
+    private String password;
   }
 
   /**
    * Configuration specific to backing up Contentful through the Contentful Management API.
    */
+  @Data
+  @NoArgsConstructor
   public static class ContentfulBackup {
     @Parameter(
       names = "-cmaToken",
       description = "Contentful management access token")
     @NotNull
-    public String cmaToken;
+    private String cmaToken;
 
     @Parameter(
       names = "-targetDir",
       description = "The target directory to save the Contentful backup")
     @NotNull
     @JsonDeserialize(using = PathDeserializer.class)
-    public Path targetDir;
+    private Path targetDir;
   }
 
   /**
    * Configuration specific to backing up Contentful through the Contentful Management API.
    */
+  @Data
+  @NoArgsConstructor
   public static class ContentfulRestore {
     @Parameter(
       names = "-cmaToken",
       description = "Contentful management access token")
     @NotNull
-    public String cmaToken;
+    private String cmaToken;
 
     @Parameter(
       names = "-spaceId",
       description = "Contentful spaceId to populate")
     @NotNull
-    public String spaceId;
+    private String spaceId;
 
     @Parameter(
       names = "-environmentId",
       description = "Contentful space environment")
-    public String environmentId = "master";
+    private String environmentId = "master";
 
     @Parameter(
       names = "-sourceDir",
       description = "The directory containing the backup")
     @NotNull
     @JsonDeserialize(using = PathDeserializer.class)
-    public Path sourceDir;
+    private Path sourceDir;
   }
 
   /**

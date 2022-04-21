@@ -22,7 +22,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
@@ -34,7 +33,6 @@ import com.contentful.java.cma.model.CMAAsset;
 import com.contentful.java.cma.model.CMAAssetFile;
 import com.contentful.java.cma.model.CMAContentType;
 import com.contentful.java.cma.model.CMAEntry;
-import com.contentful.java.cma.model.CMAResource;
 import com.contentful.java.cma.model.CMASpace;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Throwables;
@@ -65,11 +63,11 @@ public class ContentfulBackup {
   private final String startTime;
 
   /**
-   * Contentful Backupe configuration is required to create an instance of this class.
+   * Contentful Back-up configuration is required to create an instance of this class.
    */
   public ContentfulBackup(ContentCrawlConfiguration configuration) throws IOException {
     Preconditions.checkNotNull(configuration, "Crawler configuration can't be null");
-    Preconditions.checkNotNull(configuration.contentfulBackup, "Contentful Backup configuration can't be null");
+    Preconditions.checkNotNull(configuration.getContentfulBackup(), "Contentful Backup configuration can't be null");
     this.configuration = configuration;
     cmaClient = buildCmaClient();
     startTime =  new SimpleDateFormat("yyyyMMdd-HHmmss").format(new Date());
@@ -82,26 +80,29 @@ public class ContentfulBackup {
     try {
       CMAArray<CMASpace> result = cmaClient.spaces().fetchAll();
       result.getItems().forEach(space -> {
-        LOG.info("Backing up space name[{}] id[{}]", space.getName(), extractSysId(space));
+        LOG.info("Backing up space name[{}] id[{}]", space.getName(), space.getSpaceId());
+        cmaClient.environments().fetchAll(space.getSpaceId())
+          .getItems()
+          .forEach(cmaEnvironment -> {
+            Path spaceEnvDir = configuration.getContentfulBackup().getTargetDir().resolve(space.getSpaceId()).resolve(cmaEnvironment.getName().toLowerCase());
+            backupContentTypes(space, cmaEnvironment.getEnvironmentId(), spaceEnvDir);
+            backupEntries(space, cmaEnvironment.getEnvironmentId(), spaceEnvDir);
+            backupAssets(space, cmaEnvironment.getEnvironmentId(), spaceEnvDir);
+          });
 
-        Path spaceDir = configuration.contentfulBackup.targetDir.resolve(extractSysId(space));
-
-        backupContentTypes(space, spaceDir);
-        backupEntries(space, spaceDir);
-        backupAssets(space, spaceDir);
       });
     } catch (Exception e) {
       Throwables.propagate(e);
     }
   }
 
-  private void backupContentTypes(CMASpace space, Path spaceDir) {
+  private void backupContentTypes(CMASpace space, String environmentId, Path spaceDir) {
     ContentfulManagementPager<CMAContentType>
-      contentTypePager = ContentfulManagementPager.newContentTypePager(cmaClient, PAGE_SIZE, extractSysId(space));
+      contentTypePager = ContentfulManagementPager.newContentTypePager(cmaClient, PAGE_SIZE, space.getSpaceId(), environmentId);
     Observable.fromIterable(contentTypePager)
               .doOnComplete(() -> LOG.info("Finished backing up content types"))
               .doOnError(Throwables::propagate)
-              .subscribe(results -> {
+              .subscribe(results ->
                 results.getItems().forEach(contentType -> {
 
                   LOG.info("Content type id[{}]", contentType.getId());
@@ -109,17 +110,17 @@ public class ContentfulBackup {
                   Path contentDir = spaceDir.resolve(Paths.get(startTime, "ContentType"));
                   try {
                     Files.createDirectories(contentDir);
-                    Files.write(contentDir.resolve(contentType.getId() + ".json"), GSON.toJson(contentType).getBytes("UTF8"));
+                    Files.write(contentDir.resolve(contentType.getId() + ".json"), GSON.toJson(contentType).getBytes(StandardCharsets.UTF_8));
                   } catch (IOException e) {
                     Throwables.propagate(e);
                   }
-                });
-              });
+                })
+              );
   }
 
-  private void backupEntries(CMASpace space, Path spaceDir) {
+  private void backupEntries(CMASpace space, String environmentId, Path spaceDir) {
     ContentfulManagementPager<CMAEntry>
-      entryPager = ContentfulManagementPager.newEntryPager(cmaClient, PAGE_SIZE, extractSysId(space));
+      entryPager = ContentfulManagementPager.newEntryPager(cmaClient, PAGE_SIZE, space.getSpaceId(), environmentId);
     Observable.fromIterable(entryPager)
               .doOnComplete(() -> LOG.info("Finished backing up entries"))
               .doOnError(Throwables::propagate)
@@ -134,7 +135,7 @@ public class ContentfulBackup {
                   Path contentDir = spaceDir.resolve(Paths.get(startTime, contentTypeId));
                   try {
                     Files.createDirectories(contentDir);
-                    Files.write(contentDir.resolve(contentId + ".json"), GSON.toJson(entry).getBytes("UTF8"));
+                    Files.write(contentDir.resolve(contentId + ".json"), GSON.toJson(entry).getBytes(StandardCharsets.UTF_8));
                   } catch (IOException e) {
                     Throwables.propagate(e);
                   }
@@ -142,7 +143,7 @@ public class ContentfulBackup {
               });
   }
 
-  private void backupAssets(CMASpace space, Path spaceDir) {
+  private void backupAssets(CMASpace space, String environmentId, Path spaceDir) {
     OkHttpClient client = new OkHttpClient.Builder()
       .connectTimeout(HTTP_TIMEOUT_SECS, TimeUnit.SECONDS)
       .readTimeout(HTTP_TIMEOUT_SECS, TimeUnit.SECONDS)
@@ -151,13 +152,13 @@ public class ContentfulBackup {
     Path assetsDir = spaceDir.resolve("Asset"); // for the actual files
 
     ContentfulManagementPager<CMAAsset>
-      assetsPager = ContentfulManagementPager.newAssetsPager(cmaClient, PAGE_SIZE, extractSysId(space));
+      assetsPager = ContentfulManagementPager.newAssetsPager(cmaClient, PAGE_SIZE, space.getSpaceId(), environmentId);
     Observable.fromIterable(assetsPager)
               .doOnComplete(() -> LOG.info("Finished backing up assets"))
               .doOnError(Throwables::propagate)
               .subscribe(results -> {
                 results.getItems().forEach(asset -> {
-                  LOG.info("Asset: {}", GSON.toJson(extractSysId(asset)));
+                  LOG.info("Asset: {}", GSON.toJson(asset.getId()));
 
                   // Save the actual assets (files, PDFs etc) only if thet are not already saved, and always save the
                   // metadata about the asset
@@ -221,23 +222,10 @@ public class ContentfulBackup {
     return null;
   }
 
-  /**
-   *
-   * @see https://github.com/contentful/contentful-management.java/issues/71
-   * @throws NullPointerException if you provide anything other than an object with a valid sys entry
-   */
-  private static String extractSysId(CMAResource resource) {
-    return String.valueOf(resource.getSystem().getId());
-  }
-
   // Extracts the id from e.g.
   //   sys: { contentType: {sys={type=Link, linkType=ContentType, id=Event}}}
   private static String extractContentTypeId(CMAEntry entry) {
-    return (String)
-      ((Map)(
-          (Map)entry.getSystem().getContentType()
-        ).get("sys"))
-        .get("id");
+    return entry.getSystem().getContentType().getId();
   }
 
 
@@ -246,6 +234,7 @@ public class ContentfulBackup {
    */
   private CMAClient buildCmaClient() {
     return new CMAClient.Builder()
-      .setAccessToken(configuration.contentfulBackup.cmaToken).build();
+      .setAccessToken(configuration.getContentfulBackup().getCmaToken())
+      .build();
   }
 }

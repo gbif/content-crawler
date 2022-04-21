@@ -58,12 +58,12 @@ public class ContentfulCrawler {
    */
   public ContentfulCrawler(ContentCrawlConfiguration configuration) {
     Preconditions.checkNotNull(configuration, "Crawler configuration can't be null");
-    Preconditions.checkNotNull(configuration.elasticSearch, "ElasticSearch configuration can't be null");
-    Preconditions.checkNotNull(configuration.contentful, "Contentful configuration can't be null");
-    this.configuration = configuration.contentful;
+    Preconditions.checkNotNull(configuration.getElasticSearch(), "ElasticSearch configuration can't be null");
+    Preconditions.checkNotNull(configuration.getContentful(), "Contentful configuration can't be null");
+    this.configuration = configuration.getContentful();
     cdaClient = buildCdaClient();
     cmaClient = buildCmaClient();
-    esClient = buildEsClient(configuration.elasticSearch);
+    esClient = buildEsClient(configuration.getElasticSearch());
   }
 
 
@@ -84,8 +84,8 @@ public class ContentfulCrawler {
     MappingGenerator mappingGenerator = new MappingGenerator(vocContentTypes);
 
     //Gets the ContentType.resourceId for news and articles, which vary by space
-    newsContentTypeId = getContentTypeId(webContentTypes, configuration.newsContentType);
-    articleContentTypeId = getContentTypeId(webContentTypes, configuration.articleContentType);
+    newsContentTypeId = getContentTypeId(webContentTypes, configuration.getNewsContentType());
+    articleContentTypeId = getContentTypeId(webContentTypes, configuration.getArticleContentType());
 
 
     //Crawl all Content Types, except for vocabularies
@@ -101,7 +101,7 @@ public class ContentfulCrawler {
     vocabularies
       .forEach(contentType -> {
         //Keeps the country vocabulary ID for future use
-        if (contentType.getName().equals(configuration.countryVocabulary)) {
+        if (contentType.getName().equals(configuration.getCountryVocabulary())) {
           vocabularyTerms.loadCountryVocabulary(contentType);
         } else {
           //Loads vocabulary into memory
@@ -129,8 +129,8 @@ public class ContentfulCrawler {
     //The stream is sorted to ensure that the News and Article content types are crawled first, so they exist and may
     // be updated to store reverse links into it
     contentTypes.stream()
-      .filter(contentType -> configuration.contentTypes.contains(contentType.getName()))
-      .sorted(Comparator.comparingInt(ct -> configuration.contentTypes.indexOf(ct.getName())))
+      .filter(contentType -> configuration.getContentTypes().contains(contentType.getName()))
+      .sorted(Comparator.comparingInt(ct -> configuration.getContentTypes().indexOf(ct.getName())))
       .forEach(contentType -> {
         ContentTypeCrawler contentTypeCrawler = new ContentTypeCrawler(contentType,
                                                                        mappingGenerator,
@@ -150,9 +150,9 @@ public class ContentfulCrawler {
   private CDAClient buildCdaClient() {
     CDAClient.Builder builder = CDAClient.builder();
     return builder
-            .setSpace(configuration.spaceId)
-            .setToken(configuration.cdaToken)
-            .setEnvironment(configuration.environmentId)
+            .setSpace(configuration.getSpaceId())
+            .setToken(configuration.getCdaToken())
+            .setEnvironment(configuration.getEnvironmentId())
             .setCallFactory(builder.defaultCallFactoryBuilder().readTimeout(CONNECTION_TO, TimeUnit.MINUTES).retryOnConnectionFailure(true).build()).build();
   }
 
@@ -161,9 +161,9 @@ public class ContentfulCrawler {
    */
   private CMAClient buildCmaClient() {
     return new CMAClient.Builder()
-                .setSpaceId(configuration.spaceId)
-                .setEnvironmentId(configuration.environmentId)
-                .setAccessToken(configuration.cmaToken).build();
+                .setSpaceId(configuration.getSpaceId())
+                .setEnvironmentId(configuration.getEnvironmentId())
+                .setAccessToken(configuration.getCmaToken()).build();
   }
 
 
@@ -171,12 +171,12 @@ public class ContentfulCrawler {
    * @return a partition of ContentTypes split into sets:  TRUE: vocabularies and FALSE: non-vocabularies/web content.
    */
   private Map<Boolean,List<CMAContentType>> getContentTypes() {
-    Collection<String> allContentTypes = new LinkedHashSet<>(configuration.vocabularies);
-    allContentTypes.addAll(configuration.contentTypes);
-    allContentTypes.add(configuration.newsContentType);
-    return cmaClient.contentTypes().fetchAll(configuration.spaceId, configuration.environmentId)
+    Collection<String> allContentTypes = new LinkedHashSet<>(configuration.getVocabularies());
+    allContentTypes.addAll(configuration.getContentTypes());
+    allContentTypes.add(configuration.getNewsContentType());
+    return cmaClient.contentTypes().fetchAll(configuration.getSpaceId(), configuration.getEnvironmentId())
             .getItems().stream().filter(contentType -> allContentTypes.contains(contentType.getName()))
-            .collect(Collectors.partitioningBy(contentType -> configuration.vocabularies
+            .collect(Collectors.partitioningBy(contentType -> configuration.getVocabularies()
                                                                 .contains(contentType.getName())));
   }
 

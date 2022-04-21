@@ -45,25 +45,27 @@ class ContentfulManagementPager<T extends CMAResource> implements Iterable<CMAAr
   private final Mode mode;
   private final int pageSize;
   private final String spaceId;
+  private final String environmentId;
 
   // Hidden because of the "mode"
-  private ContentfulManagementPager(CMAClient cmaClient, int pageSize, String spaceId, Mode mode) {
+  private ContentfulManagementPager(CMAClient cmaClient, int pageSize, String spaceId, String environmentId, Mode mode) {
     this.pageSize = pageSize;
     this.spaceId = spaceId;
     this.cmaClient = cmaClient;
+    this.environmentId = environmentId;
     this.mode = mode;
   }
 
-  static ContentfulManagementPager<CMAEntry> newEntryPager(CMAClient client, int pageSize, String spaceId) {
-    return new ContentfulManagementPager<>(client, pageSize, spaceId, Mode.ENTRIES);
+  static ContentfulManagementPager<CMAEntry> newEntryPager(CMAClient client, int pageSize, String spaceId, String environmentId) {
+    return new ContentfulManagementPager<>(client, pageSize, spaceId, environmentId, Mode.ENTRIES);
   }
 
-  static ContentfulManagementPager<CMAAsset> newAssetsPager(CMAClient client, int pageSize, String spaceId) {
-    return new ContentfulManagementPager<>(client, pageSize, spaceId, Mode.ASSETS);
+  static ContentfulManagementPager<CMAAsset> newAssetsPager(CMAClient client, int pageSize, String spaceId, String environmentId) {
+    return new ContentfulManagementPager<>(client, pageSize, spaceId, environmentId, Mode.ASSETS);
   }
 
-  static ContentfulManagementPager<CMAContentType> newContentTypePager(CMAClient client, int pageSize, String spaceId) {
-    return new ContentfulManagementPager<>(client, pageSize, spaceId, Mode.CONTENT_TYPES);
+  static ContentfulManagementPager<CMAContentType> newContentTypePager(CMAClient client, int pageSize, String spaceId, String environmentId) {
+    return new ContentfulManagementPager<>(client, pageSize, spaceId, environmentId, Mode.CONTENT_TYPES);
   }
 
   private class ContentfulIterator<R extends CMAResource> implements Iterator<CMAArray<R>> {
@@ -76,11 +78,11 @@ class ContentfulManagementPager<T extends CMAResource> implements Iterable<CMAAr
 
       // This is a nuisance, but the Contentful API doesn't share a common interface
       if (Mode.ENTRIES == mode) {
-        current = (CMAArray<R>) cmaClient.entries().fetchAll(query);
+        current = (CMAArray<R>) cmaClient.entries().fetchAll(spaceId, environmentId, query);
       } else if (Mode.ASSETS == mode) {
-        current = (CMAArray<R>) cmaClient.assets().fetchAll(query);
+        current = (CMAArray<R>) cmaClient.assets().fetchAll(spaceId, environmentId, query);
       } else if (Mode.CONTENT_TYPES == mode) {
-        current = (CMAArray<R>) cmaClient.contentTypes().fetchAll(query);
+        current = (CMAArray<R>) cmaClient.contentTypes().fetchAll(spaceId, environmentId, query);
       } else {
         throw new IllegalStateException("Unsupported mode of operation"); // should never happen
       }

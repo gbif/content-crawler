@@ -52,15 +52,15 @@ public class UpdateRegistryHandler implements ResponseHandler {
   private final DatasetUsagesCollector datasetUsagesCollector;
 
   public UpdateRegistryHandler(ContentCrawlConfiguration conf) {
-    LOG.info("Connecting to GBIF API {} as {}", conf.gbifApi.url, conf.gbifApi.username);
+    LOG.info("Connecting to GBIF API {} as {}", conf.getGbifApi().getUrl(), conf.getGbifApi().getUsername());
     ClientBuilder clientBuilder = new ClientBuilder()
-                                    .withUrl(conf.gbifApi.url)
+                                    .withUrl(conf.getGbifApi().getUrl())
                                     .withObjectMapper(JacksonJsonObjectMapperProvider.getObjectMapperWithBuilderSupport())
-                                    .withCredentials(conf.gbifApi.username, conf.gbifApi.password);
+                                    .withCredentials(conf.getGbifApi().getUsername(), conf.getGbifApi().getPassword());
     occurrenceDownloadService = clientBuilder.build(OccurrenceDownloadClient.class);
 
     Properties dbConfig = new Properties();
-    dbConfig.putAll(conf.mendeley.dbConfig);
+    dbConfig.putAll(conf.getMendeley().getDbConfig());
     datasetUsagesCollector = new DatasetUsagesCollector(dbConfig);
   }
 

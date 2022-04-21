@@ -50,8 +50,8 @@ public class ContentfulRestore {
    */
   public ContentfulRestore(ContentCrawlConfiguration configuration) {
     Preconditions.checkNotNull(configuration, "Crawler configuration can't be null");
-    Preconditions.checkNotNull(configuration.contentfulRestore, "Contentful Restore configuration can't be null");
-    this.configuration = configuration.contentfulRestore;
+    Preconditions.checkNotNull(configuration.getContentfulRestore(), "Contentful Restore configuration can't be null");
+    this.configuration = configuration.getContentfulRestore();
     cmaClient = buildCmaClient();
   }
 
@@ -64,7 +64,7 @@ public class ContentfulRestore {
       restoreAssets();
 
       // Restore all the entries, skipping the Asset meta folder
-      Files.list(configuration.sourceDir)
+      Files.list(configuration.getSourceDir())
            .forEach(path ->  {
                       if (path.endsWith("Asset") || path.endsWith("ContentType")) {
                         return;
@@ -84,20 +84,20 @@ public class ContentfulRestore {
   }
 
   private void restoreContentTypes() throws IOException {
-    Files.list(configuration.sourceDir.resolve("./ContentType"))
+    Files.list(configuration.getSourceDir().resolve("./ContentType"))
          .forEach(path -> {
              try {
                CMAContentType type = GSON.fromJson(new String(Files.readAllBytes(path), StandardCharsets.UTF_8), CMAContentType.class);
 
                try {
-                 CMAContentType existing = cmaClient.contentTypes().fetchOne(configuration.spaceId, configuration.environmentId,
+                 CMAContentType existing = cmaClient.contentTypes().fetchOne(configuration.getSpaceId(), configuration.getEnvironmentId(),
                                                                              type.getId());
                  LOG.info("Content type exists: {}", existing.getName());
                  rateLimiter.acquire();
 
                } catch (RuntimeException e) {
                  LOG.info("Restoring content type: {}", type.getName());
-                 CMAContentType created = cmaClient.contentTypes().create(configuration.spaceId, configuration.environmentId, type);
+                 CMAContentType created = cmaClient.contentTypes().create(configuration.getSpaceId(), configuration.getEnvironmentId(), type);
 
                  rateLimiter.acquire();
                  cmaClient.contentTypes().publish(created);
@@ -112,11 +112,11 @@ public class ContentfulRestore {
   }
 
   private void restoreAssets() throws IOException {
-    Path assetsDir = configuration.sourceDir.resolve("../Asset");
+    Path assetsDir = configuration.getSourceDir().resolve("../Asset");
     Preconditions.checkArgument(Files.exists(assetsDir),
                                 "Assets directory [%s] is missing and should be sitting beside the sourceDir",
                                 assetsDir);
-    Files.list(configuration.sourceDir.resolve("./Asset"))
+    Files.list(configuration.getSourceDir().resolve("./Asset"))
          .forEach(path -> {
                     try {
                       String assetAsJSON = new String(Files.readAllBytes(path), StandardCharsets.UTF_8);
@@ -135,7 +135,7 @@ public class ContentfulRestore {
                       } catch (RuntimeException e) {
                         LOG.info("Restoring asset: {}", assetMeta.getFields().getTitle("en-GB"));
 
-                        CMAAsset created = cmaClient.assets().create(configuration.spaceId, configuration.environmentId, assetMeta);
+                        CMAAsset created = cmaClient.assets().create(configuration.getSpaceId(), configuration.getEnvironmentId(), assetMeta);
                         // If you are developing a disaster recovery, here you would need to do something like this:
                         // cmaClient.assets().process(...);
 
@@ -194,6 +194,6 @@ public class ContentfulRestore {
    * Creates a new instance of a Contentful CMAClient.
    */
   private CMAClient buildCmaClient() {
-    return new CMAClient.Builder().setAccessToken(configuration.cmaToken).build();
+    return new CMAClient.Builder().setAccessToken(configuration.getCmaToken()).build();
   }
 }

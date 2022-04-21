@@ -49,21 +49,21 @@ public class MendeleyDocumentCrawler {
   public MendeleyDocumentCrawler(ContentCrawlConfiguration config) {
 
     this.config = config;
-    int timeOut = config.mendeley.httpTimeout;
+    int timeOut = config.getMendeley().getHttpTimeout();
     requestConfig = RequestConfig.custom().setSocketTimeout(timeOut).setConnectTimeout(timeOut)
                       .setConnectionRequestTimeout(timeOut).build();
-    handler = new ResponseToFileHandler(config.mendeley.targetDir);
+    handler = new ResponseToFileHandler(config.getMendeley().getTargetDir());
 
   }
 
   public void run() throws IOException {
     Stopwatch stopwatch = Stopwatch.createStarted();
-    String targetUrl = config.mendeley.crawlURL;
-    LOG.info("Initiating paging crawl of {} to {}", targetUrl, config.mendeley.targetDir);
+    String targetUrl = config.getMendeley().getCrawlURL();
+    LOG.info("Initiating paging crawl of {} to {}", targetUrl, config.getMendeley().getTargetDir());
     try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
       //OAuthJSONAccessTokenResponse token = getToken(config.mendeley);
       Observable
-        .fromIterable(new MendeleyPager(targetUrl, config.mendeley.authToken, requestConfig, httpClient))
+        .fromIterable(new MendeleyPager(targetUrl, config.getMendeley().getAuthToken(), requestConfig, httpClient))
         .doOnError(err -> {
           LOG.error("Error crawling Mendeley", err);
           throw new RuntimeException(err);

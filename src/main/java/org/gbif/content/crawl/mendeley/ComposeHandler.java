@@ -32,8 +32,8 @@ public class ComposeHandler  implements ResponseHandler {
   private final List<ResponseHandler> handlers = Lists.newArrayList();
 
   public ComposeHandler(ContentCrawlConfiguration config) {
-    handlers.add(new ResponseToFileHandler(config.mendeley.targetDir));
-    if (config.elasticSearch != null) {
+    handlers.add(new ResponseToFileHandler(config.getMendeley().getTargetDir()));
+    if (config.getElasticSearch() != null) {
       handlers.add(new ElasticSearchIndexHandler(config));
     }
   }

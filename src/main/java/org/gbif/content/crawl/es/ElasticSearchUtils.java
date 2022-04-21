@@ -79,7 +79,7 @@ public class ElasticSearchUtils {
 
   /** Creates ElasticSearch client using default connection settings. */
   public static RestHighLevelClient buildEsClient(ContentCrawlConfiguration.ElasticSearch esClientConfiguration) {
-    String[] hostsUrl = esClientConfiguration.host.split(",");
+    String[] hostsUrl = esClientConfiguration.getHost().split(",");
     HttpHost[] hosts = new HttpHost[hostsUrl.length];
     int i = 0;
     for (String host : hostsUrl) {
@@ -98,10 +98,10 @@ public class ElasticSearchUtils {
         .setRequestConfigCallback(
           requestConfigBuilder ->
             requestConfigBuilder
-              .setConnectTimeout(esClientConfiguration.connectionTimeOut)
-              .setSocketTimeout(esClientConfiguration.socketTimeOut)
+              .setConnectTimeout(esClientConfiguration.getConnectionTimeOut())
+              .setSocketTimeout(esClientConfiguration.getSocketTimeOut())
               .setConnectionRequestTimeout(
-                esClientConfiguration.connectionRequestTimeOut))
+                esClientConfiguration.getConnectionRequestTimeOut()))
         .setNodeSelector(NodeSelector.SKIP_DEDICATED_MASTERS));
   }
 
@@ -134,7 +134,7 @@ public class ElasticSearchUtils {
    */
   public static void createIndex(RestHighLevelClient esClient, ContentCrawlConfiguration.IndexBuild configuration,
                                  String source) {
-    createIndex(esClient, getEsIndexingIdxName(configuration.esIndexName), source);
+    createIndex(esClient, getEsIndexingIdxName(configuration.getEsIndexName()), source);
   }
 
   /**

@@ -143,14 +143,14 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
 
   public ElasticSearchIndexHandler(ContentCrawlConfiguration conf) {
     this.conf = conf;
-    LOG.info("Connecting to ES cluster {}", conf.elasticSearch.host);
-    esClient = buildEsClient(conf.elasticSearch);
-    esIdxName = getEsIndexingIdxName(conf.mendeley.indexBuild.esIndexName);
-    batchSize = conf.mendeley.indexBuild.batchSize;
+    LOG.info("Connecting to ES cluster {}", conf.getElasticSearch());
+    esClient = buildEsClient(conf.getElasticSearch());
+    esIdxName = getEsIndexingIdxName(conf.getMendeley().getIndexBuild().getEsIndexName());
+    batchSize = conf.getMendeley().getIndexBuild().getBatchSize();
     Properties dbConfig = new Properties();
-    dbConfig.putAll(conf.mendeley.dbConfig);
+    dbConfig.putAll(conf.getMendeley().getDbConfig());
     datasetUsagesCollector = new DatasetUsagesCollector(dbConfig);
-    speciesService = SpeciesService.wsClient(conf.gbifApi.url);
+    speciesService = SpeciesService.wsClient(conf.getGbifApi().getUrl());
     createIndex(esClient, esIdxName, indexMappings(ES_MAPPING_FILE));
   }
 
@@ -333,7 +333,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
    * If the value appears in the list of conf.mendeley.controlledTags[controlledTermName] it is added to terms.
    */
   private boolean addIfIsControlledTerm(String controlledTermName, String value, Set<TextNode> terms) {
-    Optional<String> controlledTermValue = conf.mendeley.controlledTags.get(controlledTermName).stream()
+    Optional<String> controlledTermValue = conf.getMendeley().getControlledTags().get(controlledTermName).stream()
                                             .filter(controlledTerm -> controlledTerm.equalsIgnoreCase(value))
                                             .findAny();
     controlledTermValue.ifPresent(matchTerm -> terms.add(TextNode.valueOf(matchTerm.replace(' ', '_').toUpperCase())));
@@ -434,7 +434,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
   @Override
   public void finish() {
     try {
-      swapIndexToAlias(esClient, getEsIdxName(conf.mendeley.indexBuild.esIndexName), esIdxName);
+      swapIndexToAlias(esClient, getEsIdxName(conf.getMendeley().getIndexBuild().getEsIndexName()), esIdxName);
       esClient.close();
     } catch (IOException ex) {
       throw new RuntimeException(ex);
