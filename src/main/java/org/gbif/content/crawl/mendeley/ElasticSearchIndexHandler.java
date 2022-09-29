@@ -95,6 +95,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
   private static final String ES_GBIF_HIGHER_TAXON_KEY_FL = "gbifHigherTaxonKey";
   private static final String ES_GBIF_OCCURRENCE_KEY_FL = "gbifOccurrenceKey";
   private static final String ES_GBIF_FEATURED_ID_FL = "gbifFeatureId";
+  private static final String ES_GBIF_NETWORK_KEY_FL = "gbifNetworkKey";
   private static final String ES_CITATION_TYPE_FL = "citationType";
 
   private static final String ES_TOPICS_FL = "topics";
@@ -229,6 +230,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
       Set<IntNode> gbifTaxonKeys = new HashSet<>();
       Set<LongNode> gbifOccurrenceKeys = new HashSet<>();
       Set<TextNode> gbifFeatureIds = new HashSet<>();
+      Set<TextNode> gbifNetworkKeys = new HashSet<>();
       MutableObject<TextNode> citationType = new MutableObject<>();
       Set<TextNode> topics = new HashSet<>();
       Set<TextNode> relevance = new HashSet<>();
@@ -246,6 +248,9 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
               Optional.ofNullable(citation.getDownloadKey()).ifPresent(k -> gbifDownloads.add(new TextNode(k)));
               Optional.ofNullable(citation.getDatasetKey()).ifPresent(k -> gbifDatasets.add(new TextNode(k)));
               Optional.ofNullable(citation.getPublishingOrganizationKey()).ifPresent(k -> publishingOrganizations.add(new TextNode(k)));
+              Optional.ofNullable(citation.getNetworkKeys()).ifPresent(nk -> gbifNetworkKeys.addAll(Arrays.stream(nk)
+                                                                                                      .map(TextNode::new)
+                                                                                                      .collect(Collectors.toList())));
             });
           }
 
@@ -300,6 +305,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
       docNode.putArray(ES_GBIF_HIGHER_TAXON_KEY_FL).addAll(getHigherTaxonKeys(gbifTaxonKeys));
       docNode.putArray(ES_GBIF_OCCURRENCE_KEY_FL).addAll(gbifOccurrenceKeys);
       docNode.putArray(ES_GBIF_FEATURED_ID_FL).addAll(gbifFeatureIds);
+      docNode.putArray(ES_GBIF_NETWORK_KEY_FL).addAll(gbifNetworkKeys);
       Optional.ofNullable(citationType.getValue()).ifPresent(ct -> docNode.set(ES_CITATION_TYPE_FL, ct));
       docNode.put(ES_PEER_REVIEW_FIELD, peerReviewValue.getValue());
       docNode.put(OPEN_ACCESS_FIELD, openAccessValue.getValue());

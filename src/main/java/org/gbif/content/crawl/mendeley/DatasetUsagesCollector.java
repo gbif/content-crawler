@@ -23,6 +23,8 @@ import java.util.stream.Collectors;
 
 import javax.sql.DataSource;
 
+import lombok.Builder;
+import lombok.Data;
 import org.cache2k.Cache;
 import org.cache2k.Cache2kBuilder;
 import org.slf4j.Logger;
@@ -44,118 +46,56 @@ class DatasetUsagesCollector {
   /**
    * Utility class to store information about dataset citations of GBIF DOI.
    */
+  @Data
+  @Builder
   public static class DatasetCitation implements Serializable {
 
     private String datasetKey;
     private String publishingOrganizationKey;
     private String downloadKey;
     private Date eraseAfter;
+    private String[] networkKeys;
 
-    public DatasetCitation(String datasetKey, String publishingOrganizationKey, String downloadKey, Date eraseAfter) {
-      this.datasetKey = datasetKey;
-      this.publishingOrganizationKey = publishingOrganizationKey;
-      this.downloadKey = downloadKey;
-      this.eraseAfter = eraseAfter;
-    }
-
-    public String getDatasetKey() {
-      return datasetKey;
-    }
-
-    public void setDatasetKey(String datasetKey) {
-      this.datasetKey = datasetKey;
-    }
-
-    public String getPublishingOrganizationKey() {
-      return publishingOrganizationKey;
-    }
-
-    public void setPublishingOrganizationKey(String publishingOrganizationKey) {
-      this.publishingOrganizationKey = publishingOrganizationKey;
-    }
-
-    public String getDownloadKey() {
-      return downloadKey;
-    }
-
-    public void setDownloadKey(String downloadKey) {
-      this.downloadKey = downloadKey;
-    }
-
-    public Date getEraseAfter() {
-      return eraseAfter;
-    }
-
-    public void setEraseAfter(Date eraseAfter) {
-      this.eraseAfter = eraseAfter;
-    }
   }
 
   /**
    * Utility class to store information about download citations (without datasets) of GBIF DOI.
    */
+  @Data
+  @Builder
   public static class DownloadCitation implements Serializable {
 
     private String downloadKey;
     private Date eraseAfter;
 
-    public DownloadCitation(String downloadKey, Date eraseAfter) {
-      this.downloadKey = downloadKey;
-      this.eraseAfter = eraseAfter;
-    }
-
-    public String getDownloadKey() {
-      return downloadKey;
-    }
-
-    public void setDownloadKey(String downloadKey) {
-      this.downloadKey = downloadKey;
-    }
-
-    public Date getEraseAfter() {
-      return eraseAfter;
-    }
-
-    public void setEraseAfter(Date eraseAfter) {
-      this.eraseAfter = eraseAfter;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-      if (this == o) return true;
-      if (o == null || getClass() != o.getClass()) return false;
-      DownloadCitation that = (DownloadCitation) o;
-      return Objects.equals(downloadKey, that.downloadKey) && Objects.equals(eraseAfter, that.eraseAfter);
-    }
-
-    @Override
-    public int hashCode() {
-      return Objects.hash(downloadKey, eraseAfter);
-    }
   }
 
   //Query to extract DOI related datasets
   private static final String DATASETS_DOWNLOADS_QUERY = ""
-    + "SELECT od.doi, doc.dataset_key, d.publishing_organization_key, od.key AS download_key, od.erase_after "
+    + "SELECT od.doi, doc.dataset_key, d.publishing_organization_key, od.key AS download_key, od.erase_after, "
+    + "ARRAY(SELECT nk.network_key FROM dataset_network AS nk JOIN network n ON n.key = nk.network_key AND n.deleted IS NULL WHERE nk.dataset_key = doc.dataset_key) AS network_keys "
     + "FROM occurrence_download od "
     + "LEFT JOIN dataset_occurrence_download doc ON od.key = doc.download_key "
     + "LEFT JOIN dataset d ON d.key = doc.dataset_key "
     + "WHERE od.doi = ? "
     + ""
     + "UNION "
-    + "SELECT d.doi, d.key AS dataset_key, d.publishing_organization_key, NULL as download_key, NULL as erase_after "
+    + "SELECT d.doi, d.key AS dataset_key, d.publishing_organization_key, NULL as download_key, NULL as erase_after, "
+    + "ARRAY(SELECT nk.network_key FROM dataset_network AS nk JOIN network n ON n.key = nk.network_key AND n.deleted IS NULL WHERE nk.dataset_key = d.key) AS network_keys "
     + "FROM dataset d "
     + "WHERE d.doi = ? "
     + ""
     + "UNION "
-    + "SELECT d.doi, d.key AS dataset_key, d.publishing_organization_key, NULL as download_key, NULL as erase_after "
+    + "SELECT d.doi, d.key AS dataset_key, d.publishing_organization_key, NULL as download_key, NULL as erase_after, "
+    + "ARRAY(SELECT nk.network_key FROM dataset_network AS nk JOIN network n ON n.key = nk.network_key AND n.deleted IS NULL WHERE nk.dataset_key = d.key) AS network_keys "
     + "FROM dataset d "
     + "LEFT JOIN dataset_identifier di ON di.dataset_key = d.key "
     + "LEFT JOIN identifier i ON di.identifier_key = i.key AND i.type = 'DOI' "
     + "WHERE i.identifier = ? "
     + ""
     + "UNION "
-    + "SELECT d.doi, dataset_key, d.publishing_organization_key, NULL AS download_key, NULL as erase_after "
+    + "SELECT d.doi, dataset_key, d.publishing_organization_key, NULL AS download_key, NULL as erase_after, "
+    + "ARRAY(SELECT nk.network_key FROM dataset_network AS nk JOIN network n ON n.key = nk.network_key AND n.deleted IS NULL WHERE nk.dataset_key = d.key) AS network_keys "
     + "FROM dataset_derived_dataset ddd "
     + "LEFT JOIN dataset d ON d.key = ddd.dataset_key "
     + "WHERE ddd.derived_dataset_doi = ?";
@@ -203,10 +143,13 @@ class DatasetUsagesCollector {
       preparedStatement.setString(4, doi);
       try (ResultSet resultSet = preparedStatement.executeQuery()) {
         while (resultSet.next()) {
-          citations.add(new DatasetCitation(resultSet.getString("dataset_key"),
-                                            resultSet.getString("publishing_organization_key"),
-                                            resultSet.getString("download_key"),
-                                            resultSet.getDate("erase_after")));
+          citations.add(DatasetCitation.builder()
+                          .datasetKey(resultSet.getString("dataset_key"))
+                          .publishingOrganizationKey("publishing_organization_key")
+                          .downloadKey("download_key")
+                          .eraseAfter(resultSet.getDate("erase_after"))
+                          .networkKeys((String[])resultSet.getArray("network_keys").getArray())
+                          .build());
           resultCount += 1;
         }
         LOG.debug("DOI {} has {} datasets/downloads", doi, resultCount);
@@ -233,7 +176,13 @@ class DatasetUsagesCollector {
    * @return dataset citations associated to a DOI
    */
   public Collection<DownloadCitation> getDownloadCitations(String doi) {
-    return cache.get(doi).stream().filter(c -> c.downloadKey != null).map(c -> new DownloadCitation(c.downloadKey, c.eraseAfter)).collect(Collectors.toSet());
+    return cache.get(doi).stream()
+      .filter(c -> c.downloadKey != null)
+      .map(c -> DownloadCitation.builder()
+                  .downloadKey(c.downloadKey)
+                  .eraseAfter(c.eraseAfter)
+                  .build())
+      .collect(Collectors.toSet());
   }
 
   public boolean isDerivedDataset(String doi) {

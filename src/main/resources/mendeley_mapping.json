@@ -211,6 +211,9 @@
     "gbifFeatureId": {
       "type": "keyword"
     },
+    "gbifNetworkKey": {
+      "type": "keyword"
+    },
     "citationType": {
       "type": "keyword"
     },
