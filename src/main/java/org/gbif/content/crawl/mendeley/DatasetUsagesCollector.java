@@ -54,7 +54,7 @@ class DatasetUsagesCollector {
     private String publishingOrganizationKey;
     private String downloadKey;
     private Date eraseAfter;
-    private String[] networkKeys;
+    private UUID[] networkKeys;
 
   }
 
@@ -148,7 +148,7 @@ class DatasetUsagesCollector {
                           .publishingOrganizationKey("publishing_organization_key")
                           .downloadKey("download_key")
                           .eraseAfter(resultSet.getDate("erase_after"))
-                          .networkKeys((String[])resultSet.getArray("network_keys").getArray())
+                          .networkKeys((UUID[])resultSet.getArray("network_keys").getArray())
                           .build());
           resultCount += 1;
         }
