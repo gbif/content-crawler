@@ -249,7 +249,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
               Optional.ofNullable(citation.getDatasetKey()).ifPresent(k -> gbifDatasets.add(new TextNode(k)));
               Optional.ofNullable(citation.getPublishingOrganizationKey()).ifPresent(k -> publishingOrganizations.add(new TextNode(k)));
               Optional.ofNullable(citation.getNetworkKeys()).ifPresent(nk -> gbifNetworkKeys.addAll(Arrays.stream(nk)
-                                                                                                      .map(TextNode::new)
+                                                                                                      .map(nKey -> new TextNode(nKey.toString()))
                                                                                                       .collect(Collectors.toList())));
             });
           }
