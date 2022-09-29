@@ -214,6 +214,9 @@
     "gbifNetworkKey": {
       "type": "keyword"
     },
+    "gbifProjectIdentifier": {
+      "type": "keyword"
+    },
     "citationType": {
       "type": "keyword"
     },

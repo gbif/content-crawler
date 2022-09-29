@@ -17,6 +17,7 @@ import org.gbif.api.model.checklistbank.NameUsage;
 import org.gbif.api.vocabulary.Country;
 import org.gbif.api.vocabulary.Language;
 import org.gbif.content.crawl.conf.ContentCrawlConfiguration;
+import org.gbif.content.crawl.mendeley.clients.DatasetEsClient;
 import org.gbif.content.crawl.mendeley.clients.SpeciesService;
 
 import java.io.IOException;
@@ -96,6 +97,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
   private static final String ES_GBIF_OCCURRENCE_KEY_FL = "gbifOccurrenceKey";
   private static final String ES_GBIF_FEATURED_ID_FL = "gbifFeatureId";
   private static final String ES_GBIF_NETWORK_KEY_FL = "gbifNetworkKey";
+  private static final String ES_GBIF_PROJECT_IDENTIFIER_FL = "gbifProjectIdentifier";
   private static final String ES_CITATION_TYPE_FL = "citationType";
 
   private static final String ES_TOPICS_FL = "topics";
@@ -140,6 +142,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
   private final int batchSize;
   private final DatasetUsagesCollector datasetUsagesCollector;
   private final SpeciesService speciesService;
+  private final DatasetEsClient datasetEsClient;
 
 
   public ElasticSearchIndexHandler(ContentCrawlConfiguration conf) {
@@ -152,6 +155,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
     dbConfig.putAll(conf.getMendeley().getDbConfig());
     datasetUsagesCollector = new DatasetUsagesCollector(dbConfig);
     speciesService = SpeciesService.wsClient(conf.getGbifApi().getUrl());
+    datasetEsClient = new DatasetEsClient(conf);
     createIndex(esClient, esIdxName, indexMappings(ES_MAPPING_FILE));
   }
 
@@ -231,6 +235,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
       Set<LongNode> gbifOccurrenceKeys = new HashSet<>();
       Set<TextNode> gbifFeatureIds = new HashSet<>();
       Set<TextNode> gbifNetworkKeys = new HashSet<>();
+      Set<TextNode> gbifProjectIds = new HashSet<>();
       MutableObject<TextNode> citationType = new MutableObject<>();
       Set<TextNode> topics = new HashSet<>();
       Set<TextNode> relevance = new HashSet<>();
@@ -246,7 +251,13 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
           } else {
             citations.forEach(citation -> {
               Optional.ofNullable(citation.getDownloadKey()).ifPresent(k -> gbifDownloads.add(new TextNode(k)));
-              Optional.ofNullable(citation.getDatasetKey()).ifPresent(k -> gbifDatasets.add(new TextNode(k)));
+              Optional.ofNullable(citation.getDatasetKey()).ifPresent(k -> {
+                gbifDatasets.add(new TextNode(k));
+                datasetEsClient.get(k)
+                  .flatMap(searchResponse -> Optional.ofNullable(searchResponse.getProjectIdentifier())
+                  .map(TextNode::new))
+                  .ifPresent(gbifProjectIds::add);
+              });
               Optional.ofNullable(citation.getPublishingOrganizationKey()).ifPresent(k -> publishingOrganizations.add(new TextNode(k)));
               Optional.ofNullable(citation.getNetworkKeys()).ifPresent(nk -> gbifNetworkKeys.addAll(Arrays.stream(nk)
                                                                                                       .map(nKey -> new TextNode(nKey.toString()))
@@ -306,6 +317,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
       docNode.putArray(ES_GBIF_OCCURRENCE_KEY_FL).addAll(gbifOccurrenceKeys);
       docNode.putArray(ES_GBIF_FEATURED_ID_FL).addAll(gbifFeatureIds);
       docNode.putArray(ES_GBIF_NETWORK_KEY_FL).addAll(gbifNetworkKeys);
+      docNode.putArray(ES_GBIF_PROJECT_IDENTIFIER_FL).addAll(gbifProjectIds);
       Optional.ofNullable(citationType.getValue()).ifPresent(ct -> docNode.set(ES_CITATION_TYPE_FL, ct));
       docNode.put(ES_PEER_REVIEW_FIELD, peerReviewValue.getValue());
       docNode.put(OPEN_ACCESS_FIELD, openAccessValue.getValue());

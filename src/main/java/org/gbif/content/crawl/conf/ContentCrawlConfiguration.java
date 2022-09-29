@@ -114,6 +114,10 @@ public class ContentCrawlConfiguration {
     private Map<String,String> dbConfig = new HashMap<>();
 
     private IndexBuild indexBuild;
+
+    private ElasticSearch datasetElasticSearch;
+
+    private String datasetIndex = "dataset";
   }
 
   /**

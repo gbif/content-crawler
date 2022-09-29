@@ -40,7 +40,9 @@ mendeley:
       - "GBIF_author"
       - "GBIF_mentioned"
       - "GBIF_funded"
-
+  datasetElasticSearch:
+    host: http://dataset-search.gbif-dev.org:9200
+  datasetIndex: "dataset"
 # Optional: If included will push documents to the referenced Elastic Search index
 elasticSearch:
   host: "cms-search.gbif-dev.org"
