@@ -217,6 +217,9 @@
     "gbifProjectIdentifier": {
       "type": "keyword"
     },
+    "gbifProgrammeAcronym": {
+      "type": "keyword"
+    },
     "citationType": {
       "type": "keyword"
     },

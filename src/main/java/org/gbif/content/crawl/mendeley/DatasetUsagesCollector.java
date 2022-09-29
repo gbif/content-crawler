@@ -23,8 +23,6 @@ import java.util.stream.Collectors;
 
 import javax.sql.DataSource;
 
-import lombok.Builder;
-import lombok.Data;
 import org.cache2k.Cache;
 import org.cache2k.Cache2kBuilder;
 import org.slf4j.Logger;
@@ -32,6 +30,9 @@ import org.slf4j.LoggerFactory;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
+
+import lombok.Builder;
+import lombok.Data;
 
 /**
  * Extracts and caches dataset usages of a GBIF DOI.
