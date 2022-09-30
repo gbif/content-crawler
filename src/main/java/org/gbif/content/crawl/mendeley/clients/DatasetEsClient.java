@@ -89,8 +89,6 @@ public class DatasetEsClient {
 
   private DatasetSearchResponse toDatasetSearchResponse(SearchHit searchHit) {
     String projectIdentifier = getProjectIdentifier(searchHit);
-    Optional<ContentEsClient.ProjectResponse> project = getProjectData(projectIdentifier);
-
     return DatasetSearchResponse.builder()
             .key(searchHit.getId())
             .projectIdentifier(projectIdentifier)
@@ -99,7 +97,10 @@ public class DatasetEsClient {
   }
 
   public Optional<DatasetSearchResponse> get(String datasetKey) {
-    return cache.get(datasetKey);
+    if (datasetKey != null) {
+      return cache.get(datasetKey);
+    }
+    return Optional.empty();
   }
 
   @SneakyThrows
