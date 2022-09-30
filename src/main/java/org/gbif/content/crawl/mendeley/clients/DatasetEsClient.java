@@ -147,6 +147,7 @@ public class DatasetEsClient implements Closeable {
     log.info("Dataset cache built with {} entries", cache.keys().size());
   }
 
+  @Override
   public void close() throws IOException {
     esClient.close();
     contentEsClient.close();
