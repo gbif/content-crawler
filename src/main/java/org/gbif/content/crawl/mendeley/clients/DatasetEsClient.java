@@ -65,7 +65,6 @@ public class DatasetEsClient implements Closeable {
     cache = new Cache2kBuilder<String, DatasetSearchResponse>(){}
       .eternal(true)
       .entryCapacity(20_000)
-      .loader(this::getFromElastic)
       .permitNullValues(true)
       .build();
     this.contentEsClient = new ContentEsClient(configuration);
