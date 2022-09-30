@@ -35,9 +35,9 @@
 
     <!-- GBIF libraries -->
     <gbif-cli.version>1.1</gbif-cli.version>
-    <gbif-api.version>0.166</gbif-api.version>
-    <gbif-common-ws.version>1.21</gbif-common-ws.version>
-    <gbif-registry.version>3.80</gbif-registry.version>
+    <gbif-api.version>0.173</gbif-api.version>
+    <gbif-common-ws.version>1.22</gbif-common-ws.version>
+    <gbif-registry.version>3.87</gbif-registry.version>
     <datacite-rest-client.version>1.10</datacite-rest-client.version>
 
     <lombok.version>1.18.24</lombok.version>
