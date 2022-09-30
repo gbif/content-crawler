@@ -146,8 +146,8 @@ class DatasetUsagesCollector {
         while (resultSet.next()) {
           citations.add(DatasetCitation.builder()
                           .datasetKey(resultSet.getString("dataset_key"))
-                          .publishingOrganizationKey("publishing_organization_key")
-                          .downloadKey("download_key")
+                          .publishingOrganizationKey(resultSet.getString("publishing_organization_key"))
+                          .downloadKey(resultSet.getString("download_key"))
                           .eraseAfter(resultSet.getDate("erase_after"))
                           .networkKeys((UUID[])resultSet.getArray("network_keys").getArray())
                           .build());
