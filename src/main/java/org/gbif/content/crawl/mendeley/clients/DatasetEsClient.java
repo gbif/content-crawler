@@ -16,6 +16,8 @@ package org.gbif.content.crawl.mendeley.clients;
 import org.gbif.content.crawl.conf.ContentCrawlConfiguration;
 import org.gbif.content.crawl.es.ElasticSearchUtils;
 
+import java.io.Closeable;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Optional;
 
@@ -33,8 +35,10 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NonNull;
 import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 
-public class DatasetEsClient {
+@Slf4j
+public class DatasetEsClient implements Closeable {
 
   @Data
   @Builder
@@ -46,19 +50,23 @@ public class DatasetEsClient {
 
   }
 
+  private static final int PAGE_SIZE = 500;
+
   private final ContentCrawlConfiguration configuration;
 
   private final RestHighLevelClient esClient;
 
   private final ContentEsClient contentEsClient;
-  private final Cache<String, Optional<DatasetSearchResponse>> cache;
+  private final Cache<String, DatasetSearchResponse> cache;
 
   public DatasetEsClient(@NonNull ContentCrawlConfiguration configuration) {
     this.configuration = configuration;
     this.esClient = ElasticSearchUtils.buildEsClient(configuration.getMendeley().getDatasetElasticSearch());
-    cache = new Cache2kBuilder<String, Optional<DatasetSearchResponse>>(){}
-      .loader(this::getFromElastic)
+    cache = new Cache2kBuilder<String, DatasetSearchResponse>(){}
       .eternal(true)
+      .entryCapacity(20_000)
+      .loader(this::getFromElastic)
+      .permitNullValues(true)
       .build();
     this.contentEsClient = new ContentEsClient(configuration);
   }
@@ -97,25 +105,51 @@ public class DatasetEsClient {
   }
 
   public Optional<DatasetSearchResponse> get(String datasetKey) {
-    if (datasetKey != null) {
-      return cache.get(datasetKey);
-    }
-    return Optional.empty();
+    return Optional.ofNullable(cache.get(datasetKey));
   }
 
   @SneakyThrows
-  private Optional<DatasetSearchResponse> getFromElastic(String datasetKey) {
+  private DatasetSearchResponse getFromElastic(String datasetKey) {
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder()
                                                 .size(1)
                                                 .fetchSource(new String[]{"project.identifier"}, null)
-                                                .query(QueryBuilders.termQuery("_id", datasetKey));
+                                                .query(QueryBuilders.idsQuery().addIds(datasetKey));
     SearchRequest searchRequest = new SearchRequest();
     searchRequest.indices(configuration.getMendeley().getDatasetIndex());
     searchRequest.source(searchSourceBuilder);
     SearchResponse searchResponse = esClient.search(searchRequest, RequestOptions.DEFAULT);
     if (searchResponse.getHits().getTotalHits().value > 0) {
-      return Optional.of(toDatasetSearchResponse(searchResponse.getHits().getAt(0)));
+      return toDatasetSearchResponse(searchResponse.getHits().getAt(0));
     }
-    return Optional.empty();
+    return null;
   }
+
+  @SneakyThrows
+  public void loadAllWithProjectIds() {
+    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder()
+      .size(PAGE_SIZE)
+      .from(0)
+      .fetchSource(new String[]{"project.identifier"}, null)
+      .query(QueryBuilders.existsQuery("project.identifier"));
+
+    SearchRequest searchRequest = new SearchRequest();
+    searchRequest.indices(configuration.getMendeley().getDatasetIndex());
+    searchRequest.source(searchSourceBuilder);
+
+    SearchResponse searchResponse = esClient.search(searchRequest, RequestOptions.DEFAULT);
+    while (searchResponse.getHits().getHits().length > 0) {
+      log.info("Loading {} datasets from {} into the cache", searchSourceBuilder.size(), searchSourceBuilder.from());
+      searchResponse.getHits().iterator().forEachRemaining(searchHit -> cache.put(searchHit.getId(), toDatasetSearchResponse(searchHit)));
+      searchSourceBuilder.from(searchSourceBuilder.from() + searchResponse.getHits().getHits().length);
+      searchResponse = esClient.search(searchRequest, RequestOptions.DEFAULT);
+    }
+
+    log.info("Dataset cache built with {} entries", cache.keys().size());
+  }
+
+  public void close() throws IOException {
+    esClient.close();
+    contentEsClient.close();
+  }
+
 }

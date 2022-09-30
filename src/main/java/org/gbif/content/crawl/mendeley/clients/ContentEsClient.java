@@ -16,6 +16,8 @@ package org.gbif.content.crawl.mendeley.clients;
 import org.gbif.content.crawl.conf.ContentCrawlConfiguration;
 import org.gbif.content.crawl.es.ElasticSearchUtils;
 
+import java.io.Closeable;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Optional;
 
@@ -34,8 +36,14 @@ import lombok.Data;
 import lombok.NonNull;
 import lombok.SneakyThrows;
 
-public class ContentEsClient {
+/**
+ * Elasticsearch client to get information from project and programme indices.
+ */
+public class ContentEsClient  implements Closeable {
 
+  /**
+   * Data obtained from Elasticsearch.
+   */
   @Data
   @Builder
   public static class ProjectResponse {
@@ -51,33 +59,49 @@ public class ContentEsClient {
 
   public ContentEsClient(@NonNull ContentCrawlConfiguration configuration) {
     this.esClient = ElasticSearchUtils.buildEsClient(configuration.getElasticSearch());
+    //Cache2k with loader
     cache = new Cache2kBuilder<String, Optional<ProjectResponse>>(){}
       .loader(this::getFromElastic)
       .eternal(true)
       .build();
   }
 
+
+  private static SearchRequest buildSearchByIdsRequest(String index, String[] fetchFields,String id) {
+    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder()
+      .size(1) //only one result is expected
+      .fetchSource(fetchFields, null)
+      .query(QueryBuilders.idsQuery().addIds(id));
+
+    SearchRequest searchRequest = new SearchRequest();
+    searchRequest.indices(index);
+    searchRequest.source(searchSourceBuilder);
+    return searchRequest;
+  }
+
+  /**
+   * Queries the programme index to get the programme acronym.
+   */
   @SneakyThrows
   private String getProgrammeAcronym(String programmeId) {
     if (programmeId != null) {
-      SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder()
-        .size(1)
-        .fetchSource(new String[]{"acronym"}, null)
-        .query(QueryBuilders.termQuery("_id", programmeId));
-      SearchRequest searchRequest = new SearchRequest();
-      searchRequest.indices("programme");
-      searchRequest.source(searchSourceBuilder);
+      SearchRequest searchRequest = buildSearchByIdsRequest("programme", new String[]{"acronym"}, programmeId);
+
       SearchResponse searchResponse = esClient.search(searchRequest, RequestOptions.DEFAULT);
-      if (searchResponse.getHits().getTotalHits().value > 0) {
+
+      if (searchResponse.getHits().getTotalHits().value > 0) { //are there results?
         Object acronym = searchResponse.getHits().getAt(0).getSourceAsMap().get("acronym");
-        if(acronym != null) {
+        if (acronym != null) {// hasAcronym
           return acronym.toString();
         }
-    }
+      }
     }
     return null;
   }
 
+  /**
+   * Extracts the programme.id from the response.
+   */
   private static String getProgrammeId(SearchHit searchHit) {
     if (searchHit.getSourceAsMap().containsKey("programme")) {
       HashMap<String,?> project = (HashMap<String,?>)searchHit.getSourceAsMap().get("programme");
@@ -89,6 +113,9 @@ public class ContentEsClient {
     return null;
   }
 
+  /**
+   * Converts the hit result to a ProjectResponse.
+   */
   private ProjectResponse toProjectResponse(SearchHit searchHit) {
     return ProjectResponse.builder()
             .identifier(searchHit.getId())
@@ -96,23 +123,30 @@ public class ContentEsClient {
             .build();
   }
 
+  /**
+   * Gets or loads the result from the cache.
+   */
   public Optional<ProjectResponse> get(String projectId) {
     return cache.get(projectId);
   }
 
+  /**
+   * Tries to load a result form Elasticsearch.
+   */
   @SneakyThrows
   private Optional<ProjectResponse> getFromElastic(String projectId) {
-    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder()
-                                                .size(1)
-                                                .fetchSource(new String[]{"programme.id"}, null)
-                                                .query(QueryBuilders.termQuery("_id", projectId));
-    SearchRequest searchRequest = new SearchRequest();
-    searchRequest.indices("project");
-    searchRequest.source(searchSourceBuilder);
+    SearchRequest searchRequest = buildSearchByIdsRequest("project", new String[]{"programme.id"}, projectId);
+
     SearchResponse searchResponse = esClient.search(searchRequest, RequestOptions.DEFAULT);
     if (searchResponse.getHits().getTotalHits().value > 0) {
       return Optional.of(toProjectResponse(searchResponse.getHits().getAt(0)));
     }
     return Optional.empty();
   }
+
+  @Override
+  public void close() throws IOException {
+    esClient.close();
+  }
+
 }

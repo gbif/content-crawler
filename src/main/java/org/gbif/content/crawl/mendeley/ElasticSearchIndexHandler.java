@@ -157,6 +157,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
     datasetUsagesCollector = new DatasetUsagesCollector(dbConfig);
     speciesService = SpeciesService.wsClient(conf.getGbifApi().getUrl());
     datasetEsClient = new DatasetEsClient(conf);
+    datasetEsClient.loadAllWithProjectIds();
     createIndex(esClient, esIdxName, indexMappings(ES_MAPPING_FILE));
   }
 
@@ -463,6 +464,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
     try {
       swapIndexToAlias(esClient, getEsIdxName(conf.getMendeley().getIndexBuild().getEsIndexName()), esIdxName);
       esClient.close();
+      datasetEsClient.close();
     } catch (IOException ex) {
       throw new RuntimeException(ex);
     }

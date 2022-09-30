@@ -32,7 +32,7 @@ import com.google.common.base.Stopwatch;
 import io.reactivex.Observable;
 
 /**
- * A crawler of Mendeley documents storing the results in JSON files, and optionally in an Elastic Search index.
+ * A crawler of Mendeley documents storing the results in JSON files, and optionally in an Elasticsearch index.
  */
 public class MendeleyDocumentCrawler {
 
