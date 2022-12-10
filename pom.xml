@@ -60,7 +60,7 @@
     <commons-io.version>2.4</commons-io.version>
     <okio.version>1.9.0</okio.version>
     <findbugs.version>3.0.1</findbugs.version>
-    <spring.version>5.2.12.RELEASE</spring.version>
+    <spring.version>6.0.0</spring.version>
 
     <apache.beam.version>2.15.0</apache.beam.version>
     <postgresql.version>9.4.1208.jre7</postgresql.version>
