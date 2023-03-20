@@ -63,7 +63,7 @@ public class ElasticSearchUtils {
                                                       .build();
 
   // Index settings used at production/searching time
-  private static final Function<ContentCrawlConfiguration.ElasticSearch, Settings>
+  private static final Function<ContentCrawlConfiguration.IndexBuild, Settings>
       SEARCH_SETTINGS_FN =
           config ->
               Settings.builder()
@@ -149,13 +149,13 @@ public class ElasticSearchUtils {
       RestHighLevelClient esClient,
       String alias,
       String toIdx,
-      ContentCrawlConfiguration.ElasticSearch esConfig) {
+      ContentCrawlConfiguration.IndexBuild indexConfig) {
     try {
       // Update setting to search production
       esClient
           .indices()
           .putSettings(
-              new UpdateSettingsRequest().indices(toIdx).settings(SEARCH_SETTINGS_FN.apply(esConfig)),
+              new UpdateSettingsRequest().indices(toIdx).settings(SEARCH_SETTINGS_FN.apply(indexConfig)),
               RequestOptions.DEFAULT);
 
       //Keeping 1 segment per idx should be enough for small indexes

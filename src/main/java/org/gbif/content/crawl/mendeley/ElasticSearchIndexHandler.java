@@ -466,7 +466,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
           esClient,
           getEsIdxName(conf.getMendeley().getIndexBuild().getEsIndexName()),
           esIdxName,
-          conf.getElasticSearch());
+          conf.getMendeley().getIndexBuild());
       esClient.close();
       datasetEsClient.close();
     } catch (IOException ex) {

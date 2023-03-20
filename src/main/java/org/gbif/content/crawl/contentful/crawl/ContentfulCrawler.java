@@ -141,7 +141,7 @@ public class ContentfulCrawler {
                                                                        vocabularyTerms,
                                                                        newsContentTypeId,
                                                                        articleContentTypeId,
-                                                                       esConfiguration);
+                                                                       configuration.getIndexBuild());
         contentTypeCrawler.crawl();
       });
   }
