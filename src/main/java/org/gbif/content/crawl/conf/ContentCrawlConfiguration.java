@@ -225,7 +225,7 @@ public class ContentCrawlConfiguration {
     @Parameter(
       names = "-maxResultWindow",
       description = "MaxResultWindow ES")
-    private int maxResultWindow = 35000;
+    private int maxResultWindow = 15000;
   }
 
   @Data
