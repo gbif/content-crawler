@@ -462,7 +462,11 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
   @Override
   public void finish() {
     try {
-      swapIndexToAlias(esClient, getEsIdxName(conf.getMendeley().getIndexBuild().getEsIndexName()), esIdxName);
+      swapIndexToAlias(
+          esClient,
+          getEsIdxName(conf.getMendeley().getIndexBuild().getEsIndexName()),
+          esIdxName,
+          conf.getElasticSearch());
       esClient.close();
       datasetEsClient.close();
     } catch (IOException ex) {

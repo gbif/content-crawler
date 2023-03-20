@@ -20,6 +20,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
+import java.util.function.Function;
 import java.util.regex.Pattern;
 
 import org.apache.commons.io.IOUtils;
@@ -61,11 +62,15 @@ public class ElasticSearchUtils {
                                                       .put("index.translog.durability","async")
                                                       .build();
 
-  //Index settings used at production/searching time
-  private static final Settings SEARCH_SETTINGS = Settings.builder()
-                                                    .put("index.refresh_interval", "1s")
-                                                    .put("index.number_of_replicas", "0")
-                                                    .build();
+  // Index settings used at production/searching time
+  private static final Function<ContentCrawlConfiguration.ElasticSearch, Settings>
+      SEARCH_SETTINGS_FN =
+          config ->
+              Settings.builder()
+                  .put("index.refresh_interval", "1s")
+                  .put("index.number_of_replicas", "0")
+                  .put("index.max_result_window", config.getMaxResultWindow())
+                  .build();
 
   //This an alias used for all active cms/content indices
   private static final String CONTENT_ALIAS = "content";
@@ -140,10 +145,18 @@ public class ElasticSearchUtils {
   /**
    * This method delete all the indexes associated to the alias and associates the alias to toIdx.
    */
-  public static void swapIndexToAlias(RestHighLevelClient esClient, String alias, String toIdx) {
+  public static void swapIndexToAlias(
+      RestHighLevelClient esClient,
+      String alias,
+      String toIdx,
+      ContentCrawlConfiguration.ElasticSearch esConfig) {
     try {
-      //Update setting to search production
-      esClient.indices().putSettings(new UpdateSettingsRequest().indices(toIdx).settings(SEARCH_SETTINGS), RequestOptions.DEFAULT);
+      // Update setting to search production
+      esClient
+          .indices()
+          .putSettings(
+              new UpdateSettingsRequest().indices(toIdx).settings(SEARCH_SETTINGS_FN.apply(esConfig)),
+              RequestOptions.DEFAULT);
 
       //Keeping 1 segment per idx should be enough for small indexes
       esClient.indices().forcemerge(new ForceMergeRequest(toIdx).maxNumSegments(1), RequestOptions.DEFAULT);

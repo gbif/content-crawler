@@ -23,6 +23,9 @@ import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.common.unit.TimeValue;
+
+import org.gbif.content.crawl.conf.ContentCrawlConfiguration;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -70,6 +73,7 @@ public class ContentTypeCrawler {
   private final RestHighLevelClient esClient;
   private final CDAClient cdaClient;
   private final VocabularyTerms vocabularyTerms;
+  private final ContentCrawlConfiguration.ElasticSearch esConfig;
 
 
   ContentTypeCrawler(CMAContentType contentType,
@@ -78,7 +82,8 @@ public class ContentTypeCrawler {
                      CDAClient cdaClient,
                      VocabularyTerms vocabularyTerms,
                      String newsContentTypeId,
-                     String articleContentTypeId) {
+                     String articleContentTypeId,
+                     ContentCrawlConfiguration.ElasticSearch esConfig) {
     this.contentType = contentType;
     //index name has to be in lowercase
     esIdxName = getEsIndexingIdxName(contentType.getName());
@@ -98,6 +103,8 @@ public class ContentTypeCrawler {
     this.cdaClient = cdaClient;
 
     this.vocabularyTerms = vocabularyTerms;
+
+    this.esConfig = esConfig;
   }
 
   /**
@@ -117,7 +124,7 @@ public class ContentTypeCrawler {
       .buffer(CRAWL_BUFFER)
       .doOnComplete(() -> {
          if(executeBulkRequest(bulkRequest)) {
-           swapIndexToAlias(esClient, esIdxAlias, esIdxName);
+           swapIndexToAlias(esClient, esIdxAlias, esIdxName, esConfig);
          }
       })
       .subscribe( results -> results.forEach(

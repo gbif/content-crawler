@@ -145,6 +145,11 @@ public class ContentCrawlConfiguration {
       names = "-connectionRequestTimeOut",
       description = "ConnectionRequestTimeOut time out")
     private int connectionRequestTimeOut = 120000;
+
+    @Parameter(
+      names = "-maxResultWindow",
+      description = "MaxResultWindow ES")
+    private int maxResultWindow = 35000;
   }
 
 
