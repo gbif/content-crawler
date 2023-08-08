@@ -54,6 +54,8 @@ public class ContentfulCrawler {
   private String newsContentTypeId;
   private String articleContentTypeId;
 
+  private String programmeContentTypeId;
+
   /**
    * ElasticSearch and Contentful configuration are required to create an instance of this class.
    */
@@ -88,6 +90,7 @@ public class ContentfulCrawler {
     //Gets the ContentType.resourceId for news and articles, which vary by space
     newsContentTypeId = getContentTypeId(webContentTypes, configuration.getNewsContentType());
     articleContentTypeId = getContentTypeId(webContentTypes, configuration.getArticleContentType());
+    programmeContentTypeId = getContentTypeId(webContentTypes, configuration.getProgrammeContentType());
 
 
     //Crawl all Content Types, except for vocabularies
@@ -141,6 +144,7 @@ public class ContentfulCrawler {
                                                                        vocabularyTerms,
                                                                        newsContentTypeId,
                                                                        articleContentTypeId,
+                                                                       programmeContentTypeId,
                                                                        configuration.getIndexBuild());
         contentTypeCrawler.crawl();
       });

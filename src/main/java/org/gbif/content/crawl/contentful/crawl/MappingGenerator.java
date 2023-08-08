@@ -73,6 +73,7 @@ public class  MappingGenerator {
     .put("updatedAt", "date")
     .put("revision", "float")
     .put("gbifRegion", KEYWORD)
+    .put("gbifProgrammeAcronym", KEYWORD)
     .put("type", KEYWORD).build();
 
   /**

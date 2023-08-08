@@ -35,6 +35,8 @@ public class EsDocBuilder {
 
   private static final String REGION_FIELD = "gbifRegion";
 
+  private static final String PROGRAMME_FIELD = "programme";
+
   private static final Pattern LINKED_ENTRY_FIELDS = Pattern.compile(".*summary.*|.*title.*|label|url|country|isoCode");
 
   private static final String ID_FIELD = "id";
@@ -80,6 +82,10 @@ public class EsDocBuilder {
     //Updates the information from the meta field
     Meta.getMetaCreatedDate(cdaEntry).ifPresent(createdDate -> entries.replace("createdAt", createdDate));
     return entries;
+  }
+
+  public void addField(String field, String value) {
+    entries.put(field, value);
   }
 
   /**

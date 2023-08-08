@@ -200,6 +200,11 @@ public class ContentCrawlConfiguration {
             description = "Name of the article content type, it's handled specially during indexing to tag related entities")
     private String articleContentType = "Article";
 
+    @Parameter(
+            names = "-programmeContentType",
+            description = "Name of the programme content type, it's handled specially during indexing projects")
+    private String programmeContentType = "Programme";
+
     private IndexBuild indexBuild;
   }
 

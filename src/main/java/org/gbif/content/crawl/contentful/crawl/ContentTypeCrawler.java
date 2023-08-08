@@ -16,6 +16,7 @@ package org.gbif.content.crawl.contentful.crawl;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkResponse;
@@ -69,6 +70,8 @@ public class ContentTypeCrawler {
   private final ESDocumentLinker newsLinker;
   private final ESDocumentLinker articleLinker;
 
+  private final ProgrammeLinker programmeLinker;
+
   private final MappingGenerator mappingGenerator;
   private final RestHighLevelClient esClient;
   private final CDAClient cdaClient;
@@ -83,6 +86,7 @@ public class ContentTypeCrawler {
                      VocabularyTerms vocabularyTerms,
                      String newsContentTypeId,
                      String articleContentTypeId,
+                     String programmeContentTypeId,
                      ContentCrawlConfiguration.IndexBuild indexConfig) {
     this.contentType = contentType;
     //index name has to be in lowercase
@@ -94,6 +98,7 @@ public class ContentTypeCrawler {
     //Used to create links in the indexes
     newsLinker = new ESDocumentLinker(newsContentTypeId, esClient);
     articleLinker = new ESDocumentLinker(articleContentTypeId, esClient);
+    programmeLinker = new ProgrammeLinker(cdaClient, programmeContentTypeId);
 
     //Set the mapping generator
     this.mappingGenerator = mappingGenerator;
@@ -145,10 +150,13 @@ public class ContentTypeCrawler {
               // decorate any entries, linkers are responsible for filtering suitable content types
               newsLinker.processEntryTag(nestedCdaEntry, esTypeName, cdaEntry.id());
               articleLinker.processEntryTag(nestedCdaEntry, esTypeName, cdaEntry.id());
+              programmeLinker.collectProgrammeAcronym(cdaEntry);
             });
     //Add all rawFields
     Map<String, Object> indexedFields =  new HashMap<>(esDocBuilder.toEsDoc());
     indexedFields.put(CONTENT_TYPE_FIELD, esTypeName);
+    Optional.ofNullable(programmeLinker.getProgrammeAcronym())
+            .ifPresent(programmeAcronym -> esDocBuilder.addField("gbifProgrammeAcronym", programmeAcronym));
     return indexedFields;
   }
 
