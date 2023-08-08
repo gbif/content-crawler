@@ -30,8 +30,8 @@ public class ProgrammeLinker {
     public void collectProgrammeAcronym(CDAEntry cdaEntry) {
         if (projectContentTypeId.equals(cdaEntry.contentType().id()) &&  cdaEntry.rawFields().containsKey("programme")) {
             Map<String,Object> programmeField = (Map<String, Object>) cdaEntry.rawFields().get("programme");
-            LOG.info("Programme found {}", programmeField);
             String programmeId = (String)programmeField.get("id");
+            LOG.info("Programme found {}", programmeId);
 
             CDAEntry programmeEntry = cdaClient.fetch(CDAEntry.class).withContentType(programmeContentTypeId).one(programmeId);
             programmeAcronym = programmeEntry.getField("acronym");

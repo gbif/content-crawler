@@ -35,8 +35,6 @@ public class EsDocBuilder {
 
   private static final String REGION_FIELD = "gbifRegion";
 
-  private static final String PROGRAMME_FIELD = "programme";
-
   private static final Pattern LINKED_ENTRY_FIELDS = Pattern.compile(".*summary.*|.*title.*|label|url|country|isoCode");
 
   private static final String ID_FIELD = "id";
