@@ -205,6 +205,11 @@ public class ContentCrawlConfiguration {
             description = "Name of the programme content type, it's handled specially during indexing projects")
     private String programmeContentType = "Programme";
 
+    @Parameter(
+            names = "-projectContentType",
+            description = "Name of the project content type, it's handled specially during indexing projects")
+    private String projectContentType = "Project";
+
     private IndexBuild indexBuild;
   }
 

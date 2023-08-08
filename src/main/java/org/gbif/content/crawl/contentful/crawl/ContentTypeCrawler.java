@@ -87,6 +87,7 @@ public class ContentTypeCrawler {
                      String newsContentTypeId,
                      String articleContentTypeId,
                      String programmeContentTypeId,
+                     String projectContentTypeId,
                      ContentCrawlConfiguration.IndexBuild indexConfig) {
     this.contentType = contentType;
     //index name has to be in lowercase
@@ -98,7 +99,7 @@ public class ContentTypeCrawler {
     //Used to create links in the indexes
     newsLinker = new ESDocumentLinker(newsContentTypeId, esClient);
     articleLinker = new ESDocumentLinker(articleContentTypeId, esClient);
-    programmeLinker = new ProgrammeLinker(cdaClient, programmeContentTypeId);
+    programmeLinker = new ProgrammeLinker(cdaClient, programmeContentTypeId, projectContentTypeId);
 
     //Set the mapping generator
     this.mappingGenerator = mappingGenerator;
