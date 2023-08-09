@@ -13,6 +13,8 @@
  */
 package org.gbif.content.crawl.contentful.crawl;
 
+import org.gbif.content.crawl.conf.ContentCrawlConfiguration;
+
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
@@ -24,9 +26,6 @@ import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.common.unit.TimeValue;
-
-import org.gbif.content.crawl.conf.ContentCrawlConfiguration;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -86,7 +85,6 @@ public class ContentTypeCrawler {
                      VocabularyTerms vocabularyTerms,
                      String newsContentTypeId,
                      String articleContentTypeId,
-                     String programmeContentTypeId,
                      String projectContentTypeId,
                      ContentCrawlConfiguration.IndexBuild indexConfig) {
     this.contentType = contentType;
@@ -99,7 +97,7 @@ public class ContentTypeCrawler {
     //Used to create links in the indexes
     newsLinker = new ESDocumentLinker(newsContentTypeId, esClient);
     articleLinker = new ESDocumentLinker(articleContentTypeId, esClient);
-    programmeLinker = new ProgrammeLinker(cdaClient, programmeContentTypeId, projectContentTypeId);
+    programmeLinker = new ProgrammeLinker(projectContentTypeId);
 
     //Set the mapping generator
     this.mappingGenerator = mappingGenerator;
@@ -151,13 +149,13 @@ public class ContentTypeCrawler {
               // decorate any entries, linkers are responsible for filtering suitable content types
               newsLinker.processEntryTag(nestedCdaEntry, esTypeName, cdaEntry.id());
               articleLinker.processEntryTag(nestedCdaEntry, esTypeName, cdaEntry.id());
-              programmeLinker.collectProgrammeAcronym(cdaEntry);
             });
+    programmeLinker.collectProgrammeAcronym(cdaEntry);
     //Add all rawFields
     Map<String, Object> indexedFields =  new HashMap<>(esDocBuilder.toEsDoc());
     indexedFields.put(CONTENT_TYPE_FIELD, esTypeName);
     Optional.ofNullable(programmeLinker.getProgrammeAcronym())
-            .ifPresent(programmeAcronym -> esDocBuilder.addField("gbifProgrammeAcronym", programmeAcronym));
+            .ifPresent(programmeAcronym -> indexedFields.put("gbifProgrammeAcronym", programmeAcronym));
     return indexedFields;
   }
 

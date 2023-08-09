@@ -82,10 +82,6 @@ public class EsDocBuilder {
     return entries;
   }
 
-  public void addField(String field, String value) {
-    entries.put(field, value);
-  }
-
   /**
    * Collects fields data from a single localized resource.
    * @param resource Asset or CDAEntry to be processed

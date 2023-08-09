@@ -54,8 +54,6 @@ public class ContentfulCrawler {
   private String newsContentTypeId;
   private String articleContentTypeId;
 
-  private String programmeContentTypeId;
-
   private String projectContentTypeId;
 
   /**
@@ -92,7 +90,6 @@ public class ContentfulCrawler {
     //Gets the ContentType.resourceId for news and articles, which vary by space
     newsContentTypeId = getContentTypeId(webContentTypes, configuration.getNewsContentType());
     articleContentTypeId = getContentTypeId(webContentTypes, configuration.getArticleContentType());
-    programmeContentTypeId = getContentTypeId(webContentTypes, configuration.getProgrammeContentType());
     projectContentTypeId = getContentTypeId(webContentTypes, configuration.getProjectContentType());
 
 
@@ -147,7 +144,6 @@ public class ContentfulCrawler {
                                                                        vocabularyTerms,
                                                                        newsContentTypeId,
                                                                        articleContentTypeId,
-                                                                       programmeContentTypeId,
                                                                        projectContentTypeId,
                                                                        configuration.getIndexBuild());
         contentTypeCrawler.crawl();
