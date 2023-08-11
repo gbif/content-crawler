@@ -352,6 +352,9 @@ public class  MappingGenerator {
         addGenericTagsMapping(mapping);
         addNestedMapping(mapping, TITLE_FIELD, TEXT);
         addNestedMapping(mapping, "description", TEXT);
+        addNestedMapping(mapping, "summary", TEXT);
+        addNestedMapping(mapping, "body", TEXT);
+        addNestedMapping(mapping, "title", TEXT);
         addMatchMapping(mapping, "id", KEYWORD);
         addMatchMapping(mapping, "isoCode", KEYWORD);
         addNestedMapping(mapping, "label", KEYWORD);
@@ -363,9 +366,9 @@ public class  MappingGenerator {
               collapsedFields.put(cmaField.getId(), KEYWORD);
             } else if (isSimpleField(cmaField, esType)) {
               collapsedFields.put(cmaField.getId(), esType);
-            } else if (!NESTED.equals(esType) && cmaField.isLocalized()) { //localizable fields have nested elements
+            } else if (!NESTED.equals(esType) && cmaField.isLocalized() && !cmaField.getName().equalsIgnoreCase("blocks")) { //localizable fields have nested elements
               addTemplateField("path_match", cmaField.getId(), cmaField.getId() + ".*", esType, mapping);
-            } else {
+            } else if (!cmaField.getName().equalsIgnoreCase("blocks")) {
               addTemplateField("match", cmaField.getId(), cmaField.getId(), esType, mapping);
             }
           })

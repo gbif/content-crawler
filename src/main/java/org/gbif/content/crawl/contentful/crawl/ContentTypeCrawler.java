@@ -17,6 +17,7 @@ import org.gbif.content.crawl.conf.ContentCrawlConfiguration;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -156,7 +157,18 @@ public class ContentTypeCrawler {
     indexedFields.put(CONTENT_TYPE_FIELD, esTypeName);
     Optional.ofNullable(programmeLinker.getProgrammeAcronym())
             .ifPresent(programmeAcronym -> indexedFields.put("gbifProgrammeAcronym", programmeAcronym));
+    getBlocks(cdaEntry).ifPresent(blocks -> indexedFields.put("blocks", blocks));
     return indexedFields;
+  }
+
+  private Optional<Map<String,Object>> getBlocks(CDAEntry cdaEntry) {
+    if (cdaEntry.getField("blocks") != null) {
+      Map<String,Object> blockFields = new HashMap<>();
+      List<CDAEntry> blocks = cdaEntry.getField("blocks");
+      blocks.forEach(block ->  blockFields.put(block.contentType().id(), block.rawFields()));
+      return Optional.of(blockFields);
+    }
+    return Optional.empty();
   }
 
 

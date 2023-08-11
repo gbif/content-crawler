@@ -35,7 +35,7 @@ public class EsDocBuilder {
 
   private static final String REGION_FIELD = "gbifRegion";
 
-  private static final Pattern LINKED_ENTRY_FIELDS = Pattern.compile(".*summary.*|.*title.*|label|url|country|isoCode");
+  private static final Pattern LINKED_ENTRY_FIELDS = Pattern.compile(".*summary.*|.*title.*|.*body.*|label|url|country|isoCode");
 
   private static final String ID_FIELD = "id";
 
@@ -68,7 +68,7 @@ public class EsDocBuilder {
         Constants.CMAFieldType fieldType = contentTypeFields.getFieldType(field);
         if (Constants.CMAFieldType.Link == fieldType) {
           processLinkField((LocalizedResource)fieldValue, field);
-        } else if (Constants.CMAFieldType.Array == fieldType) {
+        } else if (Constants.CMAFieldType.Array == fieldType) { //block are processed differently
           processArrayField((List<?>)fieldValue, field);
         } else {
           entries.put(field, contentTypeFields.getField(field).isLocalized()
@@ -109,13 +109,15 @@ public class EsDocBuilder {
    * @param field field name
    */
   private void processArrayField(List<?> entryListValue, String field) {
-    VocabularyBuilder vocabularyBuilder = new VocabularyBuilder(vocabularyTerms);
-    vocabularyBuilder.ofList(entryListValue)
-      .all(vocValues -> entries.put(field, vocValues))
-      .allGbifRegions(gbifRegions -> entries.put(REGION_FIELD, gbifRegions));
-    if (vocabularyBuilder.isEmpty()) {
-      nestedEntriesConsumer.accept(entryListValue);
-      entries.put(field, toListValues(entryListValue));
+    if(!field.equalsIgnoreCase("blocks")) { //blocks are processed later
+      VocabularyBuilder vocabularyBuilder = new VocabularyBuilder(vocabularyTerms);
+      vocabularyBuilder.ofList(entryListValue)
+              .all(vocValues -> entries.put(field, vocValues))
+              .allGbifRegions(gbifRegions -> entries.put(REGION_FIELD, gbifRegions));
+      if (vocabularyBuilder.isEmpty()) {
+        nestedEntriesConsumer.accept(entryListValue);
+        entries.put(field, toListValues(entryListValue));
+      }
     }
   }
 
