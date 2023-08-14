@@ -13,13 +13,11 @@
  */
 package org.gbif.content.crawl.contentful.crawl;
 
+import com.google.common.collect.Lists;
 import org.gbif.content.crawl.conf.ContentCrawlConfiguration;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkResponse;
@@ -165,7 +163,16 @@ public class ContentTypeCrawler {
     if (cdaEntry.getField("blocks") != null) {
       Map<String,Object> blockFields = new HashMap<>();
       List<CDAEntry> blocks = cdaEntry.getField("blocks");
-      blocks.forEach(block ->  blockFields.put(block.contentType().id(), block.rawFields()));
+      blocks.forEach(block ->  {
+        String blockName = block.contentType().id();
+        Object value = blockFields.get(blockName);
+        if (value == null) {
+          value = Lists.newArrayList(block.rawFields());
+        } else {
+          ((ArrayList<Map<String, Object>>)value).add(block.rawFields());
+        }
+        blockFields.put(blockName, value);
+      });
       return Optional.of(blockFields);
     }
     return Optional.empty();
