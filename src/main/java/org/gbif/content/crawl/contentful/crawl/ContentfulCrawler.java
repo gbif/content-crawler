@@ -46,7 +46,7 @@ public class ContentfulCrawler {
   private static final int CONNECTION_TO =  3;
 
   private final ContentCrawlConfiguration.Contentful configuration;
-  private final ContentCrawlConfiguration.ElasticSearch esConfiguration;
+
   private final CDAClient cdaClient;
   private final CMAClient cmaClient;
   private final RestHighLevelClient esClient;
@@ -67,7 +67,6 @@ public class ContentfulCrawler {
     cdaClient = buildCdaClient();
     cmaClient = buildCmaClient();
     esClient = buildEsClient(configuration.getElasticSearch());
-    esConfiguration = configuration.getElasticSearch();
   }
 
 

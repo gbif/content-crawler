@@ -13,7 +13,6 @@
  */
 package org.gbif.content.crawl.contentful.crawl;
 
-import com.google.common.collect.Lists;
 import org.gbif.content.crawl.conf.ContentCrawlConfiguration;
 
 import java.io.IOException;
@@ -50,8 +49,6 @@ public class ContentTypeCrawler {
 
   private static final Logger LOG = LoggerFactory.getLogger(ContentTypeCrawler.class);
 
-  private static final String CONTENT_TYPE_FIELD = "contentType";
-
   private static final int PAGE_SIZE = 20;
 
   private static final TimeValue BULK_REQUEST_TO = TimeValue.timeValueMinutes(5);
@@ -68,7 +65,7 @@ public class ContentTypeCrawler {
   private final ESDocumentLinker newsLinker;
   private final ESDocumentLinker articleLinker;
 
-  private final ProgrammeLinker programmeLinker;
+  private final String projectContentTypeId;
 
   private final MappingGenerator mappingGenerator;
   private final RestHighLevelClient esClient;
@@ -96,7 +93,7 @@ public class ContentTypeCrawler {
     //Used to create links in the indexes
     newsLinker = new ESDocumentLinker(newsContentTypeId, esClient);
     articleLinker = new ESDocumentLinker(articleContentTypeId, esClient);
-    programmeLinker = new ProgrammeLinker(projectContentTypeId);
+    this.projectContentTypeId = projectContentTypeId;
 
     //Set the mapping generator
     this.mappingGenerator = mappingGenerator;
@@ -142,42 +139,15 @@ public class ContentTypeCrawler {
   /**
    * Extracts the fields that will be indexed in ElasticSearch.
    */
-  private Map<String,Object> getESDoc(CDAEntry cdaEntry) {
-    EsDocBuilder esDocBuilder = new EsDocBuilder(cdaEntry, vocabularyTerms,
+  public Map<String,Object> getESDoc(CDAEntry cdaEntry) {
+    EsDocBuilder esDocBuilder = new EsDocBuilder(cdaEntry, vocabularyTerms, projectContentTypeId,
             nestedCdaEntry -> {
               // decorate any entries, linkers are responsible for filtering suitable content types
               newsLinker.processEntryTag(nestedCdaEntry, esTypeName, cdaEntry.id());
               articleLinker.processEntryTag(nestedCdaEntry, esTypeName, cdaEntry.id());
             });
-    programmeLinker.collectProgrammeAcronym(cdaEntry);
-    //Add all rawFields
-    Map<String, Object> indexedFields =  new HashMap<>(esDocBuilder.toEsDoc());
-    indexedFields.put(CONTENT_TYPE_FIELD, esTypeName);
-    Optional.ofNullable(programmeLinker.getProgrammeAcronym())
-            .ifPresent(programmeAcronym -> indexedFields.put("gbifProgrammeAcronym", programmeAcronym));
-    getBlocks(cdaEntry).ifPresent(blocks -> indexedFields.put("blocks", blocks));
-    return indexedFields;
+    return esDocBuilder.toEsDoc();
   }
-
-  private Optional<Map<String,Object>> getBlocks(CDAEntry cdaEntry) {
-    if (cdaEntry.getField("blocks") != null) {
-      Map<String,Object> blockFields = new HashMap<>();
-      List<CDAEntry> blocks = cdaEntry.getField("blocks");
-      blocks.forEach(block ->  {
-        String blockName = block.contentType().id();
-        Object value = blockFields.get(blockName);
-        if (value == null) {
-          value = Lists.newArrayList(block.rawFields());
-        } else {
-          ((ArrayList<Map<String, Object>>)value).add(block.rawFields());
-        }
-        blockFields.put(blockName, value);
-      });
-      return Optional.of(blockFields);
-    }
-    return Optional.empty();
-  }
-
 
   /**
    * Performs the execution of a ElasticSearch BulkRequest and logs the correspondent results.

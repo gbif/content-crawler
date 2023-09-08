@@ -13,6 +13,9 @@
  */
 package org.gbif.content.crawl.contentful.crawl;
 
+import org.gbif.content.crawl.es.ElasticSearchUtils;
+
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -27,6 +30,7 @@ import com.contentful.java.cda.CDAContentType;
 import com.contentful.java.cda.CDAEntry;
 import com.contentful.java.cda.LocalizedResource;
 import com.contentful.java.cma.Constants;
+import com.google.common.collect.Lists;
 
 /**
  * Translates a CDAEntry into Map object indexable in ElasticSearch.
@@ -38,6 +42,10 @@ public class EsDocBuilder {
   private static final Pattern LINKED_ENTRY_FIELDS = Pattern.compile(".*summary.*|.*title.*|.*body.*|label|url|country|isoCode");
 
   private static final String ID_FIELD = "id";
+
+  private static final String CONTENT_TYPE_FIELD = "contentType";
+
+  private final String projectContentTypeId;
 
   private final Map<String,Object> entries;
   private final ContentTypeFields contentTypeFields;
@@ -51,12 +59,23 @@ public class EsDocBuilder {
    * @param vocabularyTerms Vocabulary metadata
    * @param nestedEntriesConsumer Consumer of nested entries
    */
-  public EsDocBuilder(CDAEntry cdaEntry, VocabularyTerms vocabularyTerms, Consumer<Object> nestedEntriesConsumer) {
+  public EsDocBuilder(CDAEntry cdaEntry, VocabularyTerms vocabularyTerms, String projectContentTypeId, Consumer<Object> nestedEntriesConsumer) {
     this.vocabularyTerms = vocabularyTerms;
     this.nestedEntriesConsumer = nestedEntriesConsumer;
     this.cdaEntry = cdaEntry;
     contentTypeFields = ContentTypeFields.of(cdaEntry.contentType());
     entries = new HashMap<>();
+    this.projectContentTypeId = projectContentTypeId;
+  }
+
+  private Optional<String> getProgrammeAcronym(CDAEntry cdaEntry) {
+    if (projectContentTypeId.equals(cdaEntry.contentType().id()) &&  cdaEntry.rawFields().containsKey("programme")) {
+      CDAEntry programme = cdaEntry.getField("programme");
+      if (programme != null && programme.rawFields().containsKey("acronym")) {
+        return Optional.of(programme.getField("acronym"));
+      }
+    }
+    return Optional.empty();
   }
 
   /**
@@ -79,7 +98,30 @@ public class EsDocBuilder {
     entries.putAll(cdaEntry.attrs());
     //Updates the information from the meta field
     Meta.getMetaCreatedDate(cdaEntry).ifPresent(createdDate -> entries.replace("createdAt", createdDate));
+    getBlocks(cdaEntry).ifPresent(blocks -> entries.put("blocks", blocks));
+    entries.put(CONTENT_TYPE_FIELD, ElasticSearchUtils.toFieldNameFormat(cdaEntry.contentType().name()));
+    getProgrammeAcronym(cdaEntry)
+      .ifPresent(programmeAcronym -> entries.put("gbifProgrammeAcronym", programmeAcronym));
     return entries;
+  }
+
+  private Optional<Map<String,Object>> getBlocks(CDAEntry cdaEntry) {
+    if (cdaEntry.getField("blocks") != null) {
+      Map<String,Object> blockFields = new HashMap<>();
+      List<CDAEntry> blocks = cdaEntry.getField("blocks");
+      blocks.forEach(block ->  {
+        String blockName = block.contentType().id();
+        Object value = blockFields.get(blockName);
+        if (value == null) {
+          value = Lists.newArrayList(block.rawFields());
+        } else {
+          ((ArrayList<Map<String, Object>>)value).add(block.rawFields());
+        }
+        blockFields.put(blockName, value);
+      });
+      return Optional.of(blockFields);
+    }
+    return Optional.empty();
   }
 
   /**
