@@ -13,14 +13,10 @@
  */
 package org.gbif.content.crawl.contentful.crawl;
 
+import com.google.common.collect.Sets;
 import org.gbif.content.crawl.es.ElasticSearchUtils;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.function.Consumer;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -41,6 +37,9 @@ public class EsDocBuilder {
 
   private static final Pattern LINKED_ENTRY_FIELDS = Pattern.compile(".*summary.*|.*title.*|.*body.*|label|url|country|isoCode");
 
+  private static final List<String> LOCALIZED_FIELDS = Lists.newArrayList("title","body","summary","description");
+
+  private static final String LOCALE_FIELD = "locale";
   private static final String ID_FIELD = "id";
 
   private static final String CONTENT_TYPE_FIELD = "contentType";
@@ -102,6 +101,7 @@ public class EsDocBuilder {
     entries.put(CONTENT_TYPE_FIELD, ElasticSearchUtils.toFieldNameFormat(cdaEntry.contentType().name()));
     getProgrammeAcronym(cdaEntry)
       .ifPresent(programmeAcronym -> entries.put("gbifProgrammeAcronym", programmeAcronym));
+    entries.put(LOCALE_FIELD, getLocales(cdaEntry));
     return entries;
   }
 
@@ -212,6 +212,14 @@ public class EsDocBuilder {
       return isLocalized(entry.getKey(), cdaEntry.contentType())
               ? entry.getValue()
               : cdaEntry.getField(entry.getKey());
+  }
+
+
+  Set<String> getLocales(CDAEntry cdaEntry) {
+    return LOCALIZED_FIELDS.stream()
+              .filter(field -> cdaEntry.getField(field) != null && isLocalized(field, cdaEntry.contentType()))
+              .flatMap(field -> ((Map<String,Object>)cdaEntry.rawFields().get(field)).keySet().stream())
+              .collect(Collectors.toSet());
   }
 
   /**
