@@ -20,8 +20,12 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import java.util.regex.Pattern;
 
+import io.reactivex.Observable;
+import org.apache.http.HttpException;
 import org.apache.http.HttpResponse;
 import org.apache.http.HttpStatus;
 import org.apache.http.NameValuePair;
@@ -106,6 +110,10 @@ public class MendeleyPager implements Iterable<String> {
               httpGet.setConfig(requestConfig);
               LOG.info("Requesting data from {} using paging marker {}", targetUrl, getParamValue("marker", nextTargetUrl));
               try (CloseableHttpResponse httpResponse = httpClient.execute(httpGet)) {
+                if (HttpStatus.SC_GATEWAY_TIMEOUT == httpResponse.getStatusLine().getStatusCode()) {
+                  throw new GatewayTimeoutException();
+                }
+
                 if (HttpStatus.SC_OK != httpResponse.getStatusLine().getStatusCode()) {
                   LOG.warn("Mendeley returning HTTP[{}] with {}",
                            httpResponse.getStatusLine().getStatusCode(),

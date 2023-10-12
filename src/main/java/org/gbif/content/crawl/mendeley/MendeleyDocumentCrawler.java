@@ -13,6 +13,7 @@
  */
 package org.gbif.content.crawl.mendeley;
 
+import io.reactivex.Observer;
 import org.gbif.content.crawl.conf.ContentCrawlConfiguration;
 
 import java.io.File;
@@ -40,6 +41,8 @@ public class MendeleyDocumentCrawler {
   private static final int CRAWL_BUFFER = 2;
 
   private static final Logger LOG = LoggerFactory.getLogger(MendeleyDocumentCrawler.class);
+  private static final int MAX_RETRIES = 3;
+  private static final int RETRY_DELAY_MILLIS = 3000;
   private final RequestConfig requestConfig;
 
   private final ContentCrawlConfiguration config;
@@ -63,41 +66,61 @@ public class MendeleyDocumentCrawler {
     try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
       //OAuthJSONAccessTokenResponse token = getToken(config.mendeley);
       Observable
-        .fromIterable(new MendeleyPager(targetUrl, config.getMendeley().getAuthToken(), requestConfig, httpClient))
-        .doOnError(err -> {
-          LOG.error("Error crawling Mendeley", err);
-          throw new RuntimeException(err);
-        })
-        .buffer(CRAWL_BUFFER)
-        .doOnComplete(() -> {
-          handler.finish();
-          LOG.info("Time elapsed retrieving Mendeley {} minutes ", stopwatch.elapsed(TimeUnit.MINUTES));
-          stopwatch.reset();
-          stopwatch.start();
-          indexFiles();
-          LOG.info("Time elapsed indexing Mendeley {} minutes ", stopwatch.elapsed(TimeUnit.MINUTES));
-          stopwatch.reset();
-          stopwatch.start();
-          registryFiles();
-          LOG.info("Time elapsed updating GBIF Registry {} minutes ", stopwatch.elapsed(TimeUnit.MINUTES));
-          stopwatch.stop();
-        })
-        .subscribe(
-          responses ->
-            responses.forEach(response -> {
-                try {
-                  handler.handleResponse(response);
-                } catch (Exception e) {
-                  LOG.error("Unable to process response", e);
-                  silentRollback(handler);
-                  throw new RuntimeException(e);
-                }
+              .fromIterable(new MendeleyPager(targetUrl, config.getMendeley().getAuthToken(), requestConfig, httpClient))
+              .retryWhen(errors -> errors
+                      .zipWith(Observable.range(1, MAX_RETRIES), (err, retryCount) -> {
+                        if (isHttpGatewayTimeout(err) && retryCount < MAX_RETRIES) {
+                          // If it's a 504 error, and we haven't reached the max retries, retry with a delay
+                          LOG.warn("GATEWAY_TIMEOUT, retrying request");
+                          return retryCount;
+                        } else {
+                          LOG.error("Retried request {} times but failed", MAX_RETRIES);
+                          throw new RuntimeException(err);
+                        }
+                      })
+                      .flatMap(retryCount -> {
+                        // Delay for a fixed duration before retrying
+                        return Observable.timer(retryCount * RETRY_DELAY_MILLIS, TimeUnit.MILLISECONDS);
+                      })
+              )
+              .doOnError(err -> {
+                LOG.error("Error crawling Mendeley", err);
+                throw new RuntimeException(err);
               })
-        );
+              .buffer(CRAWL_BUFFER)
+              .doOnComplete(() -> {
+                handler.finish();
+                LOG.info("Time elapsed retrieving Mendeley {} minutes ", stopwatch.elapsed(TimeUnit.MINUTES));
+                stopwatch.reset();
+                stopwatch.start();
+                indexFiles();
+                LOG.info("Time elapsed indexing Mendeley {} minutes ", stopwatch.elapsed(TimeUnit.MINUTES));
+                stopwatch.reset();
+                stopwatch.start();
+                registryFiles();
+                LOG.info("Time elapsed updating GBIF Registry {} minutes ", stopwatch.elapsed(TimeUnit.MINUTES));
+                stopwatch.stop();
+              })
+              .subscribe(
+                      responses ->
+                              responses.forEach(response -> {
+                                try {
+                                  handler.handleResponse(response);
+                                } catch (Exception e) {
+                                  LOG.error("Unable to process response", e);
+                                  silentRollback(handler);
+                                  throw new RuntimeException(e);
+                                }
+                              })
+              );
     } catch (Exception e) {
       LOG.error("Unable to authenticate with Mendeley", e);
       throw new IOException("Unable to authenticate with Mendeley", e);
     }
+  }
+
+  private boolean isHttpGatewayTimeout(Throwable throwable) {
+    return throwable instanceof GatewayTimeoutException;
   }
 
   private void indexFiles() throws Exception {
