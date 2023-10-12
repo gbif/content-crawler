@@ -20,12 +20,8 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.Optional;
-import java.util.concurrent.TimeUnit;
-import java.util.function.Function;
 import java.util.regex.Pattern;
 
-import io.reactivex.Observable;
-import org.apache.http.HttpException;
 import org.apache.http.HttpResponse;
 import org.apache.http.HttpStatus;
 import org.apache.http.NameValuePair;

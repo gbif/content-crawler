@@ -13,7 +13,6 @@
  */
 package org.gbif.content.crawl.mendeley;
 
-import io.reactivex.Observer;
 import org.gbif.content.crawl.conf.ContentCrawlConfiguration;
 
 import java.io.File;
