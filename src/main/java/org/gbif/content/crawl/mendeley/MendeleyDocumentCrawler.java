@@ -41,8 +41,6 @@ public class MendeleyDocumentCrawler {
   private static final int CRAWL_BUFFER = 2;
 
   private static final Logger LOG = LoggerFactory.getLogger(MendeleyDocumentCrawler.class);
-  private static final int MAX_RETRIES = 3;
-  private static final int RETRY_DELAY_MILLIS = 3000;
   private final RequestConfig requestConfig;
 
   private final ContentCrawlConfiguration config;
@@ -62,25 +60,30 @@ public class MendeleyDocumentCrawler {
   public void run() throws IOException {
     Stopwatch stopwatch = Stopwatch.createStarted();
     String targetUrl = config.getMendeley().getCrawlURL();
-    LOG.info("Initiating paging crawl of {} to {}", targetUrl, config.getMendeley().getTargetDir());
+    File targetDir = config.getMendeley().getTargetDir();
+    String authToken = config.getMendeley().getAuthToken();
+    int maxRetries = config.getMendeley().getTimeoutMaxNumberRetires();
+    int retryDelay = config.getMendeley().getHttpTimeout();
+    LOG.info("Initiating paging crawl of {} to {}", targetUrl, targetDir);
+
     try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
       //OAuthJSONAccessTokenResponse token = getToken(config.mendeley);
       Observable
-              .fromIterable(new MendeleyPager(targetUrl, config.getMendeley().getAuthToken(), requestConfig, httpClient))
+              .fromIterable(new MendeleyPager(targetUrl, authToken, requestConfig, httpClient))
               .retryWhen(errors -> errors
-                      .zipWith(Observable.range(1, MAX_RETRIES), (err, retryCount) -> {
-                        if (isHttpGatewayTimeout(err) && retryCount < MAX_RETRIES) {
+                      .zipWith(Observable.range(1, maxRetries), (err, retryCount) -> {
+                        if (isHttpGatewayTimeout(err) && retryCount < maxRetries) {
                           // If it's a 504 error, and we haven't reached the max retries, retry with a delay
                           LOG.warn("GATEWAY_TIMEOUT, retrying request");
                           return retryCount;
                         } else {
-                          LOG.error("Retried request {} times but failed", MAX_RETRIES);
+                          LOG.error("Retried request {} times but failed", maxRetries);
                           throw new RuntimeException(err);
                         }
                       })
                       .flatMap(retryCount -> {
                         // Delay for a fixed duration before retrying
-                        return Observable.timer(retryCount * RETRY_DELAY_MILLIS, TimeUnit.MILLISECONDS);
+                        return Observable.timer((long) retryCount * retryDelay, TimeUnit.MILLISECONDS);
                       })
               )
               .doOnError(err -> {
