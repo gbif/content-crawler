@@ -104,6 +104,11 @@ public class ContentCrawlConfiguration {
     private int httpTimeout = 10000;
 
     @Parameter(
+            names = "-timeout-max-number-retries",
+            description = "How many times re-try on HTTP Gateway timeout (504), defaulting to 3")
+    private int timeoutMaxNumberRetires = 3;
+
+    @Parameter(
       names = "-controlledTags",
       description = "Tags values that must be handled as separate fields in the resulting index")
     private Map<String,List<String>> controlledTags = new HashMap<>();

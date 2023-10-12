@@ -106,6 +106,10 @@ public class MendeleyPager implements Iterable<String> {
               httpGet.setConfig(requestConfig);
               LOG.info("Requesting data from {} using paging marker {}", targetUrl, getParamValue("marker", nextTargetUrl));
               try (CloseableHttpResponse httpResponse = httpClient.execute(httpGet)) {
+                if (HttpStatus.SC_GATEWAY_TIMEOUT == httpResponse.getStatusLine().getStatusCode()) {
+                  throw new GatewayTimeoutException();
+                }
+
                 if (HttpStatus.SC_OK != httpResponse.getStatusLine().getStatusCode()) {
                   LOG.warn("Mendeley returning HTTP[{}] with {}",
                            httpResponse.getStatusLine().getStatusCode(),
