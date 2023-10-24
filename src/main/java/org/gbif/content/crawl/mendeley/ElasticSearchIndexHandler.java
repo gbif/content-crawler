@@ -431,7 +431,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
     JsonNode year = docNode.get("year");
     JsonNode month =  docNode.get("month");
     JsonNode day = docNode.get("day");
-    if (year != null && month != null && day != null) {
+    if (!year.isMissingNode()  && !month.isMissingNode()  && !day.isMissingNode()) {
       docNode.put(PUBLICATION_DATE_FIELD, year.textValue() + '-' + month.asText() + '-' + day.asText());
     }
   }
