@@ -425,14 +425,24 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
   }
 
   /**
+   * Gets the text value of node, it ahs any.
+   */
+  private static Optional<String> textNodeValue(ObjectNode docNode, String fieldName) {
+    JsonNode node = docNode.get(fieldName);
+    if (node != null) {
+      return Optional.ofNullable(node.textValue());
+    }
+    return Optional.empty();
+  }
+  /**
    * Sets the publicationDate field.
    */
   private static void setPublicationDate(ObjectNode docNode) {
-    JsonNode year = docNode.get("year");
-    JsonNode month =  docNode.get("month");
-    JsonNode day = docNode.get("day");
-    if (!year.isMissingNode()  && !month.isMissingNode()  && !day.isMissingNode()) {
-      docNode.put(PUBLICATION_DATE_FIELD, year.textValue() + '-' + month.asText() + '-' + day.asText());
+    Optional<String> year = textNodeValue(docNode, "year");
+    Optional<String> month =  textNodeValue(docNode,"month");
+    Optional<String> day = textNodeValue(docNode,"day");
+    if (year.isPresent() && month.isPresent() && day.isPresent()) {
+      docNode.put(PUBLICATION_DATE_FIELD, year.get() + '-' + month.get() + '-' + day.get());
     }
   }
 
