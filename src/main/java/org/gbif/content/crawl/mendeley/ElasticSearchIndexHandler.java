@@ -421,29 +421,6 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
     });
     docNode.set(SEARCHABLE_FIELD, BooleanNode.valueOf(Boolean.TRUE));
     createdAt(docNode).ifPresent(createdAtValue -> docNode.put(ES_CREATED_AT_FL, createdAtValue));
-    setPublicationDate(docNode);
-  }
-
-  /**
-   * Gets the text value of node, it ahs any.
-   */
-  private static Optional<String> textNodeValue(ObjectNode docNode, String fieldName) {
-    JsonNode node = docNode.get(fieldName);
-    if (node != null) {
-      return Optional.ofNullable(node.textValue());
-    }
-    return Optional.empty();
-  }
-  /**
-   * Sets the publicationDate field.
-   */
-  private static void setPublicationDate(ObjectNode docNode) {
-    Optional<String> year = textNodeValue(docNode, "year");
-    Optional<String> month =  textNodeValue(docNode,"month");
-    Optional<String> day = textNodeValue(docNode,"day");
-    if (year.isPresent() && month.isPresent() && day.isPresent()) {
-      docNode.put(PUBLICATION_DATE_FIELD, year.get() + '-' + month.get() + '-' + day.get());
-    }
   }
 
   /**
