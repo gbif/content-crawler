@@ -187,6 +187,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
                                                         try {
                                                           toCamelCasedFields(document);
                                                           manageReplacements((ObjectNode) document);
+                                                          ((ObjectNode)document).put(CONTENT_TYPE_FIELD, CONTENT_TYPE_FIELD_VALUE);
                                                           if (document.has(ML_TAGS_FL)) {
                                                             handleTags(document);
                                                           }
@@ -331,7 +332,6 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
       Optional.ofNullable(citationType.getValue()).ifPresent(ct -> docNode.set(ES_CITATION_TYPE_FL, ct));
       docNode.put(ES_PEER_REVIEW_FIELD, peerReviewValue.getValue());
       docNode.put(OPEN_ACCESS_FIELD, openAccessValue.getValue());
-      docNode.put(CONTENT_TYPE_FIELD, CONTENT_TYPE_FIELD_VALUE);
     } catch (Exception ex) {
       LOG.error("Error processing document [{}]", document, ex);
     }
