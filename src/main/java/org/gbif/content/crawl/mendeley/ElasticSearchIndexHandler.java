@@ -117,6 +117,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
   private static final String LANGUAGE_FIELD = "language";
 
   private static final String SEARCHABLE_FIELD = "searchable";
+  private static final String PUBLICATION_DATE_FIELD = "publicationDate";
 
   private static final String ES_PEER_REVIEW_FIELD = "peerReview";
 
@@ -187,7 +188,6 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
                                                         try {
                                                           toCamelCasedFields(document);
                                                           manageReplacements((ObjectNode) document);
-                                                          ((ObjectNode)document).put(CONTENT_TYPE_FIELD, CONTENT_TYPE_FIELD_VALUE);
                                                           if (document.has(ML_TAGS_FL)) {
                                                             handleTags(document);
                                                           }
@@ -402,6 +402,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
       docNode.set(LITERATURE_TYPE_FIELD, typeNode);
       docNode.remove(TYPE_FIELD);
     });
+    docNode.put(CONTENT_TYPE_FIELD, CONTENT_TYPE_FIELD_VALUE);
     Optional.ofNullable(docNode.get(LANGUAGE_FIELD)).ifPresent(typeNode -> {
       String languageValue = typeNode.asText();
       Optional<Language> language = Arrays.stream(Language.values())
@@ -420,6 +421,19 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
     });
     docNode.set(SEARCHABLE_FIELD, BooleanNode.valueOf(Boolean.TRUE));
     createdAt(docNode).ifPresent(createdAtValue -> docNode.put(ES_CREATED_AT_FL, createdAtValue));
+    setPublicationDate(docNode);
+  }
+
+  /**
+   * Sets the publicationDate field.
+   */
+  private static void setPublicationDate(ObjectNode docNode) {
+    JsonNode year = docNode.get("year");
+    JsonNode month =  docNode.get("month");
+    JsonNode day = docNode.get("day");
+    if (year != null && month != null && day != null) {
+      docNode.put(PUBLICATION_DATE_FIELD, year.textValue() + '-' + month.asText() + '-' + day.asText());
+    }
   }
 
   /**
