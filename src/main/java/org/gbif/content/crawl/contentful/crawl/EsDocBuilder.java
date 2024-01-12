@@ -13,7 +13,6 @@
  */
 package org.gbif.content.crawl.contentful.crawl;
 
-import com.google.common.collect.Sets;
 import org.gbif.content.crawl.es.ElasticSearchUtils;
 
 import java.util.*;
@@ -107,7 +106,7 @@ public class EsDocBuilder {
 
   private Optional<Map<String,Object>> getBlocks(CDAEntry cdaEntry) {
     if (cdaEntry.getField("blocks") != null) {
-      Map<String,Object> blockFields = new HashMap<>();
+      Map<String,Object> blockFields = new LinkedHashMap<>();
       List<CDAEntry> blocks = cdaEntry.getField("blocks");
       blocks.forEach(block ->  {
         String blockName = block.contentType().id();
