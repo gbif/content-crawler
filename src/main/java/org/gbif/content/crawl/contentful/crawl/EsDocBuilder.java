@@ -13,7 +13,6 @@
  */
 package org.gbif.content.crawl.contentful.crawl;
 
-import com.google.common.collect.Sets;
 import org.gbif.content.crawl.es.ElasticSearchUtils;
 
 import java.util.*;
@@ -105,21 +104,16 @@ public class EsDocBuilder {
     return entries;
   }
 
-  private Optional<Map<String,Object>> getBlocks(CDAEntry cdaEntry) {
+  private Optional<List<Map<String,Object>>> getBlocks(CDAEntry cdaEntry) {
     if (cdaEntry.getField("blocks") != null) {
-      Map<String,Object> blockFields = new HashMap<>();
+      List<Map<String,Object>> blockField = new LinkedList<>();
       List<CDAEntry> blocks = cdaEntry.getField("blocks");
       blocks.forEach(block ->  {
-        String blockName = block.contentType().id();
-        Object value = blockFields.get(blockName);
-        if (value == null) {
-          value = Lists.newArrayList(block.rawFields());
-        } else {
-          ((ArrayList<Map<String, Object>>)value).add(block.rawFields());
-        }
-        blockFields.put(blockName, value);
+        Map<String,Object> blockFields = new HashMap<>(block.rawFields());
+        blockFields.put("contentType", block.contentType().id());
+        blockField.add(blockFields);
       });
-      return Optional.of(blockFields);
+      return Optional.of(blockField);
     }
     return Optional.empty();
   }
