@@ -110,6 +110,7 @@ public class EsDocBuilder {
       List<CDAEntry> blocks = cdaEntry.getField("blocks");
       blocks.forEach(block ->  {
         Map<String,Object> blockFields = new HashMap<>(block.rawFields());
+        blockFields.put("id", block.id());
         blockFields.put("contentType", block.contentType().id());
         blockField.add(blockFields);
       });
