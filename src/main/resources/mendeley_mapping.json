@@ -1,7 +1,4 @@
 {
-  "_size": {
-    "enabled": true
-  },
   "dynamic_templates": [
     {
       "vocabularies": {
