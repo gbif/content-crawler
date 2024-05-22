@@ -4,12 +4,12 @@
 
   <groupId>org.gbif.content</groupId>
   <artifactId>content-crawler</artifactId>
-  <version>0.39-SNAPSHOT</version>
+  <version>0.40-SNAPSHOT</version>
 
   <parent>
     <groupId>org.gbif</groupId>
     <artifactId>motherpom</artifactId>
-    <version>56</version>
+    <version>58-SNAPSHOT</version>
   </parent>
 
   <name>GBIF Content Crawlers</name>
@@ -31,16 +31,16 @@
   </distributionManagement>
 
   <properties>
-    <jdkLevel>1.8</jdkLevel>
+    <jdkLevel>11</jdkLevel>
 
     <!-- GBIF libraries -->
     <gbif-cli.version>1.1</gbif-cli.version>
     <gbif-api.version>1.12.4</gbif-api.version>
-    <gbif-common-ws.version>1.25</gbif-common-ws.version>
+    <gbif-common-ws.version>1.28-SNAPSHOT</gbif-common-ws.version>
     <gbif-registry.version>3.95.3</gbif-registry.version>
     <datacite-rest-client.version>1.10</datacite-rest-client.version>
 
-    <lombok.version>1.18.24</lombok.version>
+    <lombok.version>1.18.32</lombok.version>
     <slf4j.version>1.7.24</slf4j.version>
     <guava.version>17.0</guava.version>
     <jcommander.version>1.47</jcommander.version>
@@ -50,8 +50,9 @@
     <oltu.version>1.0.2</oltu.version>
     <httpclient.version>4.5.3</httpclient.version>
     <httpcore.version>4.4.12</httpcore.version>
-    <jackson.version>2.11.3</jackson.version>
+    <jackson.version>2.17.1</jackson.version>
     <elasticsearch.version>7.10.0</elasticsearch.version>
+    <snakeyaml.version>2.2</snakeyaml.version>
     <rxjava.version>2.0.0</rxjava.version>
     <reactive-streams.version>1.0.0</reactive-streams.version>
     <retrofit.version>2.3.0</retrofit.version>
@@ -60,7 +61,7 @@
     <commons-io.version>2.4</commons-io.version>
     <okio.version>1.9.0</okio.version>
     <findbugs.version>3.0.1</findbugs.version>
-    <spring.version>5.2.12.RELEASE</spring.version>
+    <spring.version>6.1.6</spring.version>
 
     <apache.beam.version>2.15.0</apache.beam.version>
     <postgresql.version>9.4.1208.jre7</postgresql.version>
@@ -113,6 +114,20 @@
                 </execution>
             </executions>
         </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-dependency-plugin</artifactId>
+        <version>3.1.2</version>
+        <executions>
+          <execution>
+            <id>list-dependencies</id>
+            <goals>
+              <goal>list</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
     </plugins>
   </build>
 
@@ -176,12 +191,22 @@
           <groupId>commons-beanutils</groupId>
           <artifactId>commons-beanutils-core</artifactId>
         </exclusion>
+        <exclusion>
+          <artifactId>hibernate-validator</artifactId>
+          <groupId>org.hibernate.validator</groupId>
+        </exclusion>
       </exclusions>
     </dependency>
     <dependency>
       <groupId>org.gbif</groupId>
       <artifactId>gbif-api</artifactId>
       <version>${gbif-api.version}</version>
+      <exclusions>
+        <exclusion>
+          <artifactId>commons-validator</artifactId>
+          <groupId>commons-validator</groupId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.gbif</groupId>
@@ -192,6 +217,20 @@
       <groupId>org.gbif.registry</groupId>
       <artifactId>registry-ws-client</artifactId>
       <version>${gbif-registry.version}</version>
+      <exclusions>
+        <exclusion>
+          <artifactId>spring-cloud-starter-openfeign</artifactId>
+          <groupId>org.springframework.cloud</groupId>
+        </exclusion>
+        <exclusion>
+          <artifactId>spring-boot-starter-amqp</artifactId>
+          <groupId>org.springframework.boot</groupId>
+        </exclusion>
+        <exclusion>
+          <artifactId>commons-validator</artifactId>
+          <groupId>commons-validator</groupId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.gbif.datacite</groupId>
@@ -217,6 +256,12 @@
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-annotations</artifactId>
       <version>${jackson.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.yaml</groupId>
+      <artifactId>snakeyaml</artifactId>
+      <version>${snakeyaml.version}</version>
+      <scope>compile</scope>
     </dependency>
     <dependency>
       <groupId>org.elasticsearch.client</groupId>
