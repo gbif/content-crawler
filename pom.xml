@@ -9,7 +9,7 @@
   <parent>
     <groupId>org.gbif</groupId>
     <artifactId>motherpom</artifactId>
-    <version>58-SNAPSHOT</version>
+    <version>56</version>
   </parent>
 
   <name>GBIF Content Crawlers</name>
@@ -31,12 +31,12 @@
   </distributionManagement>
 
   <properties>
-    <jdkLevel>11</jdkLevel>
+    <jdkLevel>1.8</jdkLevel>
 
     <!-- GBIF libraries -->
     <gbif-cli.version>1.1</gbif-cli.version>
     <gbif-api.version>1.12.4</gbif-api.version>
-    <gbif-common-ws.version>1.28-SNAPSHOT</gbif-common-ws.version>
+    <gbif-common-ws.version>1.25</gbif-common-ws.version>
     <gbif-registry.version>3.95.3</gbif-registry.version>
     <datacite-rest-client.version>1.10</datacite-rest-client.version>
 
@@ -50,7 +50,7 @@
     <oltu.version>1.0.2</oltu.version>
     <httpclient.version>4.5.3</httpclient.version>
     <httpcore.version>4.4.12</httpcore.version>
-    <jackson.version>2.17.1</jackson.version>
+    <jackson.version>2.11.3</jackson.version>
     <elasticsearch.version>7.10.0</elasticsearch.version>
     <rxjava.version>2.0.0</rxjava.version>
     <reactive-streams.version>1.0.0</reactive-streams.version>
@@ -70,9 +70,9 @@
     <cache2k.version>2.6.1.Final</cache2k.version>
 
     <!-- Contentful SDK is used for crawling and building the index -->
-    <contentful-sdk.version>10.5.2</contentful-sdk.version>
+    <contentful-sdk.version>10.5.18</contentful-sdk.version>
     <!-- Contentful Management SDK is used for backup procedures only -->
-    <cma-sdk.version>3.4.2</cma-sdk.version>
+    <cma-sdk.version>3.4.12</cma-sdk.version>
     <okhttp.version>3.4.1</okhttp.version>
     <metainf-services.version>1.7</metainf-services.version>
     <maven-shade-plugin.version>3.2.1</maven-shade-plugin.version>
@@ -383,6 +383,12 @@
       <artifactId>spring-web</artifactId>
       <version>${spring.version}</version>
     </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-validation</artifactId>
+      <version>2.3.12.RELEASE</version>
+    </dependency>
+
 
     <!-- Caching -->
     <dependency>

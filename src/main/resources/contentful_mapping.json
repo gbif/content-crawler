@@ -82,6 +82,9 @@
   "properties": {
     "contentType": {
       "type": "keyword"
+    },
+    "contentful_metadata_tags": {
+      "type": "keyword"
     }
   }
 }
