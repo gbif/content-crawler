@@ -196,6 +196,9 @@
     "publishingOrganizationKey": {
       "type": "keyword"
     },
+    "publishingCountry": {
+      "type": "keyword"
+    },
     "gbifDownloadKey": {
       "type": "keyword"
     },
