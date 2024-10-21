@@ -100,6 +100,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
   private static final String ES_GBIF_PROJECT_IDENTIFIER_FL = "gbifProjectIdentifier";
   private static final String ES_GBIF_PROGRAMME_ACRONYM_FL = "gbifProgrammeAcronym";
   private static final String ES_CITATION_TYPE_FL = "citationType";
+  private static final String ES_PUBLISHING_COUNTRY_FL = "publishingCountry";
 
   private static final String ES_TOPICS_FL = "topics";
   private static final String ES_RELEVANCE_FL = "relevance";
@@ -243,6 +244,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
       MutableObject<TextNode> citationType = new MutableObject<>();
       Set<TextNode> topics = new HashSet<>();
       Set<TextNode> relevance = new HashSet<>();
+      Set<TextNode> publishingCountry = new HashSet<>();
       final MutableBoolean peerReviewValue = new MutableBoolean(Boolean.FALSE);
       final MutableBoolean openAccessValue = new MutableBoolean(Boolean.FALSE);
       document.get(ML_TAGS_FL).elements().forEachRemaining(node -> {
@@ -272,6 +274,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
               Optional.ofNullable(citation.getNetworkKeys()).ifPresent(nk -> gbifNetworkKeys.addAll(Arrays.stream(nk)
                                                                                                       .map(nKey -> new TextNode(nKey.toString()))
                                                                                                       .collect(Collectors.toList())));
+              Optional.ofNullable(citation.getPublishingCountry()).ifPresent(k -> publishingCountry.add(new TextNode(k)));
             });
           }
 
@@ -318,6 +321,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
       docNode.putArray(ES_GBIF_REGION_FL).addAll(regions);
       docNode.putArray(ES_GBIF_DATASET_FL).addAll(gbifDatasets);
       docNode.putArray(ES_PUBLISHING_ORG_FL).addAll(publishingOrganizations);
+      docNode.putArray(ES_PUBLISHING_COUNTRY_FL).addAll(publishingCountry);
       docNode.putArray(ES_RELEVANCE_FL).addAll(relevance);
       docNode.putArray(ES_TOPICS_FL).addAll(topics);
       docNode.putArray(ES_DOWNLOAD_FL).addAll(gbifDownloads);
