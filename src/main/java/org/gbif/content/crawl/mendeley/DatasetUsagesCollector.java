@@ -56,6 +56,7 @@ class DatasetUsagesCollector {
     private String downloadKey;
     private Date eraseAfter;
     private UUID[] networkKeys;
+    private String publishingCountry;
 
   }
 
@@ -73,33 +74,37 @@ class DatasetUsagesCollector {
 
   //Query to extract DOI related datasets
   private static final String DATASETS_DOWNLOADS_QUERY = ""
-    + "SELECT od.doi, doc.dataset_key, d.publishing_organization_key, od.key AS download_key, od.erase_after, "
-    + "ARRAY(SELECT nk.network_key FROM dataset_network AS nk JOIN network n ON n.key = nk.network_key AND n.deleted IS NULL WHERE nk.dataset_key = doc.dataset_key) AS network_keys "
-    + "FROM occurrence_download od "
-    + "LEFT JOIN dataset_occurrence_download doc ON od.key = doc.download_key "
-    + "LEFT JOIN dataset d ON d.key = doc.dataset_key "
-    + "WHERE od.doi = ? "
-    + ""
-    + "UNION "
-    + "SELECT d.doi, d.key AS dataset_key, d.publishing_organization_key, NULL as download_key, NULL as erase_after, "
-    + "ARRAY(SELECT nk.network_key FROM dataset_network AS nk JOIN network n ON n.key = nk.network_key AND n.deleted IS NULL WHERE nk.dataset_key = d.key) AS network_keys "
-    + "FROM dataset d "
-    + "WHERE d.doi = ? "
-    + ""
-    + "UNION "
-    + "SELECT d.doi, d.key AS dataset_key, d.publishing_organization_key, NULL as download_key, NULL as erase_after, "
-    + "ARRAY(SELECT nk.network_key FROM dataset_network AS nk JOIN network n ON n.key = nk.network_key AND n.deleted IS NULL WHERE nk.dataset_key = d.key) AS network_keys "
-    + "FROM dataset d "
-    + "LEFT JOIN dataset_identifier di ON di.dataset_key = d.key "
-    + "LEFT JOIN identifier i ON di.identifier_key = i.key AND i.type = 'DOI' "
-    + "WHERE i.identifier = ? "
-    + ""
-    + "UNION "
-    + "SELECT d.doi, dataset_key, d.publishing_organization_key, NULL AS download_key, NULL as erase_after, "
-    + "ARRAY(SELECT nk.network_key FROM dataset_network AS nk JOIN network n ON n.key = nk.network_key AND n.deleted IS NULL WHERE nk.dataset_key = d.key) AS network_keys "
-    + "FROM dataset_derived_dataset ddd "
-    + "LEFT JOIN dataset d ON d.key = ddd.dataset_key "
-    + "WHERE ddd.derived_dataset_doi = ?";
+      + "SELECT od.doi, doc.dataset_key, d.publishing_organization_key, o.country AS publishing_country, od.key AS download_key, od.erase_after, "
+      + "ARRAY(SELECT nk.network_key FROM dataset_network AS nk JOIN network n ON n.key = nk.network_key AND n.deleted IS NULL WHERE nk.dataset_key = doc.dataset_key) AS network_keys "
+      + "FROM occurrence_download od "
+      + "LEFT JOIN dataset_occurrence_download doc ON od.key = doc.download_key "
+      + "LEFT JOIN dataset d ON d.key = doc.dataset_key "
+      + "LEFT JOIN organization o ON o.key = d.publishing_organization_key "
+      + "WHERE od.doi = ? "
+      + ""
+      + "UNION "
+      + "SELECT d.doi, d.key AS dataset_key, d.publishing_organization_key, o.country AS publishing_country, NULL as download_key, NULL as erase_after, "
+      + "ARRAY(SELECT nk.network_key FROM dataset_network AS nk JOIN network n ON n.key = nk.network_key AND n.deleted IS NULL WHERE nk.dataset_key = d.key) AS network_keys "
+      + "FROM dataset d "
+      + "LEFT JOIN organization o ON o.key = d.publishing_organization_key "
+      + "WHERE d.doi = ? "
+      + ""
+      + "UNION "
+      + "SELECT d.doi, d.key AS dataset_key, d.publishing_organization_key, o.country AS publishing_country, NULL as download_key, NULL as erase_after, "
+      + "ARRAY(SELECT nk.network_key FROM dataset_network AS nk JOIN network n ON n.key = nk.network_key AND n.deleted IS NULL WHERE nk.dataset_key = d.key) AS network_keys "
+      + "FROM dataset d "
+      + "LEFT JOIN dataset_identifier di ON di.dataset_key = d.key "
+      + "LEFT JOIN identifier i ON di.identifier_key = i.key AND i.type = 'DOI' "
+      + "LEFT JOIN organization o ON o.key = d.publishing_organization_key "
+      + "WHERE i.identifier = ? "
+      + ""
+      + "UNION "
+      + "SELECT d.doi, dataset_key, d.publishing_organization_key, o.country AS publishing_country, NULL AS download_key, NULL as erase_after, "
+      + "ARRAY(SELECT nk.network_key FROM dataset_network AS nk JOIN network n ON n.key = nk.network_key AND n.deleted IS NULL WHERE nk.dataset_key = d.key) AS network_keys "
+      + "FROM dataset_derived_dataset ddd "
+      + "LEFT JOIN dataset d ON d.key = ddd.dataset_key "
+      + "LEFT JOIN organization o ON o.key = d.publishing_organization_key "
+      + "WHERE ddd.derived_dataset_doi = ?";
 
   private static final String IS_DERIVED_DATASET = "SELECT dd.doi FROM derived_dataset dd WHERE doi = ?";
 
@@ -150,6 +155,7 @@ class DatasetUsagesCollector {
                           .downloadKey(resultSet.getString("download_key"))
                           .eraseAfter(resultSet.getDate("erase_after"))
                           .networkKeys((UUID[])resultSet.getArray("network_keys").getArray())
+                          .publishingCountry(resultSet.getString("publishing_country"))
                           .build());
           resultCount += 1;
         }
