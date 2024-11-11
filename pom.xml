@@ -5,6 +5,7 @@
   <groupId>org.gbif.content</groupId>
   <artifactId>content-crawler</artifactId>
   <version>0.40-SNAPSHOT</version>
+  <packaging>jar</packaging>
 
   <parent>
     <groupId>org.gbif</groupId>
