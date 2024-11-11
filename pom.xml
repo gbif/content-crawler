@@ -10,7 +10,7 @@
   <parent>
     <groupId>org.gbif</groupId>
     <artifactId>motherpom</artifactId>
-    <version>56</version>
+    <version>59-SNAPSHOT</version>
   </parent>
 
   <name>GBIF Content Crawlers</name>
@@ -32,13 +32,13 @@
   </distributionManagement>
 
   <properties>
-    <jdkLevel>1.8</jdkLevel>
+    <jdkLevel>11</jdkLevel>
 
     <!-- GBIF libraries -->
     <gbif-cli.version>1.1</gbif-cli.version>
-    <gbif-api.version>1.12.4</gbif-api.version>
-    <gbif-common-ws.version>1.25</gbif-common-ws.version>
-    <gbif-registry.version>3.95.3</gbif-registry.version>
+    <gbif-api.version>1.17.0-SNAPSHOT</gbif-api.version>
+    <gbif-common-ws.version>1.28-SNAPSHOT</gbif-common-ws.version>
+    <gbif-registry.version>3.97.0-SNAPSHOT</gbif-registry.version>
     <datacite-rest-client.version>1.10</datacite-rest-client.version>
 
     <lombok.version>1.18.32</lombok.version>
@@ -61,7 +61,7 @@
     <commons-io.version>2.4</commons-io.version>
     <okio.version>1.9.0</okio.version>
     <findbugs.version>3.0.1</findbugs.version>
-    <spring.version>5.2.12.RELEASE</spring.version>
+    <spring.version>5.2.15.RELEASE</spring.version>
 
     <apache.beam.version>2.15.0</apache.beam.version>
     <postgresql.version>9.4.1208.jre7</postgresql.version>
