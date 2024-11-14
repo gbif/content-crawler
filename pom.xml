@@ -62,6 +62,7 @@
     <okio.version>1.9.0</okio.version>
     <findbugs.version>3.0.1</findbugs.version>
     <spring.version>5.2.15.RELEASE</spring.version>
+    <spring-boot.version>2.3.12.RELEASE</spring-boot.version>
 
     <apache.beam.version>2.15.0</apache.beam.version>
     <postgresql.version>9.4.1208.jre7</postgresql.version>
@@ -391,6 +392,11 @@
       <groupId>org.springframework</groupId>
       <artifactId>spring-web</artifactId>
       <version>${spring.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-validation</artifactId>
+      <version>${spring-boot.version}</version>
     </dependency>
 
 
