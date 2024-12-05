@@ -13,6 +13,7 @@
  */
 package org.gbif.content.crawl.contentful.crawl;
 
+import com.contentful.java.cda.*;
 import org.gbif.content.crawl.es.ElasticSearchUtils;
 
 import java.util.*;
@@ -21,9 +22,6 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import com.contentful.java.cda.CDAContentType;
-import com.contentful.java.cda.CDAEntry;
-import com.contentful.java.cda.LocalizedResource;
 import com.contentful.java.cma.Constants;
 import com.google.common.collect.Lists;
 
@@ -97,6 +95,7 @@ public class EsDocBuilder {
     //Updates the information from the meta field
     Meta.getMetaCreatedDate(cdaEntry).ifPresent(createdDate -> entries.replace("createdAt", createdDate));
     getBlocks(cdaEntry).ifPresent(blocks -> entries.put("blocks", blocks));
+    getContentfulTags(cdaEntry).ifPresent(tags -> entries.put("contentful_metadata_tags", tags));
     entries.put(CONTENT_TYPE_FIELD, ElasticSearchUtils.toFieldNameFormat(cdaEntry.contentType().name()));
     getProgrammeAcronym(cdaEntry)
       .ifPresent(programmeAcronym -> entries.put("gbifProgrammeAcronym", programmeAcronym));
@@ -115,6 +114,18 @@ public class EsDocBuilder {
         blockField.add(blockFields);
       });
       return Optional.of(blockField);
+    }
+    return Optional.empty();
+  }
+
+
+  private Optional<List<String>> getContentfulTags(CDAEntry cdaEntry) {
+    CDAMetadata metadata = cdaEntry.metadata();
+    if (metadata != null) {
+      List<CDATag> tags = metadata.getTags();
+      if (tags != null && !tags.isEmpty()) {
+        return Optional.of(tags.stream().map(CDATag::id).collect(Collectors.toList()));
+      }
     }
     return Optional.empty();
   }

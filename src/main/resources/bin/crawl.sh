@@ -3,7 +3,7 @@
 #Downloads latest snapshot.
 function download {
   echo "Downloading content crawler"
-  URL=`getArtifactUrl -s https://repository.gbif.org -g org.gbif.content -a content-crawler -v LATEST -r $1`
+  URL=`getArtifactUrl -s https://repository.gbif.org -g org.gbif.content -a content-crawler -v LATEST -r $1 -c shaded`
   echo Download ${URL}
   wget --progress=dot:mega -O content-crawler.jar "${URL}"
   mv latest.sha1 jar.sha1
@@ -125,6 +125,6 @@ else
 fi
 rm -f latest.sha1
 echo "Running crawler"
-java -jar content-crawler.jar $COMMAND --conf $P.yml
+java --add-opens java.base/java.lang.invoke=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED -jar content-crawler.jar $COMMAND --conf $P.yml
 rm -f $P.yml
 echo "Crawl has finished"

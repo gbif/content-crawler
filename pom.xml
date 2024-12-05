@@ -4,12 +4,13 @@
 
   <groupId>org.gbif.content</groupId>
   <artifactId>content-crawler</artifactId>
-  <version>0.41-SNAPSHOT</version>
+  <version>0.40-SNAPSHOT</version>
+  <packaging>jar</packaging>
 
   <parent>
     <groupId>org.gbif</groupId>
     <artifactId>motherpom</artifactId>
-    <version>56</version>
+    <version>59</version>
   </parent>
 
   <name>GBIF Content Crawlers</name>
@@ -20,7 +21,7 @@
     <connection>scm:git:git@github.com:gbif/content-crawler.git</connection>
     <url>https://github.com/gbif/content-crawler</url>
     <developerConnection>scm:git:git@github.com:gbif/content-crawler.git</developerConnection>
-    <tag>content-crawler-0.39</tag>
+    <tag>HEAD</tag>
   </scm>
 
   <distributionManagement>
@@ -31,16 +32,16 @@
   </distributionManagement>
 
   <properties>
-    <jdkLevel>1.8</jdkLevel>
+    <jdkLevel>11</jdkLevel>
 
     <!-- GBIF libraries -->
     <gbif-cli.version>1.1</gbif-cli.version>
-    <gbif-api.version>1.12.4</gbif-api.version>
-    <gbif-common-ws.version>1.25</gbif-common-ws.version>
-    <gbif-registry.version>3.95.3</gbif-registry.version>
-    <datacite-rest-client.version>1.10</datacite-rest-client.version>
+    <gbif-api.version>2.0.0</gbif-api.version>
+    <gbif-common-ws.version>2.0.3</gbif-common-ws.version>
+    <gbif-registry.version>4.0.1</gbif-registry.version>
+    <datacite-rest-client.version>2.0.0</datacite-rest-client.version>
 
-    <lombok.version>1.18.24</lombok.version>
+    <lombok.version>1.18.32</lombok.version>
     <slf4j.version>1.7.24</slf4j.version>
     <guava.version>17.0</guava.version>
     <jcommander.version>1.47</jcommander.version>
@@ -60,7 +61,8 @@
     <commons-io.version>2.4</commons-io.version>
     <okio.version>1.9.0</okio.version>
     <findbugs.version>3.0.1</findbugs.version>
-    <spring.version>5.2.12.RELEASE</spring.version>
+    <spring.version>5.2.15.RELEASE</spring.version>
+    <spring-boot.version>2.3.12.RELEASE</spring-boot.version>
 
     <apache.beam.version>2.15.0</apache.beam.version>
     <postgresql.version>9.4.1208.jre7</postgresql.version>
@@ -70,15 +72,22 @@
     <cache2k.version>2.6.1.Final</cache2k.version>
 
     <!-- Contentful SDK is used for crawling and building the index -->
-    <contentful-sdk.version>10.5.2</contentful-sdk.version>
+    <contentful-sdk.version>10.5.18</contentful-sdk.version>
     <!-- Contentful Management SDK is used for backup procedures only -->
-    <cma-sdk.version>3.4.2</cma-sdk.version>
+    <cma-sdk.version>3.4.12</cma-sdk.version>
     <okhttp.version>3.4.1</okhttp.version>
     <metainf-services.version>1.7</metainf-services.version>
-    <maven-shade-plugin.version>3.2.1</maven-shade-plugin.version>
+    <maven-shade-plugin.version>3.6.0</maven-shade-plugin.version>
+    <maven-dependency-plugin.version>3.1.2</maven-dependency-plugin.version>
   </properties>
 
   <build>
+    <resources>
+      <resource>
+        <directory>src/main/resources</directory>
+        <filtering>true</filtering>
+      </resource>
+    </resources>
     <plugins>
         <plugin>
             <groupId>org.apache.maven.plugins</groupId>
@@ -104,6 +113,8 @@
                         <goal>shade</goal>
                     </goals>
                     <configuration>
+                      <shadedArtifactAttached>true</shadedArtifactAttached>
+                      <createDependencyReducedPom>false</createDependencyReducedPom>
                         <transformers>
                             <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                                 <mainClass>org.gbif.cli.Application</mainClass>
@@ -113,6 +124,20 @@
                 </execution>
             </executions>
         </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-dependency-plugin</artifactId>
+        <version>${maven-dependency-plugin.version}</version>
+        <executions>
+          <execution>
+            <id>list-dependencies</id>
+            <goals>
+              <goal>list</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
     </plugins>
   </build>
 
@@ -176,22 +201,52 @@
           <groupId>commons-beanutils</groupId>
           <artifactId>commons-beanutils-core</artifactId>
         </exclusion>
+        <exclusion>
+          <artifactId>hibernate-validator</artifactId>
+          <groupId>org.hibernate.validator</groupId>
+        </exclusion>
       </exclusions>
     </dependency>
     <dependency>
       <groupId>org.gbif</groupId>
       <artifactId>gbif-api</artifactId>
       <version>${gbif-api.version}</version>
+      <exclusions>
+        <exclusion>
+          <artifactId>commons-validator</artifactId>
+          <groupId>commons-validator</groupId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.gbif</groupId>
       <artifactId>gbif-common-ws</artifactId>
       <version>${gbif-common-ws.version}</version>
+      <exclusions>
+        <exclusion>
+          <artifactId>commons-logging</artifactId>
+          <groupId>commons-logging</groupId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.gbif.registry</groupId>
       <artifactId>registry-ws-client</artifactId>
       <version>${gbif-registry.version}</version>
+      <exclusions>
+        <exclusion>
+          <artifactId>spring-cloud-starter-openfeign</artifactId>
+          <groupId>org.springframework.cloud</groupId>
+        </exclusion>
+        <exclusion>
+          <artifactId>spring-boot-starter-amqp</artifactId>
+          <groupId>org.springframework.boot</groupId>
+        </exclusion>
+        <exclusion>
+          <artifactId>commons-validator</artifactId>
+          <groupId>commons-validator</groupId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.gbif.datacite</groupId>
@@ -207,6 +262,12 @@
       <groupId>org.apache.httpcomponents</groupId>
       <artifactId>httpclient</artifactId>
       <version>${httpclient.version}</version>
+      <exclusions>
+        <exclusion>
+          <artifactId>commons-logging</artifactId>
+          <groupId>commons-logging</groupId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
@@ -227,6 +288,12 @@
       <groupId>org.elasticsearch.client</groupId>
       <artifactId>elasticsearch-rest-client</artifactId>
       <version>${elasticsearch.version}</version>
+      <exclusions>
+        <exclusion>
+          <artifactId>commons-logging</artifactId>
+          <groupId>commons-logging</groupId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.elasticsearch</groupId>
@@ -247,6 +314,12 @@
       <groupId>org.elasticsearch.client</groupId>
       <artifactId>elasticsearch-rest-client-sniffer</artifactId>
       <version>${elasticsearch.version}</version>
+      <exclusions>
+        <exclusion>
+          <artifactId>commons-logging</artifactId>
+          <groupId>commons-logging</groupId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>io.reactivex.rxjava2</groupId>
@@ -320,6 +393,12 @@
       <artifactId>spring-web</artifactId>
       <version>${spring.version}</version>
     </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-validation</artifactId>
+      <version>${spring-boot.version}</version>
+    </dependency>
+
 
     <!-- Caching -->
     <dependency>
