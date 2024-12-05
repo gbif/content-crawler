@@ -10,7 +10,7 @@
   <parent>
     <groupId>org.gbif</groupId>
     <artifactId>motherpom</artifactId>
-    <version>59-SNAPSHOT</version>
+    <version>59</version>
   </parent>
 
   <name>GBIF Content Crawlers</name>
@@ -36,10 +36,10 @@
 
     <!-- GBIF libraries -->
     <gbif-cli.version>1.1</gbif-cli.version>
-    <gbif-api.version>1.17.0-SNAPSHOT</gbif-api.version>
-    <gbif-common-ws.version>1.28-SNAPSHOT</gbif-common-ws.version>
-    <gbif-registry.version>3.97.0-SNAPSHOT</gbif-registry.version>
-    <datacite-rest-client.version>1.10</datacite-rest-client.version>
+    <gbif-api.version>2.0.0</gbif-api.version>
+    <gbif-common-ws.version>2.0.3</gbif-common-ws.version>
+    <gbif-registry.version>4.0.1</gbif-registry.version>
+    <datacite-rest-client.version>2.0.0</datacite-rest-client.version>
 
     <lombok.version>1.18.32</lombok.version>
     <slf4j.version>1.7.24</slf4j.version>
