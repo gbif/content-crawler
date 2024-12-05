@@ -4,7 +4,7 @@
 
   <groupId>org.gbif.content</groupId>
   <artifactId>content-crawler</artifactId>
-  <version>0.40-SNAPSHOT</version>
+  <version>1.0.0</version>
   <packaging>jar</packaging>
 
   <parent>
@@ -21,7 +21,7 @@
     <connection>scm:git:git@github.com:gbif/content-crawler.git</connection>
     <url>https://github.com/gbif/content-crawler</url>
     <developerConnection>scm:git:git@github.com:gbif/content-crawler.git</developerConnection>
-    <tag>HEAD</tag>
+    <tag>content-crawler-1.0.0</tag>
   </scm>
 
   <distributionManagement>
