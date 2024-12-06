@@ -3,7 +3,7 @@
 #Downloads latest snapshot.
 function download {
   echo "Downloading content crawler"
-  URL=`getArtifactUrl -s https://repository.gbif.org -g org.gbif.content -a content-crawler -v LATEST -r $1 -c shaded`
+  URL=`getArtifactUrl -s https://repository.gbif.org -g org.gbif.content -a content-crawler -v $2 -r $1 -c shaded`
   echo Download ${URL}
   wget --progress=dot:mega -O content-crawler.jar "${URL}"
   mv latest.sha1 jar.sha1
@@ -11,7 +11,7 @@ function download {
 
 #Downloads latest sha1 checksum.
 function downloadJarSha1 {
-  URL=`getArtifactUrl -s https://repository.gbif.org -g org.gbif.content -a content-crawler -v LATEST -r $1`
+  URL=`getArtifactUrl -s https://repository.gbif.org -g org.gbif.content -a content-crawler -v $2 -r $1`
   echo "Download JAR SHA1 ${URL}.sha1"
   set -o pipefail
   curl -Ss -L "${URL}.sha1" | sed -n 's/<sha1>\(.*\)<\/sha1>/\1/p' > latest.sha1
@@ -108,20 +108,21 @@ TOKEN=$2
 COMMAND=$3
 REPOSITORY=${4:-snapshots}
 MENDELEY_AUTH_TOKEN=${5:-""}
+VERSION=${6:-LATEST}
 
 downloadConfig $TOKEN $P
 sed -i "s|_mendeleyAuthToken|$MENDELEY_AUTH_TOKEN|g" $P.yml
-downloadJarSha1 $REPOSITORY
+downloadJarSha1 $REPOSITORY $VERSION
 if [ -f jar.sha1 ] && [ -f content-crawler.jar ]; then
   if ! cmp -s latest.sha1 jar.sha1; then
     echo "Downloading updated JAR file"
-    download $REPOSITORY
+    download $REPOSITORY $VERSION
   else
     echo "Using previously download JAR file since content is the same"
   fi
 else
   echo "Downloading JAR file"
-  download $REPOSITORY
+  download $REPOSITORY $VERSION
 fi
 rm -f latest.sha1
 echo "Running crawler"
