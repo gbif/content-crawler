@@ -125,6 +125,6 @@ else
 fi
 rm -f latest.sha1
 echo "Running crawler"
-java --add-opens java.base/java.lang.invoke=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED -jar content-crawler.jar $COMMAND --conf $P.yml
+/usr/lib/jvm/java-11/bin/java --add-opens java.base/java.lang.invoke=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED -jar content-crawler.jar $COMMAND --conf $P.yml
 rm -f $P.yml
 echo "Crawl has finished"
