@@ -276,6 +276,8 @@ public class  MappingGenerator {
             mapping.field("type", esType);
             if (NESTED.equals(esType)) {
                 mapping.field("dynamic", true);
+            } else if (KEYWORD.equals(esType) || TEXT.equals(esType)) {
+              mapping.field("copy_to", "_all");
             }
           mapping.endObject();
         mapping.endObject();
