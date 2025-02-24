@@ -51,6 +51,8 @@ public class  MappingGenerator {
    */
   private static final Pattern IGNORED_FIELDS = Pattern.compile("space|revision|type");
 
+  private static final Pattern FULLTEXT_FIELDS = Pattern.compile("title|body|description|summary");
+
   /**
    * List of types that can be obtained using a non-localized version.
    */
@@ -276,7 +278,7 @@ public class  MappingGenerator {
             mapping.field("type", esType);
             if (NESTED.equals(esType)) {
                 mapping.field("dynamic", true);
-            } else if (KEYWORD.equals(esType) || TEXT.equals(esType)) {
+            } else if (FULLTEXT_FIELDS.matcher(fieldName).matches()) {
               mapping.field("copy_to", "_all");
             }
           mapping.endObject();
