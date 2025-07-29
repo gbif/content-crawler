@@ -35,7 +35,6 @@ import co.elastic.clients.elasticsearch._types.mapping.TypeMapping;
 import co.elastic.clients.elasticsearch.indices.CreateIndexRequest;
 import co.elastic.clients.elasticsearch.indices.DeleteIndexRequest;
 import co.elastic.clients.elasticsearch.indices.ExistsRequest;
-import co.elastic.clients.elasticsearch.indices.GetAliasResponse;
 import co.elastic.clients.transport.rest_client.RestClientTransport;
 import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.RestClientBuilder;
@@ -159,34 +158,26 @@ public class ElasticSearchUtils {
           .maxNumSegments(1L)
       );
 
-      // Step 3: Get all indices currently associated with the alias (handle missing alias)
+      // Step 3: Add aliases to the new index
       List<Action> actions = new ArrayList<>();
       
-      try {
-        GetAliasResponse aliasesGetResponse = esClient.indices().getAlias(b -> b.name(alias));
-        // Remove alias from all existing indices
-        for (String idx : aliasesGetResponse.aliases().keySet()) {
-          actions.add(Action.of(a -> a
-              .remove(r -> r.index(idx).alias(alias))
-          ));
-        }
-        LOG.info("Removed alias '{}' from {} existing indices", alias, aliasesGetResponse.aliases().size());
-      } catch (Exception e) {
-        LOG.info("Alias '{}' does not exist yet, will create new", alias);
-      }
-
-      // Add alias to the new index
+      // Add content type alias (e.g., news, network, etc.)
       actions.add(Action.of(a -> a
           .add(add -> add.index(toIdx).alias(alias))
       ));
 
-      // Step 5: Execute all alias operations in a single atomic call
+      // Add content alias
+      actions.add(Action.of(a -> a
+          .add(add -> add.index(toIdx).alias(CONTENT_ALIAS))
+      ));
+
+      // Step 4: Execute all alias operations in a single atomic call
       esClient.indices().updateAliases(ua -> ua.actions(actions));
 
-      LOG.info("Successfully pointed alias '{}' to index '{}'", alias, toIdx);
+      LOG.info("Successfully added index '{}' to alias '{}' and content alias", toIdx, alias);
     } catch (Exception ex) {
-      LOG.error("Failed to swap alias '{}' to index '{}': {}", alias, toIdx, ex.getMessage());
-      throw new IllegalStateException("Failed to swap alias", ex);
+      LOG.error("Failed to add index '{}' to aliases: {}", toIdx, ex.getMessage());
+      throw new IllegalStateException("Failed to add aliases", ex);
     }
   }
 
