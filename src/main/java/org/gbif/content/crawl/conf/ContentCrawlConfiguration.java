@@ -24,13 +24,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import javax.annotation.Nullable;
-import javax.validation.constraints.NotNull;
+import jakarta.annotation.Nullable;
+import jakarta.validation.constraints.NotNull;
 
-import com.beust.jcommander.IStringConverter;
-import com.beust.jcommander.Parameter;
+import picocli.CommandLine.Option;
 import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.deser.std.StdScalarDeserializer;
@@ -70,52 +68,34 @@ public class ContentCrawlConfiguration {
   @NoArgsConstructor
   public static class Mendeley {
 
-    @Parameter(
-      names = "-targetDir", converter = FileConverter.class,
-      description = "The target directory to store the crawl responses (JSON docs)")
+    @Option(names = {"-targetDir"}, description = "The target directory to store the crawl responses (JSON docs)")
     @NotNull
     private File targetDir;
 
-    @Parameter(
-      names = "-tokenUrl",
-      description = "The Mendeley url for the authentication, defaulting to https://api.mendeley.com/oauth/token")
+    @Option(names = {"-tokenUrl"}, description = "The Mendeley url for the authentication, defaulting to https://api.mendeley.com/oauth/token")
     private String tokenUrl = "https://api.mendeley.com/oauth/token";
 
-    @Parameter(
-      names = "-authToken",
-      description = "The Mendeley Auth Token  generated from http://dev.mendeley.com/")
+    @Option(names = {"-authToken"}, description = "The Mendeley Auth Token generated from http://dev.mendeley.com/")
     @NotNull
     private String authToken;
 
-    @Parameter(
-      names = "-redirectURI",
-      description = "The redirect URL registered for trusted applicaiton http://dev.mendeley.com/")
+    @Option(names = {"-redirectURI"}, description = "The redirect URL registered for trusted application http://dev.mendeley.com/")
     @NotNull
     private String redirecURI;
 
-    @Parameter(
-      names = "-targetUrl",
-      description = "The templated target URL to crawl, defaulting to https://api.mendeley.com/documents?&limit=500")
+    @Option(names = {"-targetUrl"}, description = "The templated target URL to crawl, defaulting to https://api.mendeley.com/documents?&limit=500")
     private String crawlURL = "https://api.mendeley.com/documents?limit=500&view=all";
 
-    @Parameter(
-      names = "-timeout",
-      description = "Timeout for the HTTP calls in seconds, defaulting to 10 secs")
+    @Option(names = {"-timeout"}, description = "Timeout for the HTTP calls in seconds, defaulting to 10 secs")
     private int httpTimeout = 10000;
 
-    @Parameter(
-            names = "-timeout-max-number-retries",
-            description = "How many times re-try on HTTP Gateway timeout (504), defaulting to 3")
+    @Option(names = {"-timeout-max-number-retries"}, description = "How many times re-try on HTTP Gateway timeout (504), defaulting to 3")
     private int timeoutMaxNumberRetires = 3;
 
-    @Parameter(
-      names = "-controlledTags",
-      description = "Tags values that must be handled as separate fields in the resulting index")
+    @Option(names = {"-controlledTags"}, description = "Tags values that must be handled as separate fields in the resulting index")
     private Map<String,List<String>> controlledTags = new HashMap<>();
 
-    @Parameter(
-      names = "-dbConfig",
-      description = "Configuration to establish a connection to the Registry DB to get data of downloads and datasets")
+    @Option(names = {"-dbConfig"}, description = "Configuration to establish a connection to the Registry DB to get data of downloads and datasets")
     private Map<String,String> dbConfig = new HashMap<>();
 
     private IndexBuild indexBuild;
@@ -131,24 +111,16 @@ public class ContentCrawlConfiguration {
   @Data
   @NoArgsConstructor
   public static class ElasticSearch {
-    @Parameter(
-      names = "-host",
-      description = "The ES node host to connect to, defaulting to localhost")
+    @Option(names = {"-host"}, description = "The ES node host to connect to, defaulting to localhost")
     private String host = "localhost";
 
-    @Parameter(
-      names = "-connectionTimeOut",
-      description = "Connection time out")
+    @Option(names = {"-connectionTimeOut"}, description = "Connection time out")
     private int connectionTimeOut = 60000;
 
-    @Parameter(
-      names = "-socketTimeOut",
-      description = "SocketTimeOut")
+    @Option(names = {"-socketTimeOut"}, description = "SocketTimeOut")
     private int socketTimeOut = 60000;
 
-    @Parameter(
-      names = "-connectionRequestTimeOut",
-      description = "ConnectionRequestTimeOut time out")
+    @Option(names = {"-connectionRequestTimeOut"}, description = "ConnectionRequestTimeOut time out")
     private int connectionRequestTimeOut = 120000;
   }
 
@@ -159,58 +131,58 @@ public class ContentCrawlConfiguration {
   @Data
   @NoArgsConstructor
   public static class Contentful {
-    @Parameter(
+    @Option(
       names = "-cdaToken",
       description = "Contentful authorization token")
     private String cdaToken;
 
-    @Parameter(
+    @Option(
       names = "-cmaToken",
       description = "Contentful management access token")
     @NotNull
     private String cmaToken;
 
-    @Parameter(
+    @Option(
       names = "-spaceId",
       description = "Contentful space Id")
     private String spaceId;
 
-    @Parameter(
+    @Option(
       names = "-environmentId",
       description = "Contentful space environment")
     private String environmentId = "master";
 
-    @Parameter(
+    @Option(
       names = "-contentTypes",
       description = "Contentful content types to be crawled")
     private List<String> contentTypes = new ArrayList<>();
 
-    @Parameter(
+    @Option(
       names = "-vocabularies",
       description = "Contentful vocabularies to be crawled")
     private Set<String> vocabularies = new HashSet<>();
 
-    @Parameter(
+    @Option(
       names = "-countryVocabulary",
       description = "Named of the country vocabulary content, it's handled specially during indexing")
     private String countryVocabulary;
 
-    @Parameter(
+    @Option(
             names = "-newsContentType",
             description = "Name of the news content type, it's handled specially during indexing to tag related entities")
     private String newsContentType;
 
-    @Parameter(
+    @Option(
             names = "-articleContentType",
             description = "Name of the article content type, it's handled specially during indexing to tag related entities")
     private String articleContentType = "Article";
 
-    @Parameter(
+    @Option(
             names = "-programmeContentType",
             description = "Name of the programme content type, it's handled specially during indexing projects")
     private String programmeContentType = "Programme";
 
-    @Parameter(
+    @Option(
             names = "-projectContentType",
             description = "Name of the project content type, it's handled specially during indexing projects")
     private String projectContentType = "Project";
@@ -222,22 +194,22 @@ public class ContentCrawlConfiguration {
   @NoArgsConstructor
   public static class IndexBuild {
 
-    @Parameter(
+    @Option(
       names = "-esIndexAlias",
       description = "ElasticSearch index alias")
     private String esIndexAlias = "content";
 
-    @Parameter(
+    @Option(
       names = "-esIndexName",
       description = "ElasticSearch index name")
     private String esIndexName;
 
-    @Parameter(
+    @Option(
       names = "-batchSize",
       description = "Batch size for bulk indexing")
     private int batchSize = 50;
 
-    @Parameter(
+    @Option(
       names = "-maxResultWindow",
       description = "MaxResultWindow ES")
     private int maxResultWindow = 15000;
@@ -246,17 +218,17 @@ public class ContentCrawlConfiguration {
   @Data
   @NoArgsConstructor
   public static class GbifApi {
-    @Parameter(
+    @Option(
       names = "-gbifApiUrl",
       description = "URL to GBIF API")
     private String url;
 
-    @Parameter(
+    @Option(
       names = "-gbifApiUsername",
       description = "Username to GBIF API")
     private String username;
 
-    @Parameter(
+    @Option(
       names = "-gbifApiPassword",
       description = "Password for GBIF API")
     private String password;
@@ -268,13 +240,13 @@ public class ContentCrawlConfiguration {
   @Data
   @NoArgsConstructor
   public static class ContentfulBackup {
-    @Parameter(
+    @Option(
       names = "-cmaToken",
       description = "Contentful management access token")
     @NotNull
     private String cmaToken;
 
-    @Parameter(
+    @Option(
       names = "-targetDir",
       description = "The target directory to save the Contentful backup")
     @NotNull
@@ -288,39 +260,29 @@ public class ContentCrawlConfiguration {
   @Data
   @NoArgsConstructor
   public static class ContentfulRestore {
-    @Parameter(
+    @Option(
       names = "-cmaToken",
       description = "Contentful management access token")
     @NotNull
     private String cmaToken;
 
-    @Parameter(
+    @Option(
       names = "-spaceId",
       description = "Contentful spaceId to populate")
     @NotNull
     private String spaceId;
 
-    @Parameter(
+    @Option(
       names = "-environmentId",
       description = "Contentful space environment")
     private String environmentId = "master";
 
-    @Parameter(
+    @Option(
       names = "-sourceDir",
       description = "The directory containing the backup")
     @NotNull
     @JsonDeserialize(using = PathDeserializer.class)
     private Path sourceDir;
-  }
-
-  /**
-   * Converts from String to File.
-   */
-  private static class FileConverter implements IStringConverter<File> {
-    @Override
-    public File convert(String value) {
-      return new File(value);
-    }
   }
 
   /**
@@ -332,7 +294,7 @@ public class ContentCrawlConfiguration {
     @Override
     public Path deserialize(
       JsonParser jsonParser, DeserializationContext deserializationContext
-    ) throws IOException, JsonProcessingException {
+    ) throws IOException {
       return Paths.get(jsonParser.getValueAsString());
     }
   }
