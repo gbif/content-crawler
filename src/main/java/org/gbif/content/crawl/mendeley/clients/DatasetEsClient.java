@@ -16,20 +16,16 @@ package org.gbif.content.crawl.mendeley.clients;
 import org.gbif.content.crawl.conf.ContentCrawlConfiguration;
 import org.gbif.content.crawl.es.ElasticSearchUtils;
 
-import java.io.Closeable;
-import java.io.IOException;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 import org.cache2k.Cache;
 import org.cache2k.Cache2kBuilder;
-import org.elasticsearch.action.search.SearchRequest;
-import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.client.RequestOptions;
-import org.elasticsearch.client.RestHighLevelClient;
-import org.elasticsearch.index.query.QueryBuilders;
-import org.elasticsearch.search.SearchHit;
-import org.elasticsearch.search.builder.SearchSourceBuilder;
+import co.elastic.clients.elasticsearch.ElasticsearchClient;
+import co.elastic.clients.elasticsearch.core.SearchRequest;
+import co.elastic.clients.elasticsearch.core.SearchResponse;
+import co.elastic.clients.elasticsearch.core.search.Hit;
 
 import lombok.Builder;
 import lombok.Data;
@@ -38,7 +34,7 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class DatasetEsClient implements Closeable {
+public class DatasetEsClient {
 
   @Data
   @Builder
@@ -54,7 +50,7 @@ public class DatasetEsClient implements Closeable {
 
   private final ContentCrawlConfiguration configuration;
 
-  private final RestHighLevelClient esClient;
+  private final ElasticsearchClient esClient;
 
   private final ContentEsClient contentEsClient;
   private final Cache<String, DatasetSearchResponse> cache;
@@ -70,9 +66,10 @@ public class DatasetEsClient implements Closeable {
     this.contentEsClient = new ContentEsClient(configuration);
   }
 
-  private static String getProjectIdentifier(SearchHit searchHit) {
-    if (searchHit.getSourceAsMap().containsKey("project")) {
-      HashMap<String,?> project = (HashMap<String,?>)searchHit.getSourceAsMap().get("project");
+  private static String getProjectIdentifier(Hit<Object> searchHit) {
+    Map<String, Object> source = (Map<String, Object>) searchHit.source();
+    if (source.containsKey("project")) {
+      HashMap<String,?> project = (HashMap<String,?>)source.get("project");
       Object identifier = project.get("identifier");
       if (identifier != null) {
         return (String)identifier;
@@ -94,10 +91,10 @@ public class DatasetEsClient implements Closeable {
     return null;
   }
 
-  private DatasetSearchResponse toDatasetSearchResponse(SearchHit searchHit) {
+  private DatasetSearchResponse toDatasetSearchResponse(Hit<Object> searchHit) {
     String projectIdentifier = getProjectIdentifier(searchHit);
     return DatasetSearchResponse.builder()
-            .key(searchHit.getId())
+            .key(searchHit.id())
             .projectIdentifier(projectIdentifier)
             .programmeAcronym(getProgrammeAcronym(projectIdentifier))
             .build();
@@ -109,47 +106,41 @@ public class DatasetEsClient implements Closeable {
 
   @SneakyThrows
   private DatasetSearchResponse getFromElastic(String datasetKey) {
-    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder()
-                                                .size(1)
-                                                .fetchSource(new String[]{"project.identifier"}, null)
-                                                .query(QueryBuilders.idsQuery().addIds(datasetKey));
-    SearchRequest searchRequest = new SearchRequest();
-    searchRequest.indices(configuration.getMendeley().getDatasetIndex());
-    searchRequest.source(searchSourceBuilder);
-    SearchResponse searchResponse = esClient.search(searchRequest, RequestOptions.DEFAULT);
-    if (searchResponse.getHits().getTotalHits().value > 0) {
-      return toDatasetSearchResponse(searchResponse.getHits().getAt(0));
+    SearchRequest searchRequest = new SearchRequest.Builder()
+      .index(configuration.getMendeley().getDatasetIndex())
+      .query(q -> q.ids(ids -> ids.values(datasetKey)))
+      .size(1)
+      .source(s -> s.filter(f -> f.includes("project.identifier")))
+      .build();
+    
+    SearchResponse<Object> searchResponse = esClient.search(searchRequest, Object.class);
+    if (searchResponse.hits().total().value() > 0) {
+      return toDatasetSearchResponse(searchResponse.hits().hits().get(0));
     }
     return null;
   }
 
   @SneakyThrows
   public void loadAllWithProjectIds() {
-    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder()
+    SearchRequest.Builder searchRequestBuilder = new SearchRequest.Builder()
+      .index(configuration.getMendeley().getDatasetIndex())
+      .query(q -> q.exists(e -> e.field("project.identifier")))
       .size(PAGE_SIZE)
-      .from(0)
-      .fetchSource(new String[]{"project.identifier"}, null)
-      .query(QueryBuilders.existsQuery("project.identifier"));
+      .source(s -> s.filter(f -> f.includes("project.identifier")));
 
-    SearchRequest searchRequest = new SearchRequest();
-    searchRequest.indices(configuration.getMendeley().getDatasetIndex());
-    searchRequest.source(searchSourceBuilder);
-
-    SearchResponse searchResponse = esClient.search(searchRequest, RequestOptions.DEFAULT);
-    while (searchResponse.getHits().getHits().length > 0) {
-      log.info("Loading {} datasets from {} into the cache", searchSourceBuilder.size(), searchSourceBuilder.from());
-      searchResponse.getHits().iterator().forEachRemaining(searchHit -> cache.put(searchHit.getId(), toDatasetSearchResponse(searchHit)));
-      searchSourceBuilder.from(searchSourceBuilder.from() + searchResponse.getHits().getHits().length);
-      searchResponse = esClient.search(searchRequest, RequestOptions.DEFAULT);
+    SearchResponse<Object> searchResponse = esClient.search(searchRequestBuilder.build(), Object.class);
+    int from = 0;
+    
+    while (searchResponse.hits().hits().size() > 0) {
+      log.info("Loading {} datasets from {} into the cache", PAGE_SIZE, from);
+      searchResponse.hits().hits().forEach(searchHit -> cache.put(searchHit.id(), toDatasetSearchResponse(searchHit)));
+      from += searchResponse.hits().hits().size();
+      
+      searchRequestBuilder.from(from);
+      searchResponse = esClient.search(searchRequestBuilder.build(), Object.class);
     }
 
     log.info("Dataset cache built with {} entries", cache.keys().size());
-  }
-
-  @Override
-  public void close() throws IOException {
-    esClient.close();
-    contentEsClient.close();
   }
 
 }

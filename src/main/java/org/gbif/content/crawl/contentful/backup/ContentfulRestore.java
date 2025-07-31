@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.stream.Stream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,7 +29,6 @@ import com.contentful.java.cma.model.CMAAsset;
 import com.contentful.java.cma.model.CMAContentType;
 import com.contentful.java.cma.model.CMAEntry;
 import com.google.common.base.Preconditions;
-import com.google.common.base.Throwables;
 import com.google.common.util.concurrent.RateLimiter;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -64,51 +64,53 @@ public class ContentfulRestore {
       restoreAssets();
 
       // Restore all the entries, skipping the Asset meta folder
-      Files.list(configuration.getSourceDir())
-           .forEach(path ->  {
-                      if (path.endsWith("Asset") || path.endsWith("ContentType")) {
-                        return;
-                      }
+      try (Stream<Path> sourceStream = Files.list(configuration.getSourceDir())) {
+        sourceStream.forEach(path ->  {
+                     if (path.endsWith("Asset") || path.endsWith("ContentType")) {
+                       return;
+                     }
 
-                      try {
-                        LOG.info("Starting {}", path);
-                        restoreEntries(path);
-                      } catch (IOException e) {
-                        Throwables.propagate(e);
-                      }
-                  });
+                     try {
+                       LOG.info("Starting {}", path);
+                       restoreEntries(path);
+                     } catch (IOException e) {
+                       throw new RuntimeException(e);
+                     }
+                 });
+      }
 
     } catch (Exception e) {
-      Throwables.propagate(e);
+      throw new RuntimeException(e);
     }
   }
 
   private void restoreContentTypes() throws IOException {
-    Files.list(configuration.getSourceDir().resolve("./ContentType"))
-         .forEach(path -> {
-             try {
-               CMAContentType type = GSON.fromJson(new String(Files.readAllBytes(path), StandardCharsets.UTF_8), CMAContentType.class);
+    try (Stream<Path> contentTypeStream = Files.list(configuration.getSourceDir().resolve("./ContentType"))) {
+      contentTypeStream.forEach(path -> {
+              try {
+                CMAContentType type = GSON.fromJson(new String(Files.readAllBytes(path), StandardCharsets.UTF_8), CMAContentType.class);
 
-               try {
-                 CMAContentType existing = cmaClient.contentTypes().fetchOne(configuration.getSpaceId(), configuration.getEnvironmentId(),
-                                                                             type.getId());
-                 LOG.info("Content type exists: {}", existing.getName());
-                 rateLimiter.acquire();
+                try {
+                  CMAContentType existing = cmaClient.contentTypes().fetchOne(configuration.getSpaceId(), configuration.getEnvironmentId(),
+                                                                              type.getId());
+                  LOG.info("Content type exists: {}", existing.getName());
+                  rateLimiter.acquire();
 
-               } catch (RuntimeException e) {
-                 LOG.info("Restoring content type: {}", type.getName());
-                 CMAContentType created = cmaClient.contentTypes().create(configuration.getSpaceId(), configuration.getEnvironmentId(), type);
+                } catch (RuntimeException e) {
+                  LOG.info("Restoring content type: {}", type.getName());
+                  CMAContentType created = cmaClient.contentTypes().create(configuration.getSpaceId(), configuration.getEnvironmentId(), type);
 
-                 rateLimiter.acquire();
-                 cmaClient.contentTypes().publish(created);
-                 rateLimiter.acquire();
-               }
+                  rateLimiter.acquire();
+                  cmaClient.contentTypes().publish(created);
+                  rateLimiter.acquire();
+                }
 
-             } catch (IOException e) {
-               Throwables.propagate(e);
-             }
-         }
-    );
+              } catch (IOException e) {
+                throw new RuntimeException(e);
+              }
+          }
+     );
+    }
   }
 
   private void restoreAssets() throws IOException {
@@ -116,64 +118,66 @@ public class ContentfulRestore {
     Preconditions.checkArgument(Files.exists(assetsDir),
                                 "Assets directory [%s] is missing and should be sitting beside the sourceDir",
                                 assetsDir);
-    Files.list(configuration.getSourceDir().resolve("./Asset"))
-         .forEach(path -> {
-                    try {
-                      String assetAsJSON = new String(Files.readAllBytes(path), StandardCharsets.UTF_8);
-                      // In the backup the URL will have the likes of this:
-                      //   "url": "//images.contentful.com/
-                      // If we are to do disaster recovery, we actually need to make the backup directory visible on
-                      // the internet, and rewrite those to be something that contentful can access.  However, for
-                      // just copying a space (e.g. Production -> Development) Contentful will recognise these as
-                      // preprocessed, which is ideal for that purpose.  Full disaster recovery is not implemented, but
-                      // this is the only know issue.
-                      CMAAsset assetMeta = GSON.fromJson(assetAsJSON, CMAAsset.class);
-                      try {
-                        LOG.info("Asset exists: {}", assetMeta.getFields().getTitle("en-GB"));
-                        rateLimiter.acquire();
+    try (Stream<Path> assetStream = Files.list(configuration.getSourceDir().resolve("./Asset"))) {
+      assetStream.forEach(path -> {
+                   try {
+                     String assetAsJSON = new String(Files.readAllBytes(path), StandardCharsets.UTF_8);
+                     // In the backup the URL will have the likes of this:
+                     //   "url": "//images.contentful.com/
+                     // If we are to do disaster recovery, we actually need to make the backup directory visible on
+                     // the internet, and rewrite those to be something that contentful can access.  However, for
+                     // just copying a space (e.g. Production -> Development) Contentful will recognise these as
+                     // preprocessed, which is ideal for that purpose.  Full disaster recovery is not implemented, but
+                     // this is the only know issue.
+                     CMAAsset assetMeta = GSON.fromJson(assetAsJSON, CMAAsset.class);
+                     try {
+                       LOG.info("Asset exists: {}", assetMeta.getFields().getTitle("en-GB"));
+                       rateLimiter.acquire();
 
-                      } catch (RuntimeException e) {
-                        LOG.info("Restoring asset: {}", assetMeta.getFields().getTitle("en-GB"));
+                     } catch (RuntimeException e) {
+                       LOG.info("Restoring asset: {}", assetMeta.getFields().getTitle("en-GB"));
 
-                        CMAAsset created = cmaClient.assets().create(configuration.getSpaceId(), configuration.getEnvironmentId(), assetMeta);
-                        // If you are developing a disaster recovery, here you would need to do something like this:
-                        // cmaClient.assets().process(...);
+                       CMAAsset created = cmaClient.assets().create(configuration.getSpaceId(), configuration.getEnvironmentId(), assetMeta);
+                       // If you are developing a disaster recovery, here you would need to do something like this:
+                       // cmaClient.assets().process(...);
 
-                        // Assets which are not processed cannot be published
-                        if (created.getFields().getFile("en-GB") != null &&
-                            created.getFields().getFile("en-GB").getUrl() != null) {
-                          cmaClient.assets().publish(created);
-                          rateLimiter.acquire();
-                        }
+                       // Assets which are not processed cannot be published
+                       if (created.getFields().getFile("en-GB") != null &&
+                           created.getFields().getFile("en-GB").getUrl() != null) {
+                         cmaClient.assets().publish(created);
+                         rateLimiter.acquire();
+                       }
 
-                      }
+                     }
 
-                    } catch (IOException e) {
-                      Throwables.propagate(e);
-                    }
-                  }
-         );
+                   } catch (IOException e) {
+                     throw new RuntimeException(e);
+                   }
+                 }
+      );
+    }
   }
 
   private void restoreEntries(Path entryDirectory) throws IOException {
-    Files.list(entryDirectory)
-         .forEach(path -> {
-                      try {
+    try (Stream<Path> entryStream = Files.list(entryDirectory)) {
+      entryStream.forEach(path -> {
+                       try {
 
-                        LOG.info("Restoring {}", path.getFileName());
-                        CMAEntry entry = GSON.fromJson(new String(Files.readAllBytes(path), StandardCharsets.UTF_8), CMAEntry.class);
-                        try {
-                          LOG.info("Entry exists: {}", getContentTypeId(entry));
-                          rateLimiter.acquire();
-                        } catch (RuntimeException e) {
-                          rateLimiter.acquire();
-                        }
+                         LOG.info("Restoring {}", path.getFileName());
+                         CMAEntry entry = GSON.fromJson(new String(Files.readAllBytes(path), StandardCharsets.UTF_8), CMAEntry.class);
+                         try {
+                           LOG.info("Entry exists: {}", getContentTypeId(entry));
+                           rateLimiter.acquire();
+                         } catch (RuntimeException e) {
+                           rateLimiter.acquire();
+                         }
 
-                      } catch (IOException e) {
-                        Throwables.propagate(e);
-                      }
-                  }
-         );
+                       } catch (IOException e) {
+                         throw new RuntimeException(e);
+                       }
+                   }
+      );
+    }
   }
 
   /**

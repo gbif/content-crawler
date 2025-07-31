@@ -52,6 +52,13 @@ public class UpdateRegistryHandler implements ResponseHandler {
   private final DatasetUsagesCollector datasetUsagesCollector;
 
   public UpdateRegistryHandler(ContentCrawlConfiguration conf) {
+    if (conf.getGbifApi() == null) {
+      LOG.warn("No GBIF API configuration found, registry update disabled");
+      occurrenceDownloadService = null;
+      datasetUsagesCollector = null;
+      return;
+    }
+    
     LOG.info("Connecting to GBIF API {} as {}", conf.getGbifApi().getUrl(), conf.getGbifApi().getUsername());
     ClientBuilder clientBuilder = new ClientBuilder()
                                     .withUrl(conf.getGbifApi().getUrl())
@@ -69,7 +76,12 @@ public class UpdateRegistryHandler implements ResponseHandler {
    * @param responseAsJson To load.
    */
   @Override
-  public void handleResponse(String responseAsJson) throws IOException {
+  public void handleResponse(String responseAsJson) {
+    if (occurrenceDownloadService == null || datasetUsagesCollector == null) {
+      LOG.debug("Registry update disabled - no GBIF API configuration");
+      return;
+    }
+    
     //process each Json node
     Iterable<JsonNode> iterable = () -> {
       try {
@@ -119,7 +131,7 @@ public class UpdateRegistryHandler implements ResponseHandler {
   }
 
   @Override
-  public void rollback() throws Exception {
+  public void rollback() {
   }
 
   @Override

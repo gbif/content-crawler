@@ -38,13 +38,11 @@ import java.util.stream.StreamSupport;
 
 import org.apache.commons.lang3.mutable.MutableBoolean;
 import org.apache.commons.lang3.mutable.MutableObject;
-import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
-import org.elasticsearch.action.bulk.BulkRequest;
-import org.elasticsearch.action.bulk.BulkResponse;
-import org.elasticsearch.action.index.IndexRequest;
-import org.elasticsearch.client.RequestOptions;
-import org.elasticsearch.client.RestHighLevelClient;
-import org.elasticsearch.common.xcontent.XContentType;
+import co.elastic.clients.elasticsearch.ElasticsearchClient;
+import co.elastic.clients.elasticsearch.core.BulkRequest;
+import co.elastic.clients.elasticsearch.core.BulkResponse;
+import co.elastic.clients.elasticsearch.indices.DeleteIndexRequest;
+import co.elastic.clients.json.JsonData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -139,13 +137,13 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
   private static final ObjectMapper MAPPER = new ObjectMapper();
   private static final String LAST_MODIFIED = "last_modified";
 
-  private final RestHighLevelClient esClient;
+  private final ElasticsearchClient esClient;
   private final ContentCrawlConfiguration conf;
   private final String esIdxName;
   private final int batchSize;
-  private final DatasetUsagesCollector datasetUsagesCollector;
-  private final SpeciesService speciesService;
-  private final DatasetEsClient datasetEsClient;
+  private DatasetUsagesCollector datasetUsagesCollector;
+  private SpeciesService speciesService;
+  private DatasetEsClient datasetEsClient;
 
 
   public ElasticSearchIndexHandler(ContentCrawlConfiguration conf) {
@@ -154,12 +152,32 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
     esClient = buildEsClient(conf.getElasticSearch());
     esIdxName = getEsIndexingIdxName(conf.getMendeley().getIndexBuild().getEsIndexName());
     batchSize = conf.getMendeley().getIndexBuild().getBatchSize();
-    Properties dbConfig = new Properties();
-    dbConfig.putAll(conf.getMendeley().getDbConfig());
-    datasetUsagesCollector = new DatasetUsagesCollector(dbConfig);
-    speciesService = SpeciesService.wsClient(conf.getGbifApi().getUrl());
-    datasetEsClient = new DatasetEsClient(conf);
-    datasetEsClient.loadAllWithProjectIds();
+    
+    Map<String,String> dbConfigMap = conf.getMendeley().getDbConfig();
+    if (dbConfigMap != null && !dbConfigMap.isEmpty()) {
+      LOG.info("Database configuration found, enabling dataset citation features");
+      Properties dbConfig = new Properties();
+      dbConfig.putAll(dbConfigMap);
+      datasetUsagesCollector = new DatasetUsagesCollector(dbConfig);
+      
+      // SpeciesService will be initialized lazily when needed
+      speciesService = null;
+      
+      try {
+        datasetEsClient = new DatasetEsClient(conf);
+        datasetEsClient.loadAllWithProjectIds();
+        LOG.info("Dataset ES client initialized");
+      } catch (Exception e) {
+        LOG.warn("Failed to initialize Dataset ES client: {}", e.getMessage());
+        datasetEsClient = null;
+      }
+    } else {
+      LOG.info("No database configuration found, running in ES-only mode");
+      datasetUsagesCollector = null;
+      speciesService = null;
+      datasetEsClient = null;
+    }
+    
     createIndex(esClient, esIdxName, indexMappings(ES_MAPPING_FILE));
   }
 
@@ -168,7 +186,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
    * @param responseAsJson To load.
    */
   @Override
-  public void handleResponse(String responseAsJson) throws IOException {
+  public void handleResponse(String responseAsJson) {
 
     final AtomicInteger counter = new AtomicInteger();
     //process each Json node
@@ -184,7 +202,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
       .values().forEach(nodes ->
                         {
                           try {
-                            BulkRequest bulkRequest = new BulkRequest();
+                            BulkRequest.Builder bulkRequestBuilder = new BulkRequest.Builder();
                             nodes.forEach( document -> {
                                                         try {
                                                           toCamelCasedFields(document);
@@ -192,21 +210,20 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
                                                           if (document.has(ML_TAGS_FL)) {
                                                             handleTags(document);
                                                           }
-                                                          IndexRequest indexRequest = new IndexRequest();
-                                                          indexRequest
-                                                            .index(esIdxName)
-                                                            .id(document.get(ML_ID_FL).asText())
-                                                            .source(document.toString(), XContentType.JSON);
-                                                          bulkRequest.add(indexRequest);
+                                                          bulkRequestBuilder.operations(op -> op
+                                                              .index(idx -> idx
+                                                                  .index(esIdxName)
+                                                                  .id(document.get(ML_ID_FL).asText())
+                                                                  .document(JsonData.of(document))));
                                                         } catch (Exception ex) {
                                                           LOG.error("Error processing document [{}]", document, ex);
                                                         }
                                                       });
-                            BulkResponse bulkResponse = esClient.bulk(bulkRequest, RequestOptions.DEFAULT);
-                            if (bulkResponse.hasFailures()) {
-                              LOG.error("Error indexing.  First error message: {}", bulkResponse.getItems()[0].getFailureMessage());
+                            BulkResponse bulkResponse = esClient.bulk(bulkRequestBuilder.build());
+                            if (bulkResponse.errors()) {
+                              LOG.error("Error indexing.  First error message: {}", bulkResponse.items().get(0).error().reason());
                             } else {
-                              LOG.info("Indexed [{}] documents", bulkResponse.getItems().length);
+                              LOG.info("Indexed [{}] documents", bulkResponse.items().size());
                             }
                         } catch (IOException ex){
                             throw new RuntimeException(ex);
@@ -220,7 +237,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
    */
   @Override
   public void rollback() throws Exception {
-    esClient.indices().delete(new DeleteIndexRequest(esIdxName), RequestOptions.DEFAULT);
+    esClient.indices().delete(new DeleteIndexRequest.Builder().index(esIdxName).build());
   }
 
   /**
@@ -251,35 +268,39 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
         String value = node.textValue();
         if (value.startsWith(GBIF_DOI_TAG.pattern())) {
           String keyValue  = GBIF_DOI_TAG.matcher(value).replaceFirst("").toLowerCase();
-          Collection<DatasetUsagesCollector.DatasetCitation> citations = datasetUsagesCollector.getCitations(keyValue);
-          if (citations.isEmpty()) {
-            LOG.warn("Document ID {} has a not-found DOI {}", document.get(ML_ID_FL), keyValue);
-          } else {
-            citations.forEach(citation -> {
-              Optional.ofNullable(citation.getDownloadKey()).ifPresent(k -> gbifDownloads.add(new TextNode(k)));
-              Optional.ofNullable(citation.getDatasetKey()).ifPresent(k -> {
-                gbifDatasets.add(new TextNode(k));
-                Optional<DatasetEsClient.DatasetSearchResponse> response = datasetEsClient.get(k);
-                response
-                  .flatMap(searchResponse -> Optional.ofNullable(searchResponse.getProjectIdentifier())
-                  .map(TextNode::new))
-                  .ifPresent(gbifProjectIds::add);
+          if (datasetUsagesCollector != null) {
+            Collection<DatasetUsagesCollector.DatasetCitation> citations = datasetUsagesCollector.getCitations(keyValue);
+            if (citations.isEmpty()) {
+              LOG.warn("Document ID {} has a not-found DOI {}", document.get(ML_ID_FL), keyValue);
+            } else {
+              citations.forEach(citation -> {
+                Optional.ofNullable(citation.getDownloadKey()).ifPresent(k -> gbifDownloads.add(new TextNode(k)));
+                Optional.ofNullable(citation.getDatasetKey()).ifPresent(k -> {
+                  gbifDatasets.add(new TextNode(k));
+                  if (datasetEsClient != null) {
+                    Optional<DatasetEsClient.DatasetSearchResponse> response = datasetEsClient.get(k);
+                    response
+                      .flatMap(searchResponse -> Optional.ofNullable(searchResponse.getProjectIdentifier())
+                      .map(TextNode::new))
+                      .ifPresent(gbifProjectIds::add);
 
-                response
-                  .flatMap(searchResponse -> Optional.ofNullable(searchResponse.getProgrammeAcronym())
-                    .map(TextNode::new))
-                  .ifPresent(gbifProgrammeAcronyms::add);
+                    response
+                      .flatMap(searchResponse -> Optional.ofNullable(searchResponse.getProgrammeAcronym())
+                        .map(TextNode::new))
+                      .ifPresent(gbifProgrammeAcronyms::add);
+                  }
+                });
+                Optional.ofNullable(citation.getPublishingOrganizationKey()).ifPresent(k -> publishingOrganizations.add(new TextNode(k)));
+                Optional.ofNullable(citation.getNetworkKeys()).ifPresent(nk -> gbifNetworkKeys.addAll(Arrays.stream(nk)
+                                                                                                        .map(nKey -> new TextNode(nKey.toString()))
+                                                                                                        .collect(Collectors.toList())));
+                Optional.ofNullable(citation.getPublishingCountry()).ifPresent(k -> publishingCountry.add(new TextNode(k)));
               });
-              Optional.ofNullable(citation.getPublishingOrganizationKey()).ifPresent(k -> publishingOrganizations.add(new TextNode(k)));
-              Optional.ofNullable(citation.getNetworkKeys()).ifPresent(nk -> gbifNetworkKeys.addAll(Arrays.stream(nk)
-                                                                                                      .map(nKey -> new TextNode(nKey.toString()))
-                                                                                                      .collect(Collectors.toList())));
-              Optional.ofNullable(citation.getPublishingCountry()).ifPresent(k -> publishingCountry.add(new TextNode(k)));
-            });
-          }
+            }
 
-          if(datasetUsagesCollector.isDerivedDataset(keyValue)) {
-            gbifDerivedDatasets.add(new TextNode(keyValue));
+            if(datasetUsagesCollector.isDerivedDataset(keyValue)) {
+              gbifDerivedDatasets.add(new TextNode(keyValue));
+            }
           }
         } else if (value.startsWith(PEER_REVIEW_TAG.pattern())) {
           peerReviewValue.setValue(Boolean.parseBoolean(PEER_REVIEW_TAG.matcher(value).replaceFirst("")));
@@ -351,14 +372,37 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
   /** Gets the higher taxa keys of a name-usage/species.*/
   private Set<IntNode> getHigherTaxonKeys(Integer speciesKey) {
     if (speciesKey != null) {
-      NameUsage nameUsage = speciesService.get(speciesKey);
-      if (nameUsage != null) {
-        return Optional.ofNullable(nameUsage.getHigherClassificationMap())
-          .map(map -> map.keySet().stream().map(IntNode::new).collect(Collectors.toSet()))
-          .orElse(Collections.emptySet());
+      SpeciesService service = getSpeciesService();
+      if (service != null) {
+        try {
+          NameUsage nameUsage = service.get(speciesKey);
+          if (nameUsage != null) {
+            return Optional.ofNullable(nameUsage.getHigherClassificationMap())
+              .map(map -> map.keySet().stream().map(IntNode::new).collect(Collectors.toSet()))
+              .orElse(Collections.emptySet());
+          }
+        } catch (Exception e) {
+          LOG.warn("Failed to get species data for key {}: {}", speciesKey, e.getMessage());
+        }
       }
     }
     return Collections.emptySet();
+  }
+
+  /**
+   * Lazy initialization of SpeciesService to avoid auth errors during startup
+   */
+  private SpeciesService getSpeciesService() {
+    if (speciesService == null && conf.getGbifApi() != null && conf.getGbifApi().getUrl() != null) {
+      try {
+        speciesService = SpeciesService.wsClient(conf.getGbifApi().getUrl());
+        LOG.info("GBIF Species service initialized");
+      } catch (Exception e) {
+        LOG.warn("Failed to initialize GBIF Species service: {}", e.getMessage());
+        speciesService = null;
+      }
+    }
+    return speciesService;
   }
 
   /**
@@ -466,16 +510,10 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
 
   @Override
   public void finish() {
-    try {
-      swapIndexToAlias(
-          esClient,
-          getEsIdxName(conf.getMendeley().getIndexBuild().getEsIndexName()),
-          esIdxName,
-          conf.getMendeley().getIndexBuild());
-      esClient.close();
-      datasetEsClient.close();
-    } catch (IOException ex) {
-      throw new RuntimeException(ex);
-    }
+    swapIndexToAlias(
+        esClient,
+        getEsIdxName(conf.getMendeley().getIndexBuild().getEsIndexName()),
+        esIdxName,
+        conf.getMendeley().getIndexBuild());
   }
 }

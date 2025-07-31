@@ -1,15 +1,12 @@
 {
-  "_all": {
-    "store": true
-  },
   "dynamic_templates": [
     {
       "ignored_fields": {
         "match_pattern": "regex",
         "match": "images|space|revision|type",
         "mapping": {
-          "include_in_all": false,
-          "index": false
+          "type": "object",
+          "enabled": false
         }
       }
     },
@@ -18,7 +15,8 @@
         "match_pattern": "regex",
         "match": "title|description",
         "mapping": {
-          "boost": 10
+          "type": "text",
+          "copy_to": "search_text"
         }
       }
     },
@@ -74,12 +72,16 @@
       "title": {
         "path_match": "title.*",
         "mapping": {
-          "type": "text"
+          "type": "text",
+          "copy_to": "search_text"
         }
       }
     }
   ],
   "properties": {
+    "search_text": {
+      "type": "text"
+    },
     "contentType": {
       "type": "keyword"
     },
