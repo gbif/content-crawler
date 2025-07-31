@@ -161,14 +161,14 @@ public class ElasticSearchUtils {
       // Step 3: Add aliases to the new index
       List<Action> actions = new ArrayList<>();
       
-      // Add content type alias (e.g., news, network, etc.)
+      // Add content type alias with write index designation
       actions.add(Action.of(a -> a
-          .add(add -> add.index(toIdx).alias(alias))
+          .add(add -> add.index(toIdx).alias(alias).isWriteIndex(true))
       ));
 
       // Add content alias
       actions.add(Action.of(a -> a
-          .add(add -> add.index(toIdx).alias(CONTENT_ALIAS))
+          .add(add -> add.index(toIdx).alias(CONTENT_ALIAS).isWriteIndex(false))
       ));
 
       // Step 4: Execute all alias operations in a single atomic call
