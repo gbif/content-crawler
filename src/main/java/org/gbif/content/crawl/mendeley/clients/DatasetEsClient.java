@@ -122,25 +122,37 @@ public class DatasetEsClient {
 
   @SneakyThrows
   public void loadAllWithProjectIds() {
-    SearchRequest.Builder searchRequestBuilder = new SearchRequest.Builder()
-      .index(configuration.getMendeley().getDatasetIndex())
-      .query(q -> q.exists(e -> e.field("project.identifier")))
-      .size(PAGE_SIZE)
-      .source(s -> s.filter(f -> f.includes("project.identifier")));
-
-    SearchResponse<Object> searchResponse = esClient.search(searchRequestBuilder.build(), Object.class);
     int from = 0;
+    int totalLoaded = 0;
     
-    while (searchResponse.hits().hits().size() > 0) {
-      log.info("Loading {} datasets from {} into the cache", PAGE_SIZE, from);
+    while (true) {
+      SearchRequest searchRequest = new SearchRequest.Builder()
+        .index(configuration.getMendeley().getDatasetIndex())
+        .query(q -> q.exists(e -> e.field("project.identifier")))
+        .from(from)
+        .size(PAGE_SIZE)
+        .source(s -> s.filter(f -> f.includes("project.identifier")))
+        .build();
+
+      SearchResponse<Object> searchResponse = esClient.search(searchRequest, Object.class);
+      
+      if (searchResponse.hits().hits().isEmpty()) {
+        break;
+      }
+      
+      log.info("Loading {} datasets from {} into the cache", searchResponse.hits().hits().size(), from);
       searchResponse.hits().hits().forEach(searchHit -> cache.put(searchHit.id(), toDatasetSearchResponse(searchHit)));
+      
+      totalLoaded += searchResponse.hits().hits().size();
       from += searchResponse.hits().hits().size();
       
-      searchRequestBuilder.from(from);
-      searchResponse = esClient.search(searchRequestBuilder.build(), Object.class);
+      // Break if we got fewer results than requested (last page)
+      if (searchResponse.hits().hits().size() < PAGE_SIZE) {
+        break;
+      }
     }
 
-    log.info("Dataset cache built with {} entries", cache.keys().size());
+    log.info("Dataset cache built with {} entries", totalLoaded);
   }
 
 }
