@@ -14,6 +14,7 @@
 package org.gbif.content.crawl.es;
 
 import co.elastic.clients.elasticsearch._types.Time;
+import co.elastic.clients.elasticsearch.indices.GetAliasResponse;
 import co.elastic.clients.elasticsearch.indices.Translog;
 import co.elastic.clients.elasticsearch.indices.TranslogDurability;
 import co.elastic.clients.elasticsearch.indices.update_aliases.Action;
@@ -142,7 +143,7 @@ public class ElasticSearchUtils {
     try {
       LOG.info("Swapping alias '{}' to point to index '{}'", alias, toIdx);
 
-      // Step 1: Apply search-specific settings to the target index
+      // Apply search-specific settings to the target index
       esClient.indices().putSettings(ps -> ps
           .index(toIdx)
           .settings(s -> s
@@ -152,16 +153,16 @@ public class ElasticSearchUtils {
           )
       );
 
-      // Step 2: Force merge to 1 segment per index for small indexes
+      // Force merge to 1 segment per index for small indexes
       esClient.indices().forcemerge(b -> b
           .index(toIdx)
           .maxNumSegments(1L)
       );
 
-      // Step 3: Add aliases to the new index
-      List<Action> actions = new ArrayList<>();
-      
-      // Add content type alias with write index designation
+      // Get all existing indices for the alias and prepare removal actions
+      List<Action> actions = getRemoveIndexActions(esClient, alias);
+
+      // Add new index to both aliases
       actions.add(Action.of(a -> a
           .add(add -> add.index(toIdx).alias(alias).isWriteIndex(true))
       ));
@@ -171,14 +172,42 @@ public class ElasticSearchUtils {
           .add(add -> add.index(toIdx).alias(CONTENT_ALIAS).isWriteIndex(false))
       ));
 
-      // Step 4: Execute all alias operations in a single atomic call
+      // Execute all alias operations in a single atomic call
       esClient.indices().updateAliases(ua -> ua.actions(actions));
 
-      LOG.info("Successfully added index '{}' to alias '{}' and content alias", toIdx, alias);
+      LOG.info("Successfully swapped alias '{}' to point to index '{}'", alias, toIdx);
     } catch (Exception ex) {
-      LOG.error("Failed to add index '{}' to aliases: {}", toIdx, ex.getMessage());
-      throw new IllegalStateException("Failed to add aliases", ex);
+      LOG.error("Failed to swap alias '{}' to index '{}': {}", alias, toIdx, ex.getMessage());
+      throw new IllegalStateException("Failed to swap aliases", ex);
     }
+  }
+
+  /**
+   * Gets removal actions for all existing indices associated with the given alias.
+   * @param esClient Elasticsearch client
+   * @param alias Alias name
+   * @return List of actions to remove old indices from the alias
+   */
+  private static List<Action> getRemoveIndexActions(ElasticsearchClient esClient, String alias) {
+    List<Action> actions = new ArrayList<>();
+    
+    try {
+      // Get all indices currently associated with the alias
+      GetAliasResponse aliasResponse = esClient.indices().getAlias(g -> g.name(alias));
+      
+      // Remove all existing indexes of that alias
+      aliasResponse.aliases().forEach((idx, indexAliases) -> {
+        actions.add(Action.of(a -> a
+            .removeIndex(remove -> remove.index(idx))
+        ));
+        LOG.info("Removing old index '{}' from alias '{}'", idx, alias);
+      });
+    } catch (Exception e) {
+      // Alias might not exist yet, which is fine
+      LOG.debug("Alias '{}' does not exist or has no indices, proceeding with new index", alias);
+    }
+    
+    return actions;
   }
 
   /**
