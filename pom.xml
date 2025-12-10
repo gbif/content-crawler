@@ -35,54 +35,53 @@
     <jdkLevel>17</jdkLevel>
 
     <!-- GBIF libraries -->
-    <gbif-api.version>2.0.0</gbif-api.version>
-    <gbif-common-ws.version>2.1.0</gbif-common-ws.version>
-    <gbif-registry.version>4.0.1</gbif-registry.version>
+    <gbif-api.version>2.2.1-SNAPSHOT</gbif-api.version>
+    <gbif-common-ws.version>2.1.1-SNAPSHOT</gbif-common-ws.version>
+    <gbif-registry.version>4.1.21-SNAPSHOT</gbif-registry.version>
     <datacite-rest-client.version>2.0.0</datacite-rest-client.version>
 
     <!-- Core libraries -->
-    <lombok.version>1.18.32</lombok.version>
-    <slf4j.version>1.7.36</slf4j.version>
-    <guava.version>33.2.1-jre</guava.version>
+    <lombok.version>1.18.42</lombok.version>
+    <slf4j.version>2.0.17</slf4j.version>
+    <guava.version>33.5.0-jre</guava.version>
     <jcommander.version>1.82</jcommander.version>
-    <validation-api.version>3.0.2</validation-api.version>
+    <validation-api.version>3.1.1</validation-api.version>
     <log4j.version>2.20.0</log4j.version>
-    <logback.version>1.2.12</logback.version>
+    <logback.version>1.5.21</logback.version>
+    <jackson.version>2.19.4</jackson.version>
     <httpclient.version>4.5.14</httpclient.version>
     <httpcore.version>4.4.16</httpcore.version>
-    <jackson.version>2.15.2</jackson.version>
     <elasticsearch.version>9.0.0</elasticsearch.version>
-    <rxjava.version>3.1.7</rxjava.version>
+    <rxjava.version>3.1.12</rxjava.version>
     <reactive-streams.version>1.0.4</reactive-streams.version>
-    <retrofit.version>2.9.0</retrofit.version>
-    <commons-lang3.version>3.13.0</commons-lang3.version>
-    <gson.version>2.10.1</gson.version>
-    <commons-io.version>2.13.0</commons-io.version>
-    <okio.version>3.5.0</okio.version>
-    <findbugs.version>3.0.1</findbugs.version>
-    <spring-boot.version>3.2.8</spring-boot.version>
-    <spring.version>6.1.11</spring.version>
+    <retrofit.version>2.12.0</retrofit.version>
+    <commons-lang3.version>3.20.0</commons-lang3.version>
+    <gson.version>2.13.2</gson.version>
+    <commons-io.version>2.21.0</commons-io.version>
+    <okio.version>3.16.4</okio.version>
+    <findbugs.version>3.0.2</findbugs.version>
+    <spring-boot.version>3.5.8</spring-boot.version>
+    <spring.version>6.2.14</spring.version>
     <picocli.version>4.7.7</picocli.version>
-    <jakarta.annotation.version>2.1.1</jakarta.annotation.version>
-    <hibernate-validator.version>8.0.1.Final</hibernate-validator.version>
+    <jakarta.annotation.version>3.0.0</jakarta.annotation.version>
+    <hibernate-validator.version>9.1.0.Final</hibernate-validator.version>
     <jakarta.el.version>4.0.2</jakarta.el.version>
 
     <!-- Database and caching -->
-    <apache.beam.version>2.49.0</apache.beam.version>
-    <postgresql.version>42.6.0</postgresql.version>
-    <hikari.version>5.0.1</hikari.version>
+    <postgresql.version>42.7.8</postgresql.version>
+    <hikari.version>7.0.2</hikari.version>
     <cache2k.version>2.6.1.Final</cache2k.version>
 
     <!-- Contentful SDK -->
-    <contentful-sdk.version>10.5.18</contentful-sdk.version>
-    <cma-sdk.version>3.4.12</cma-sdk.version>
+    <contentful-sdk.version>10.6.0</contentful-sdk.version>
+    <cma-sdk.version>3.4.23</cma-sdk.version>
     <okhttp.version>4.11.0</okhttp.version>
-    <metainf-services.version>1.9</metainf-services.version>
+    <metainf-services.version>1.11</metainf-services.version>
     
     <!-- Maven plugins -->
-    <maven-shade-plugin.version>3.6.0</maven-shade-plugin.version>
-    <maven-dependency-plugin.version>3.1.2</maven-dependency-plugin.version>
-    <maven-compiler-plugin.version>3.11.0</maven-compiler-plugin.version>
+    <maven-shade-plugin.version>3.6.1</maven-shade-plugin.version>
+    <maven-dependency-plugin.version>3.9.0</maven-dependency-plugin.version>
+    <maven-compiler-plugin.version>3.14.1</maven-compiler-plugin.version>
   </properties>
 
   <build>
