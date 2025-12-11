@@ -60,8 +60,8 @@
     <commons-io.version>2.21.0</commons-io.version>
     <okio.version>3.16.4</okio.version>
     <findbugs.version>3.0.2</findbugs.version>
-    <spring-boot.version>3.5.7</spring-boot.version>
-    <spring.version>6.2.12</spring.version>
+    <spring-boot.version>3.5.8</spring-boot.version>
+    <spring.version>6.2.14</spring.version>
     <picocli.version>4.7.7</picocli.version>
     <jakarta.annotation.version>3.0.0</jakarta.annotation.version>
     <hibernate-validator.version>9.1.0.Final</hibernate-validator.version>
