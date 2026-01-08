@@ -35,7 +35,6 @@ import com.contentful.java.cma.model.CMAContentType;
 import com.contentful.java.cma.model.CMAEntry;
 import com.contentful.java.cma.model.CMASpace;
 import com.google.common.base.Preconditions;
-import com.google.common.base.Throwables;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
@@ -92,7 +91,7 @@ public class ContentfulBackup {
 
       });
     } catch (Exception e) {
-      Throwables.propagate(e);
+      throw new RuntimeException(e);
     }
   }
 
@@ -101,7 +100,9 @@ public class ContentfulBackup {
       contentTypePager = ContentfulManagementPager.newContentTypePager(cmaClient, PAGE_SIZE, space.getSpaceId(), environmentId);
     Observable.fromIterable(contentTypePager)
               .doOnComplete(() -> LOG.info("Finished backing up content types"))
-              .doOnError(Throwables::propagate)
+              .doOnError(e -> {
+                throw new RuntimeException(e);
+              })
               .subscribe(results ->
                 results.getItems().forEach(contentType -> {
 
@@ -112,7 +113,7 @@ public class ContentfulBackup {
                     Files.createDirectories(contentDir);
                     Files.write(contentDir.resolve(contentType.getId() + ".json"), GSON.toJson(contentType).getBytes(StandardCharsets.UTF_8));
                   } catch (IOException e) {
-                    Throwables.propagate(e);
+                    throw new RuntimeException(e);
                   }
                 })
               );
@@ -123,24 +124,24 @@ public class ContentfulBackup {
       entryPager = ContentfulManagementPager.newEntryPager(cmaClient, PAGE_SIZE, space.getSpaceId(), environmentId);
     Observable.fromIterable(entryPager)
               .doOnComplete(() -> LOG.info("Finished backing up entries"))
-              .doOnError(Throwables::propagate)
-              .subscribe(results -> {
-                results.getItems().forEach(entry -> {
+              .doOnError(e -> {
+                throw new RuntimeException(e);
+              })
+              .subscribe(results -> results.getItems().forEach(entry -> {
 
-                  LOG.info("id[{}] of type[{}]", entry.getId(), extractContentTypeId(entry));
-                  String contentTypeId = extractContentTypeId(entry);
-                  String contentId = entry.getId();
+                LOG.info("id[{}] of type[{}]", entry.getId(), extractContentTypeId(entry));
+                String contentTypeId = extractContentTypeId(entry);
+                String contentId = entry.getId();
 
-                  // Save as e.g. ./spaceId/<timestamp>/contentTypeId/contentId.json
-                  Path contentDir = spaceDir.resolve(Paths.get(startTime, contentTypeId));
-                  try {
-                    Files.createDirectories(contentDir);
-                    Files.write(contentDir.resolve(contentId + ".json"), GSON.toJson(entry).getBytes(StandardCharsets.UTF_8));
-                  } catch (IOException e) {
-                    Throwables.propagate(e);
-                  }
-                });
-              });
+                // Save as e.g. ./spaceId/<timestamp>/contentTypeId/contentId.json
+                Path contentDir = spaceDir.resolve(Paths.get(startTime, contentTypeId));
+                try {
+                  Files.createDirectories(contentDir);
+                  Files.write(contentDir.resolve(contentId + ".json"), GSON.toJson(entry).getBytes(StandardCharsets.UTF_8));
+                } catch (IOException e) {
+                  throw new RuntimeException(e);
+                }
+              }));
   }
 
   private void backupAssets(CMASpace space, String environmentId, Path spaceDir) {
@@ -155,55 +156,55 @@ public class ContentfulBackup {
       assetsPager = ContentfulManagementPager.newAssetsPager(cmaClient, PAGE_SIZE, space.getSpaceId(), environmentId);
     Observable.fromIterable(assetsPager)
               .doOnComplete(() -> LOG.info("Finished backing up assets"))
-              .doOnError(Throwables::propagate)
-              .subscribe(results -> {
-                results.getItems().forEach(asset -> {
-                  LOG.info("Asset: {}", GSON.toJson(asset.getId()));
+              .doOnError(e -> {
+                throw new RuntimeException(e);
+              })
+              .subscribe(results -> results.getItems().forEach(asset -> {
+                LOG.info("Asset: {}", GSON.toJson(asset.getId()));
 
-                  // Save the actual assets (files, PDFs etc) only if thet are not already saved, and always save the
-                  // metadata about the asset
-                  try {
-                    CMAAssetFile file = asset.getFields().getFile("en-GB");
-                    if (file != null) {
-                      // skip any asset that has no URL as it is meaningless and indicates bad content
-                      if (file.getUrl() != null) {
-                        String assetUrl = file.getUrl();
-                        LOG.info("File[{}] has URL[{}]", file.getFileName(), assetUrl);
+                // Save the actual assets (files, PDFs etc) only if they are not already saved, and always save the
+                // metadata about the asset
+                try {
+                  CMAAssetFile file = asset.getFields().getFile("en-GB");
+                  if (file != null) {
+                    // skip any asset that has no URL as it is meaningless and indicates bad content
+                    if (file.getUrl() != null) {
+                      String assetUrl = file.getUrl();
+                      LOG.info("File[{}] has URL[{}]", file.getFileName(), assetUrl);
 
-                        // we map the local path to the URL path (wu1jj10r9bwp is the spaceID)
-                        // //assets.contentful.com/wu1jj10r9bwp/59Vy2G95H2EIE8yOIcgSSu/ae59118ae9989c26119972f1662aff3f/test.pdf
-                        //String path = assetUrl.substring(assetUrl.indexOf(spaceId) + spaceId.length() + 1);
-                        Path targetFile = assetsDir.resolve(extractAssetPath(assetUrl));
+                      // we map the local path to the URL path (wu1jj10r9bwp is the spaceID)
+                      // //assets.contentful.com/wu1jj10r9bwp/59Vy2G95H2EIE8yOIcgSSu/ae59118ae9989c26119972f1662aff3f/test.pdf
+                      //String path = assetUrl.substring(assetUrl.indexOf(spaceId) + spaceId.length() + 1);
+                      Path targetFile = assetsDir.resolve(extractAssetPath(assetUrl));
 
-                        if (Files.exists(targetFile)) {
-                          LOG.info("Skipping asset file which already exists: {}", targetFile.toAbsolutePath());
-                        } else {
-                          Files.createDirectories(targetFile.getParent()); // defensive coding
-                          Files.createFile(targetFile);
+                      if (Files.exists(targetFile)) {
+                        LOG.info("Skipping asset file which already exists: {}", targetFile.toAbsolutePath());
+                      } else {
+                        Files.createDirectories(targetFile.getParent()); // defensive coding
+                        Files.createFile(targetFile);
 
-                          try (BufferedSink sink = Okio.buffer(Okio.sink(targetFile))) {
-                            Request request = new Request.Builder()
-                              .url("http://" + assetUrl)
-                              .build();
+                        try (BufferedSink sink = Okio.buffer(Okio.sink(targetFile))) {
+                          Request request = new Request.Builder()
+                            .url("http://" + assetUrl)
+                            .build();
 
-                            Response response = client.newCall(request).execute();
-                            sink.writeAll(response.body().source());
-                          }
+                          Response response = client.newCall(request).execute();
+                          sink.writeAll(response.body().source());
                         }
                       }
                     }
-
-
-                    // Save as e.g. ./spaceId/<timestamp>/Asset/contentId.json
-                    Path contentDir = spaceDir.resolve(Paths.get(startTime, "Asset"));
-                    Files.createDirectories(contentDir);
-                    Files.write(contentDir.resolve(asset.getId() + ".json"), GSON.toJson(asset).getBytes(StandardCharsets.UTF_8));
-
-                  } catch (Exception e) {
-                    Throwables.propagate(e);
                   }
-                });
-              });
+
+
+                  // Save as e.g. ./spaceId/<timestamp>/Asset/contentId.json
+                  Path contentDir = spaceDir.resolve(Paths.get(startTime, "Asset"));
+                  Files.createDirectories(contentDir);
+                  Files.write(contentDir.resolve(asset.getId() + ".json"), GSON.toJson(asset).getBytes(StandardCharsets.UTF_8));
+
+                } catch (Exception e) {
+                  throw new RuntimeException(e);
+                }
+              }));
   }
 
   /**

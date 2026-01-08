@@ -13,47 +13,47 @@
  */
 package org.gbif.content.crawl.contentful.backup;
 
-import org.gbif.cli.BaseCommand;
-import org.gbif.cli.Command;
 import org.gbif.content.crawl.conf.ContentCrawlConfiguration;
 
+import java.io.File;
+import java.util.concurrent.Callable;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import org.kohsuke.MetaInfServices;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import picocli.CommandLine.Command;
+import picocli.CommandLine.Option;
 
 /**
  * Command to populate a contentful space from a backup.
  */
-@MetaInfServices(Command.class)
-public class ContentfulRestoreCommand extends BaseCommand {
+@Command(name = "contentful-restore", description = "Restore Contentful data from backup")
+@MetaInfServices(Callable.class)
+public class ContentfulRestoreCommand implements Callable<Integer> {
   private static final Logger LOG = LoggerFactory.getLogger(ContentfulRestoreCommand.class);
-  private final ContentCrawlConfiguration configuration = new ContentCrawlConfiguration();
+
+  @Option(names = {"-c", "--config"}, description = "Configuration file path", required = true)
+  private String configFile;
 
   /**
-   * Default constructor, sets the command name.
-   */
-  public ContentfulRestoreCommand() {
-    super("contentful-restore");
-  }
-
-  /**
-   * Configuration object.
+   * Executes the restore.
    */
   @Override
-  protected ContentCrawlConfiguration getConfigurationObject() {
-    return configuration;
-  }
-
-  /**
-   * Executes and asynchronous crawl.
-   */
-  @Override
-  protected void doRun() {
+  public Integer call() {
     try {
+      // Load configuration from file
+      ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
+      ContentCrawlConfiguration configuration = mapper.readValue(new File(configFile), ContentCrawlConfiguration.class);
+      
+      LOG.info("Starting Contentful restore with config: {}", configFile);
       new ContentfulRestore(configuration).run();
+      LOG.info("Contentful restore completed successfully");
+      return 0;
     } catch (Exception e) {
       LOG.error("Restore failed!", e);
-      System.exit(1); // to enable triggering of e.g. an email from a Cron
+      return 1;
     }
   }
 }

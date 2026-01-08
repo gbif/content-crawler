@@ -23,7 +23,7 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import org.elasticsearch.client.RestHighLevelClient;
+import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,7 +49,7 @@ public class ContentfulCrawler {
 
   private final CDAClient cdaClient;
   private final CMAClient cmaClient;
-  private final RestHighLevelClient esClient;
+  private final ElasticsearchClient esClient;
 
   private String newsContentTypeId;
   private String articleContentTypeId;

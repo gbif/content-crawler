@@ -1,66 +1,22 @@
-#Facets by locale
-curl -XGET 'http://localhost:9200/datause/_search?' -d '
-{
-    "size": 0,
-    "aggregations" : {
-        "locales_count" : {
-            "terms" : {
-                "field" : "locale"
-            }
-        }
-    }
-}'
+# Data use query examples
 
-#Facets by topic
-curl -XGET 'http://localhost:9200/datause/_search?' -d '
+# Example 1: Simple match query
+POST /content/_search
 {
-    "size": 0,
-    "aggregations" : {
-        "topics_count" : {
-            "terms" : {
-                "field" : "vocabularyTopic.en-GB"
-            }
-        }
-    }
-}'
+  "query": {
+    "match": { "search_text": "home" }
+  }
+}
 
-curl -XGET 'http://develastic-vh.gbif.org:9200/datause/_search' -d '
- {
-  "query" : {
-         "match": { "_all": "home" }
-  },
-  "highlight" : {
-         "tags_schema" : "styled",
-         "fields" : {
-             "*" : {}
-         }
-     }
- }'
-
-curl -XGET 'http://develastic-vh.gbif.org:9200/datause/_search' -d '
+# Example 2: Boolean query
+POST /content/_search
 {
-        "query": {
-            "bool": {
-                "must": [
-                    {
-                        "query_string": {
-                            "query": "data"
-                        }
-                    },
-                    {
-                        "term": {
-                            "vocabularyDataUse": "Science use"
-                        }
-                    }
-                ]
-            }
-        },
-        "aggregations": {
-            "countryOfCoverage": {
-                "terms": {
-                    "field": "countryOfCoverage"
-                }
-            }
-        }
+  "query": {
+    "bool": {
+      "must": [
+        { "match": { "title": "biodiversity" } },
+        { "term": { "contentType": "dataUse" } }
+      ]
     }
-'
+  }
+}
