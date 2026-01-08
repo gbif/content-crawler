@@ -29,6 +29,7 @@ import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -60,9 +61,14 @@ public class UpdateRegistryHandler implements ResponseHandler {
     }
     
     LOG.info("Connecting to GBIF API {} as {}", conf.getGbifApi().getUrl(), conf.getGbifApi().getUsername());
+    
+    // Configure ObjectMapper to ignore unknown properties
+    ObjectMapper objectMapper = JacksonJsonObjectMapperProvider.getObjectMapperWithBuilderSupport();
+    objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+    
     ClientBuilder clientBuilder = new ClientBuilder()
                                     .withUrl(conf.getGbifApi().getUrl())
-                                    .withObjectMapper(JacksonJsonObjectMapperProvider.getObjectMapperWithBuilderSupport())
+                                    .withObjectMapper(objectMapper)
                                     .withCredentials(conf.getGbifApi().getUsername(), conf.getGbifApi().getPassword());
     occurrenceDownloadService = clientBuilder.build(OccurrenceDownloadClient.class);
 
