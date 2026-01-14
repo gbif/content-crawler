@@ -216,7 +216,8 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
                                                                   .id(document.get(ML_ID_FL).asText())
                                                                   .document(JsonData.of(document))));
                                                         } catch (Exception ex) {
-                                                          LOG.error("Error processing document [{}]", document, ex);
+                                                          String docId = document.has(ML_ID_FL) ? document.get(ML_ID_FL).asText() : "unknown";
+                                                          LOG.error("Error processing document with ID [{}]: {}", docId, ex.getMessage(), ex);
                                                         }
                                                       });
                             BulkResponse bulkResponse = esClient.bulk(bulkRequestBuilder.build());
@@ -307,9 +308,21 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
         } else if (value.startsWith(OPEN_ACCESS_TAG.pattern())) {
           openAccessValue.setValue(Boolean.parseBoolean(OPEN_ACCESS_TAG.matcher(value).replaceFirst("")));
         } else if (value.startsWith(GBIF_TAXON_TAG.pattern())) {
-          gbifTaxonKeys.add(new IntNode(Integer.parseInt(GBIF_TAXON_TAG.matcher(value).replaceFirst(""))));
+          try {
+            String taxonKeyStr = GBIF_TAXON_TAG.matcher(value).replaceFirst("");
+            gbifTaxonKeys.add(new IntNode(Integer.parseInt(taxonKeyStr)));
+          } catch (NumberFormatException ex) {
+            LOG.warn("Invalid GBIF taxon key '{}' in document {}: {}",
+                     value, document.get(ML_ID_FL).asText(), ex.getMessage());
+          }
         } else if (value.startsWith(GBIF_OCCURRENCE_TAG.pattern())) {
-          gbifOccurrenceKeys.add(new LongNode(Long.parseLong(GBIF_OCCURRENCE_TAG.matcher(value).replaceFirst(""))));
+          try {
+            String occurrenceKeyStr = GBIF_OCCURRENCE_TAG.matcher(value).replaceFirst("");
+            gbifOccurrenceKeys.add(new LongNode(Long.parseLong(occurrenceKeyStr)));
+          } catch (NumberFormatException ex) {
+            LOG.warn("Invalid GBIF occurrence key '{}' in document {}: {}",
+                     value, document.get(ML_ID_FL).asText(), ex.getMessage());
+          }
         } else if (value.startsWith(GBIF_FEATURE_TAG.pattern())) {
           gbifFeatureIds.add(new TextNode(GBIF_FEATURE_TAG.matcher(value).replaceFirst("")));
         } else if (value.startsWith(CITATION_TYPE_TAG.pattern())) {
@@ -358,7 +371,8 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
       docNode.put(ES_PEER_REVIEW_FIELD, peerReviewValue.getValue());
       docNode.put(OPEN_ACCESS_FIELD, openAccessValue.getValue());
     } catch (Exception ex) {
-      LOG.error("Error processing document [{}]", document, ex);
+      String docId = document.has(ML_ID_FL) ? document.get(ML_ID_FL).asText() : "unknown";
+      LOG.error("Error processing tags for document with ID [{}]: {}", docId, ex.getMessage(), ex);
     }
   }
 
@@ -380,9 +394,11 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
             return Optional.ofNullable(nameUsage.getHigherClassificationMap())
               .map(map -> map.keySet().stream().map(IntNode::new).collect(Collectors.toSet()))
               .orElse(Collections.emptySet());
+          } else {
+            LOG.debug("Taxon key {} not found in species service (possibly invalid or deleted)", speciesKey);
           }
         } catch (Exception e) {
-          LOG.warn("Failed to get species data for key {}: {}", speciesKey, e.getMessage());
+          LOG.warn("Failed to get species data for taxon key {}: {}", speciesKey, e.getMessage());
         }
       }
     }

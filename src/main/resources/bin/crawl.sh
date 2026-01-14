@@ -3,7 +3,11 @@
 #Downloads artifact for the specified version.
 function download {
   echo "Downloading content crawler"
-  URL=`getArtifactUrl -s https://repository.gbif.org -g org.gbif.content -a content-crawler -v $2 -r $1 -c shaded`
+  if [ -n "$3" ]; then
+    URL=`getArtifactUrl -s https://repository.gbif.org -g org.gbif.content -a content-crawler -v $2 -r $1 -c $3`
+  else
+    URL=`getArtifactUrl -s https://repository.gbif.org -g org.gbif.content -a content-crawler -v $2 -r $1`
+  fi
   echo Download ${URL}
   wget --progress=dot:mega -O content-crawler.jar "${URL}"
   mv latest.sha1 jar.sha1
@@ -108,7 +112,8 @@ TOKEN=$2
 COMMAND=$3
 REPOSITORY=${4:-snapshots}
 VERSION=${5:-LATEST}
-MENDELEY_AUTH_TOKEN=${6:-""}
+CLASSIFIER=${6:-""}
+MENDELEY_AUTH_TOKEN=${7:-""}
 
 downloadConfig $TOKEN $P
 sed -i "s|_mendeleyAuthToken|$MENDELEY_AUTH_TOKEN|g" $P.yml
@@ -116,13 +121,13 @@ downloadJarSha1 $REPOSITORY $VERSION
 if [ -f jar.sha1 ] && [ -f content-crawler.jar ]; then
   if ! cmp -s latest.sha1 jar.sha1; then
     echo "Downloading updated JAR file"
-    download $REPOSITORY $VERSION
+    download $REPOSITORY $VERSION $CLASSIFIER
   else
     echo "Using previously download JAR file since content is the same"
   fi
 else
   echo "Downloading JAR file"
-  download $REPOSITORY $VERSION
+  download $REPOSITORY $VERSION $CLASSIFIER
 fi
 rm -f latest.sha1
 echo "Running crawler"
