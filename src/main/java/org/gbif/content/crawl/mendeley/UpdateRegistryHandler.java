@@ -47,7 +47,8 @@ public class UpdateRegistryHandler implements ResponseHandler {
     Pattern.compile(GBIF_DOWNLOAD_DOI_TAG+"10.15468/dl.", Pattern.LITERAL | Pattern.CASE_INSENSITIVE);
 
   private static final Logger LOG = LoggerFactory.getLogger(UpdateRegistryHandler.class);
-  private static final ObjectMapper MAPPER = new ObjectMapper();
+  private static final ObjectMapper MAPPER = new ObjectMapper()
+      .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
   private final OccurrenceDownloadService occurrenceDownloadService;
   private final DatasetUsagesCollector datasetUsagesCollector;

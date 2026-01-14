@@ -17,6 +17,9 @@ import org.gbif.api.model.checklistbank.NameUsage;
 import org.gbif.ws.client.ClientBuilder;
 import org.gbif.ws.json.JacksonJsonObjectMapperProvider;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -29,9 +32,12 @@ public interface SpeciesService {
   NameUsage get(@PathVariable("speciesKey") Integer key);
 
   static SpeciesService wsClient(String gbifApiUrl) {
+    ObjectMapper objectMapper = JacksonJsonObjectMapperProvider.getObjectMapperWithBuilderSupport();
+    objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+    
     return new ClientBuilder()
             .withUrl(gbifApiUrl)
-            .withObjectMapper(JacksonJsonObjectMapperProvider.getObjectMapperWithBuilderSupport())
+            .withObjectMapper(objectMapper)
             .build(SpeciesService.class);
   }
 }
