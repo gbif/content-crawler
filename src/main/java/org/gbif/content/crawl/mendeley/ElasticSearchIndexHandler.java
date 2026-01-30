@@ -75,7 +75,7 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
   private static final String ML_DAY_FL = "day";
   private static final String ML_YEAR_FL = "year";
   //Format used to store the createdAt field
-  private static final String CREATED_AT_FMT = "yyyy-MM-dd'T00:00:00.000Z'";
+  private static final String CREATED_AT_FMT = "yyyy-MM-dd";
 
 
   //Elasticsearch fields created by this handler
@@ -439,12 +439,11 @@ public class ElasticSearchIndexHandler implements ResponseHandler {
    */
   private static Optional<String> createdAt(ObjectNode objectNode) {
     return Optional.ofNullable(objectNode.get(ML_YEAR_FL))
-            .map(JsonNode::asText)
-            .map(yearValue -> LocalDate.ofYearDay(Integer.parseInt(yearValue),1)
-                              .withMonth(getDateBasedField(objectNode, ML_MONTH_FL))
-                              .plusDays(getDateBasedField(objectNode, ML_DAY_FL) - 1)
-                              .atStartOfDay()
-                              .format(DateTimeFormatter.ofPattern(CREATED_AT_FMT)));
+        .map(JsonNode::asText)
+        .map(yearValue -> LocalDate.ofYearDay(Integer.parseInt(yearValue), 1)
+            .withMonth(getDateBasedField(objectNode, ML_MONTH_FL))
+            .plusDays(getDateBasedField(objectNode, ML_DAY_FL) - 1)
+            .format(DateTimeFormatter.ofPattern(CREATED_AT_FMT)));
   }
 
   /**

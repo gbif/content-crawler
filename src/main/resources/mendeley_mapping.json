@@ -41,7 +41,8 @@
         "type": "date"
       },
       "createdAt": {
-        "type": "date"
+        "type": "date",
+        "format": "yyyy-MM-dd||strict_date_optional_time"
       },
       "updatedAt": {
         "type": "date"

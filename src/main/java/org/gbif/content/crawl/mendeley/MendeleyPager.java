@@ -51,7 +51,7 @@ public class MendeleyPager implements Iterable<String> {
   private final CloseableHttpClient httpClient;
 
   /**
-   * Fll constructor.
+   * Full constructor.
    * @param targetUrl Mendeley API url
    * @param token authentication token
    * @param requestConfig Http request configuration
