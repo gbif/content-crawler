@@ -35,9 +35,9 @@
     <jdkLevel>17</jdkLevel>
 
     <!-- GBIF libraries -->
-    <gbif-api.version>2.2.2</gbif-api.version>
+    <gbif-api.version>2.3.1</gbif-api.version>
     <gbif-common-ws.version>2.1.1</gbif-common-ws.version>
-    <gbif-registry.version>4.2.0</gbif-registry.version>
+    <gbif-registry.version>4.2.6</gbif-registry.version>
     <datacite-rest-client.version>2.0.0</datacite-rest-client.version>
 
     <!-- Core libraries -->
@@ -77,7 +77,7 @@
     <cma-sdk.version>3.4.23</cma-sdk.version>
     <okhttp.version>4.11.0</okhttp.version>
     <metainf-services.version>1.11</metainf-services.version>
-    
+
     <!-- Maven plugins -->
     <maven-shade-plugin.version>3.6.1</maven-shade-plugin.version>
     <maven-dependency-plugin.version>3.9.0</maven-dependency-plugin.version>
