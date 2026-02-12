@@ -47,7 +47,7 @@
     <jcommander.version>1.82</jcommander.version>
     <validation-api.version>3.1.1</validation-api.version>
     <log4j.version>2.20.0</log4j.version>
-    <logback.version>1.5.21</logback.version>
+    <logback.version>1.5.25</logback.version>
     <jackson.version>2.19.4</jackson.version>
     <httpclient.version>4.5.14</httpclient.version>
     <httpcore.version>4.4.16</httpcore.version>
