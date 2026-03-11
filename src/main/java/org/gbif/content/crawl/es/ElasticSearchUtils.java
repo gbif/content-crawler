@@ -148,7 +148,7 @@ public class ElasticSearchUtils {
           .index(toIdx)
           .settings(s -> s
               .refreshInterval(Time.of(t -> t.time("1s")))
-              .numberOfReplicas("0")
+              .numberOfReplicas("1")
               .maxResultWindow(indexConfig.getMaxResultWindow())
           )
       );
